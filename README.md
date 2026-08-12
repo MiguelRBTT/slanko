@@ -1,120 +1,350 @@
 # Slanko
 
+**Nome do Estudante:** Miguel Ricardo Buttendorf  
+**Curso:** Engenharia de Software  
+**Instituição:** Centro Universitário Católica de Santa Catarina  
+**Linha de projeto:** Web Apps  
+
 Sistema web para gestão de contratos de suporte técnico com análise de SLA e rentabilidade.
 
-## Sobre o projeto
+---
 
-O **Slanko** é uma proposta de sistema web voltada para microempresas de Tecnologia da Informação que prestam serviços de suporte técnico. O objetivo é centralizar chamados, contratos, apontamento de horas, acompanhamento de SLA e indicadores de rentabilidade em uma única plataforma.
+## Navegação
 
-A proposta surgiu a partir do projeto acadêmico desenvolvido no PAC VII da Engenharia de Software, com foco na linha de Web Apps. O problema central identificado é que muitas microempresas utilizam planilhas ou ferramentas separadas para acompanhar chamados e contratos, dificultando a análise real da rentabilidade de cada cliente.
+* [Descrição](#descrição)
+* [Trabalhos relacionados](#trabalhos-relacionados)
+* [Documentação](#documentação)
+* [Especificação técnica](#especificação-técnica)
+* [Arquitetura](#arquitetura)
+* [Diagramas](#diagramas)
+* [Modelagem de dados](#modelagem-de-dados)
+* [Status de implementação](#status-de-implementação)
+* [Instruções de execução](#instruções-de-execução)
+* [Próximos passos](#próximos-passos)
+* [Referências](#referências)
 
-## Problema
+---
 
-Microempresas de TI geralmente conseguem acompanhar chamados e prazos de atendimento, mas nem sempre conseguem relacionar essas informações ao custo real das horas trabalhadas. Com isso, gestores podem ter dificuldade para identificar contratos que consomem mais recursos do que geram receita.
+## Descrição
 
-A pergunta que orienta o projeto é:
+O **Slanko** é um sistema web voltado a microempresas de TI que prestam suporte técnico. A plataforma centraliza chamados, contratos, apontamento de horas, acompanhamento de SLA e indicadores de rentabilidade.
 
-> Como microempresas de TI que prestam suporte técnico podem obter uma visão clara e integrada da rentabilidade de seus contratos, considerando chamados, SLA e custo real das horas trabalhadas?
+O nome remete a SLA de forma memorável. No repositório e no código, o projeto é referenciado como `slanko`.
 
-## Solução Proposta
+### Contexto
 
-O Slanko integra três áreas principais:
+Muitas microempresas acompanham chamados e prazos em planilhas ou ferramentas isoladas. Fica difícil cruzar o esforço real (horas) com o valor contratado e identificar contratos deficitários.
 
-- **Gestão de chamados:** abertura, atribuição, acompanhamento, apontamento de horas e encerramento de tickets.
-- **Monitoramento de SLA:** definição de metas por contrato, cálculo de cumprimento e identificação de violações.
-- **Análise de rentabilidade:** comparação entre horas trabalhadas, custo operacional e valor contratado.
+### Justificativa
 
-Com esses dados consolidados, o sistema busca apoiar decisões como renegociação de contratos, ajuste de escopo e identificação de clientes ou contratos deficitários.
+Ferramentas de helpdesk cobrem tickets e SLA, mas raramente consolidam custo por hora e margem por contrato de forma simples para microempresas. O Slanko une operação e indicadores de rentabilidade, sem se tornar ERP ou sistema financeiro genérico.
 
-## Funcionalidades previstas
+### Objetivos
 
-- Cadastro de clientes e contratos.
-- Cadastro de usuários com perfis de gestor e técnico.
-- Abertura e acompanhamento de chamados.
-- Priorização e categorização de tickets.
-- Registro de horas trabalhadas por atendimento.
-- Configuração de metas de SLA por contrato.
-- Painel com indicadores de SLA por cliente, contrato e período.
-- Cálculo de custo operacional com base no custo/hora dos colaboradores.
-- Relatórios de margem e rentabilidade por contrato.
-- Alertas visuais para contratos deficitários ou com violações recorrentes de SLA.
+Entregar uma aplicação web funcional com três fluxos de negócio completos:
 
-## Diferencial
+1. **Gestão de chamados** (clientes, contratos, abertura, atribuição, horas e encerramento)
+2. **Monitoramento de SLA** (metas por contrato, cumprimento, violações e painel)
+3. **Análise de rentabilidade** (horas × custo/hora versus valor do contrato, margem e alertas)
 
-Ferramentas consolidadas de helpdesk, como Zendesk, Jira Service Management e Freshservice, oferecem recursos maduros para chamados e SLA. No entanto, o diferencial do Slanko está na integração entre desempenho operacional e análise financeira simplificada para microempresas.
+### Motivação
 
-A proposta não busca substituir um ERP ou sistema financeiro completo. O foco é oferecer uma visão objetiva da relação entre atendimento técnico, consumo de horas e rentabilidade dos contratos.
+Projeto acadêmico da linha Web Apps (PAC VII / Portfólio), com arquitetura cliente-servidor em camadas, testes, CI/CD e documentação técnica.
 
-## Tecnologias planejadas
+---
 
-- **TypeScript**
-- **Next.js**
-- **React**
-- **MySQL**
-- **Prisma**
-- **Docker**
-- **Jest/Vitest**
-- **GitHub Actions**
-- **SonarCloud**
-- **Grafana e/ou Prometheus**
+## Trabalhos relacionados
 
-## Arquitetura prevista
+Baseados no relatório do PAC 7B:
 
-A arquitetura proposta segue o modelo cliente-servidor em camadas:
+* Rachmawati e Suhendra (2018): helpdesk web com tickets
+* Clarin (2023): priorização/escalonamento de atendimentos
+* Jain, Gupta e Neha (2024): otimização de filas de suporte com IA (foco operacional)
+* Zendesk e Jira Service Management: SLA e operação maduros
+* Freshservice: contratos, sem consolidar nativamente custo/hora e margem por contrato
+
+A lacuna comum é a baixa integração entre operação e rentabilidade por horas trabalhadas. Detalhes e referências completas: [docs/RFC.md](docs/RFC.md).
+
+---
+
+## Documentação
+
+### Documentos do projeto
+
+| Documento | Conteúdo |
+|---|---|
+| [docs/RFC.md](docs/RFC.md) | Escopo, RF/RNF, critérios de aceite, stack e decisões |
+| [docs/casos-de-uso.md](docs/casos-de-uso.md) | Atores, UC01–UC11 e rastreabilidade |
+| [docs/arquitetura-c4.md](docs/arquitetura-c4.md) | C4 (contexto, contêineres e componentes) |
+| [docs/modelagem.md](docs/modelagem.md) | DER, dicionário de dados, regras e esboço Prisma |
+
+A documentação oficial permanece no repositório e, depois, na Wiki do GitHub (não em Notion/Obsidian para entrega).
+
+### Estrutura atual do repositório
 
 ```text
-Camada de Apresentação
-Next.js, React e TypeScript
-
-API REST interna
-
-Camada de Aplicação
-Rotas, validações, regras de SLA e rentabilidade
-
-Camada de Dados
-MySQL, Prisma e consultas parametrizadas
-
-Infraestrutura
-Docker, GitHub Actions, SonarCloud e monitoramento
+slanko/
+├── docs/
+│   ├── RFC.md
+│   ├── casos-de-uso.md
+│   ├── arquitetura-c4.md
+│   ├── modelagem.md
+│   └── assets/                 # diagramas (PNG/SVG)
+├── README.md
+└── .gitignore
 ```
 
-## Roadmap
+Estrutura prevista após o scaffold:
 
-- [ ] Estruturar o repositório GitHub.
-- [ ] Configurar ambiente de desenvolvimento.
-- [ ] Criar RFC com requisitos, casos de uso e critérios de aceite.
-- [ ] Modelar banco de dados.
-- [ ] Implementar autenticação e perfis de acesso.
-- [ ] Desenvolver módulo de clientes e contratos.
-- [ ] Desenvolver módulo de chamados.
-- [ ] Implementar regras de SLA.
-- [ ] Implementar cálculo de rentabilidade.
-- [ ] Criar dashboard com indicadores.
-- [ ] Adicionar testes automatizados.
-- [ ] Configurar CI/CD com GitHub Actions.
-- [ ] Realizar deploy em nuvem.
-- [ ] Documentar arquitetura, uso e deploy.
+```text
+├── .github/workflows/          # CI/CD (GitHub Actions)
+├── src/ ou app/                # Next.js (UI, API e regras)
+├── prisma/                     # schema e migrações MySQL
+└── docker/                     # ambiente local (app/db)
+```
+
+### Versionamento
+
+* `Feat:` nova funcionalidade
+* `Fix:` correção
+* `Docs:` documentação
+* `Test:` testes
+* `Chore:` configuração/infra
+
+---
+
+## Especificação técnica
+
+### Requisitos funcionais (resumo)
+
+```text
+RF01: Autenticação JWT e perfis (gestor e técnico)
+RF02: Cadastro de clientes
+RF03: Cadastro de contratos vinculados a clientes
+RF04: Abertura de chamados com prioridade e categoria
+RF05: Atribuição de chamado a técnico
+RF06: Apontamento de horas (gestor ou técnico)
+RF07: Encerramento de chamado com solução e histórico
+RF08: Metas de SLA por contrato
+RF09: Cálculo de cumprimento de SLA
+RF10: Painel e sinalização de violações de SLA
+RF11: Cálculo de custo operacional (horas × custo/hora)
+RF12: Indicadores de margem/rentabilidade por contrato
+RF13: Alertas para contratos deficitários ou com SLA crítico
+RF14: Dashboard consolidado
+```
+
+### Requisitos não funcionais (resumo)
+
+```text
+RNF01: Interface responsiva com feedback ao usuário
+RNF02: Arquitetura cliente-servidor em camadas
+RNF03: Persistência MySQL (sem SQLite/H2)
+RNF04: TDD com cobertura mínima 75% backend / 25% frontend
+RNF05: CI/CD com GitHub Actions
+RNF06: Análise estática (SonarCloud)
+RNF07: Observabilidade (Grafana e/ou Prometheus)
+RNF08: Segurança (validação, XSS/CSRF, senhas criptografadas)
+RNF09: Código modular sob o identificador slanko
+RNF10: Documentação no repositório/Wiki
+```
+
+Detalhamento e critérios de aceite: [docs/RFC.md](docs/RFC.md).
+
+### Stack tecnológica
+
+| Camada | Tecnologia |
+|---|---|
+| Full-stack | TypeScript, Next.js, React |
+| Dados | MySQL, Prisma |
+| Testes | Jest e/ou Vitest (TDD) |
+| Infra | Docker (`slanko-app`, `slanko-db`) |
+| CI/CD | GitHub Actions |
+| Qualidade | SonarCloud |
+| Observabilidade | Grafana e/ou Prometheus |
+
+### Segurança
+
+* Autenticação JWT e autorização por perfil (gestor / técnico)
+* Criptografia de senhas
+* Validação de entradas e proteção contra XSS/CSRF
+* Segredos apenas em variáveis de ambiente
+
+---
+
+## Arquitetura
+
+Arquitetura adotada: **cliente-servidor em camadas**.
+
+```text
+Apresentação     → Next.js / React / TypeScript
+Aplicação        → rotas/API, validação, regras de SLA e rentabilidade
+Dados            → Prisma + repositories
+Persistência     → MySQL (slanko-db)
+Infraestrutura   → Docker, GitHub Actions, SonarCloud, monitoramento
+```
+
+Organização de código prevista:
+
+* `components/` interface
+* `services/` regras de negócio
+* `repositories/` acesso a dados
+* `tests/` testes automatizados
+
+Documentação completa: [docs/arquitetura-c4.md](docs/arquitetura-c4.md).
+
+### Metodologia
+
+Desenvolvimento iterativo com Kanban, commits frequentes e entregas modulares. Gestão de tarefas: GitHub Projects (ou equivalente do playbook).
+
+### Registro de decisões
+
+* [RFC: Proposta Slanko](docs/RFC.md)
+
+---
+
+## Diagramas
+
+### Casos de uso
+
+![Diagrama de Casos de Uso do Slanko](docs/assets/diagrama-casos-de-uso.png)
+
+Atores: **Gestor** e **Técnico** (UC01 a UC11).  
+Detalhamento: [docs/casos-de-uso.md](docs/casos-de-uso.md).
+
+### C4 - Contexto (nível 1)
+
+![C4 Contexto - Slanko](docs/assets/c4-contexto.png)
+
+### C4 - Contêineres (nível 2)
+
+![C4 Contêineres - Slanko](docs/assets/c4-conteineres.png)
+
+Detalhamento: [docs/arquitetura-c4.md](docs/arquitetura-c4.md).
+
+### Fluxo de negócio (resumo)
+
+1. Gestor cadastra clientes e contratos (valor e metas de SLA)
+2. Técnico/gestor registra chamados e aponta horas
+3. O sistema calcula cumprimento de SLA e violações
+4. O sistema calcula custo operacional e margem por contrato
+5. Dashboard exibe indicadores e alertas
+
+---
+
+## Modelagem de dados
+
+![DER Slanko](docs/assets/der-slanko.png)
+
+Entidades: **User**, **Client**, **Contract**, **Ticket**, **TimeEntry**.
+
+* SLA: metas no contrato (`response_minutes`, `resolution_minutes`)
+* Rentabilidade: `TimeEntry.hours × User.hourly_cost` comparado a `Contract.value`
+
+Dicionário de dados, regras e esboço Prisma: [docs/modelagem.md](docs/modelagem.md).
+
+---
+
+## Status de implementação
+
+| Área | Status |
+|---|---|
+| Documentação (RFC, UC, C4, modelagem) | Concluída (fase de planejamento) |
+| Back-end (Next.js API + services) | Pendente (próximo: scaffold) |
+| Front-end (UI / dashboard) | Pendente |
+| Testes (TDD 75% / 25%) | Pendente |
+| CI/CD (GitHub Actions) | Pendente |
+| SonarCloud | Pendente |
+| Observabilidade | Pendente |
+| Wiki do GitHub | Pendente |
+
+---
+
+## Instruções de execução
+
+### Pré-requisitos (previstos)
+
+* Node.js (LTS)
+* Docker e Docker Compose
+* Git
+
+### Setup local
+
+Ainda em preparação. Quando o scaffold existir, esta seção terá:
+
+1. clone do repositório
+2. `.env` a partir de `.env.example`
+3. MySQL via Docker
+4. migrações Prisma
+5. `npm run dev`
+
+Estado atual: documentação de planejamento pronta. Próximo passo: scaffold Next.js + Docker + Prisma.
+
+---
 
 ## Resultados esperados
 
-Ao final do desenvolvimento, espera-se entregar uma aplicação web funcional, publicada em ambiente acessível, com os principais fluxos de negócio implementados:
+Ao final do Portfólio:
 
-- gestão de chamados;
-- acompanhamento de SLA;
-- análise de rentabilidade por cliente e contrato.
+* aplicação navegável com os três fluxos de negócio
+* cobertura de testes conforme a linha Web Apps
+* CI/CD e análise estática
+* documentação técnica completa (incluindo Wiki e guia de execução)
 
-Também são esperados testes automatizados, pipeline de CI/CD, análise estática de código e documentação técnica para apoiar manutenção e evolução do projeto.
+---
 
-## Status do projeto
+## Conclusão
 
-Projeto em fase de planejamento e preparação para desenvolvimento.
+O Slanko formaliza um webapp para gestão integrada de contratos de suporte técnico. O diferencial é correlacionar chamados, SLA e custo real das horas para indicar a rentabilidade por contrato, em formato adequado a microempresas de TI.
+
+---
+
+## Próximos passos
+
+* [x] Estruturar repositório GitHub e README
+* [x] Publicar RFC (`docs/RFC.md`)
+* [x] Documentar casos de uso
+* [x] Documentar arquitetura C4
+* [x] Elaborar modelagem de dados
+* [ ] Configurar ambiente (Next.js, Docker, Prisma)
+* [ ] Implementar autenticação e contratos
+* [ ] Implementar chamados, SLA e rentabilidade
+* [ ] Testes, CI/CD, SonarCloud e monitoramento
+* [ ] Wiki do GitHub
+
+---
+
+## Referências
+
+### Trabalhos acadêmicos e mercado
+
+* RACHMAWATI, E.; SUHENDRA (2018). Web-Based Ticketing System Helpdesk Application Using CodeIgniter Framework.
+* CLARIN, J. A. (2023). Priority-Based Scheduling Algorithm for Help Desk Support System.
+* JAIN, S.; GUPTA, A.; NEHA, K. (2024). AI Enhanced Ticket Management System for Optimized Support.
+* Zendesk (políticas de SLA)
+* Freshservice (Contract Management Setup Guide)
+* Atlassian / Jira Service Management (SLAs)
+
+Referências completas: [docs/RFC.md](docs/RFC.md).
+
+### Documentos do projeto e da disciplina
+
+* [docs/RFC.md](docs/RFC.md)
+* [docs/casos-de-uso.md](docs/casos-de-uso.md)
+* [docs/arquitetura-c4.md](docs/arquitetura-c4.md)
+* [docs/modelagem.md](docs/modelagem.md)
+* [Portfolio Directions Geral](https://github.com/CatolicaSC-Portfolio/The-Portfolio-Playbook/blob/main/directions/portfolio-directions-GERAL.md)
+* [Portfolio Directions Web Apps](https://github.com/CatolicaSC-Portfolio/The-Portfolio-Playbook/blob/main/directions/portfolio-directions-webapp.md)
+* [Disciplina de Portfólio](https://github.com/CatolicaSC-Portfolio/The-Portfolio-Playbook/blob/main/Portfolio.md)
+* Relatório Final PAC 7B (proposta Slanko)
+
+---
 
 ## Autor
 
-**Miguel Ricardo Buttendorf**
-
-Projeto acadêmico desenvolvido no contexto do PAC VII - Engenharia de Software, Centro Universitário Católica de Santa Catarina.
+**Miguel Ricardo Buttendorf**  
+Projeto acadêmico - Engenharia de Software - Católica SC.
 
 ## Licença
 
-Este projeto será disponibilizado para fins acadêmicos e de portfólio. A licença definitiva será definida no repositório.
+Uso acadêmico e de portfólio. Licença definitiva a definir no repositório.

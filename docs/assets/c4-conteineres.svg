@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 780" width="1280" height="780" role="img">
+  <title>C4 N&#237;vel 2 - Diagrama de Cont&#234;ineres - Slanko</title>
+  <desc>Cont&#234;ineres slanko-app (Next.js) e slanko-db (MySQL), com CI/CD, SonarCloud e monitoramento.</desc>
+
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#334155"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1280" height="780" fill="#ffffff"/>
+  <text x="40" y="34" fill="#64748b" font-family="Segoe UI, Arial, sans-serif" font-size="13">C4 N&#237;vel 2 - Cont&#234;ineres | Slanko</text>
+
+  <!-- Pessoas -->
+  <rect x="40" y="170" width="160" height="80" rx="8" fill="#08427b"/>
+  <text x="120" y="205" fill="#ffffff" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" text-anchor="middle">Gestor</text>
+  <text x="120" y="228" fill="#e2e8f0" font-family="Segoe UI, Arial, sans-serif" font-size="11" text-anchor="middle">[Pessoa]</text>
+
+  <rect x="40" y="300" width="160" height="80" rx="8" fill="#08427b"/>
+  <text x="120" y="335" fill="#ffffff" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" text-anchor="middle">T&#233;cnico</text>
+  <text x="120" y="358" fill="#e2e8f0" font-family="Segoe UI, Arial, sans-serif" font-size="11" text-anchor="middle">[Pessoa]</text>
+
+  <!-- Boundary -->
+  <rect x="250" y="70" width="600" height="580" rx="10" fill="#eef6fc" stroke="#1168bd" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="270" y="100" fill="#1168bd" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700">Slanko (limites do sistema)</text>
+
+  <!-- slanko-app -->
+  <rect x="300" y="130" width="480" height="270" rx="8" fill="#438dd5"/>
+  <text x="540" y="168" fill="#ffffff" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="700" text-anchor="middle">slanko-app</text>
+  <text x="540" y="190" fill="#e2e8f0" font-family="Segoe UI, Arial, sans-serif" font-size="11" text-anchor="middle">[Container: Next.js / TypeScript / React]</text>
+  <text x="540" y="225" fill="#f8fafc" font-family="Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle">Camada de apresenta&#231;&#227;o (UI responsiva)</text>
+  <text x="540" y="250" fill="#f8fafc" font-family="Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle">API REST interna (rotas Next.js)</text>
+  <text x="540" y="275" fill="#f8fafc" font-family="Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle">Regras de SLA e rentabilidade</text>
+  <text x="540" y="300" fill="#f8fafc" font-family="Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle">Valida&#231;&#227;o, autentica&#231;&#227;o JWT e autoriza&#231;&#227;o</text>
+  <text x="540" y="325" fill="#f8fafc" font-family="Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle">Prisma (acesso a dados)</text>
+  <text x="540" y="360" fill="#e2e8f0" font-family="Segoe UI, Arial, sans-serif" font-size="11" text-anchor="middle">Apresenta&#231;&#227;o + aplica&#231;&#227;o no mesmo container</text>
+
+  <!-- slanko-db -->
+  <rect x="360" y="460" width="360" height="150" rx="8" fill="#2e7d32"/>
+  <text x="540" y="500" fill="#ffffff" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="700" text-anchor="middle">slanko-db</text>
+  <text x="540" y="525" fill="#e2e8f0" font-family="Segoe UI, Arial, sans-serif" font-size="11" text-anchor="middle">[Container: MySQL]</text>
+  <text x="540" y="555" fill="#f8fafc" font-family="Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle">Contratos, chamados, horas,</text>
+  <text x="540" y="575" fill="#f8fafc" font-family="Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle">usu&#225;rios e metas de SLA</text>
+
+  <!-- Externos -->
+  <rect x="920" y="110" width="300" height="110" rx="8" fill="#999999"/>
+  <text x="1070" y="150" fill="#ffffff" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="700" text-anchor="middle">GitHub Actions</text>
+  <text x="1070" y="174" fill="#e2e8f0" font-family="Segoe UI, Arial, sans-serif" font-size="11" text-anchor="middle">[Container / Pipeline]</text>
+  <text x="1070" y="200" fill="#f8fafc" font-family="Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle">CI: lint, testes, build</text>
+
+  <rect x="920" y="260" width="300" height="110" rx="8" fill="#999999"/>
+  <text x="1070" y="300" fill="#ffffff" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="700" text-anchor="middle">SonarCloud</text>
+  <text x="1070" y="324" fill="#e2e8f0" font-family="Segoe UI, Arial, sans-serif" font-size="11" text-anchor="middle">[SaaS]</text>
+  <text x="1070" y="350" fill="#f8fafc" font-family="Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle">Qualidade e seguran&#231;a</text>
+
+  <rect x="920" y="410" width="300" height="110" rx="8" fill="#999999"/>
+  <text x="1070" y="450" fill="#ffffff" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="700" text-anchor="middle">Grafana / Prometheus</text>
+  <text x="1070" y="474" fill="#e2e8f0" font-family="Segoe UI, Arial, sans-serif" font-size="11" text-anchor="middle">[Monitoramento]</text>
+  <text x="1070" y="500" fill="#f8fafc" font-family="Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle">M&#233;tricas da aplica&#231;&#227;o</text>
+
+  <!-- Relacoes -->
+  <line x1="200" y1="210" x2="300" y2="220" stroke="#334155" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="245" y="198" fill="#334155" font-family="Segoe UI, Arial, sans-serif" font-size="11" text-anchor="middle">HTTPS / UI</text>
+
+  <line x1="200" y1="340" x2="300" y2="300" stroke="#334155" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="245" y="335" fill="#334155" font-family="Segoe UI, Arial, sans-serif" font-size="11" text-anchor="middle">HTTPS / UI</text>
+
+  <line x1="540" y1="400" x2="540" y2="460" stroke="#334155" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="615" y="435" fill="#334155" font-family="Segoe UI, Arial, sans-serif" font-size="11" text-anchor="middle">SQL via Prisma</text>
+
+  <line x1="780" y1="200" x2="920" y2="165" stroke="#334155" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="850" y="165" fill="#334155" font-family="Segoe UI, Arial, sans-serif" font-size="11" text-anchor="middle">Build / test</text>
+
+  <line x1="780" y1="250" x2="920" y2="315" stroke="#334155" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="850" y="270" fill="#334155" font-family="Segoe UI, Arial, sans-serif" font-size="11" text-anchor="middle">An&#225;lise SAST</text>
+
+  <line x1="780" y1="300" x2="920" y2="460" stroke="#334155" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="860" y="390" fill="#334155" font-family="Segoe UI, Arial, sans-serif" font-size="11" text-anchor="middle">Exporta m&#233;tricas</text>
+
+  <text x="270" y="680" fill="#64748b" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-style="italic">Docker: slanko-app + slanko-db | Arquitetura em camadas (apresenta&#231;&#227;o, aplica&#231;&#227;o, dados, infraestrutura)</text>
+</svg>

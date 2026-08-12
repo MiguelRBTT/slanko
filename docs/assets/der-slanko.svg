@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 1020" width="1500" height="1020" role="img">
+  <title>DER - Slanko</title>
+  <desc>Diagrama entidade-relacionamento do Slanko, com espacamento amplo entre cards e rotulos.</desc>
+
+  <defs>
+    <marker id="crow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+      <path d="M0,1 L9,5 L0,9 Z" fill="#334155"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1500" height="1020" fill="#ffffff"/>
+  <text x="40" y="42" fill="#334155" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700">DER - Modelagem de Dados | Slanko (MySQL)</text>
+
+  <!-- USER -->
+  <rect x="50" y="100" width="310" height="290" rx="10" fill="#08427b"/>
+  <rect x="50" y="100" width="310" height="48" rx="10" fill="#062f58"/>
+  <rect x="50" y="128" width="310" height="20" fill="#062f58"/>
+  <text x="205" y="132" fill="#ffffff" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700" text-anchor="middle">User (users)</text>
+  <text x="70" y="180" fill="#dbeafe" font-family="Consolas, monospace" font-size="13">PK id</text>
+  <text x="70" y="208" fill="#f8fafc" font-family="Consolas, monospace" font-size="13">name</text>
+  <text x="70" y="236" fill="#f8fafc" font-family="Consolas, monospace" font-size="13">email (unique)</text>
+  <text x="70" y="264" fill="#f8fafc" font-family="Consolas, monospace" font-size="13">password_hash</text>
+  <text x="70" y="292" fill="#f8fafc" font-family="Consolas, monospace" font-size="13">role (GESTOR | TECNICO)</text>
+  <text x="70" y="320" fill="#f8fafc" font-family="Consolas, monospace" font-size="13">hourly_cost</text>
+  <text x="70" y="348" fill="#f8fafc" font-family="Consolas, monospace" font-size="13">active</text>
+  <text x="70" y="376" fill="#f8fafc" font-family="Consolas, monospace" font-size="13">created_at / updated_at</text>
+
+  <!-- CLIENT -->
+  <rect x="1140" y="100" width="310" height="250" rx="10" fill="#1168bd"/>
+  <rect x="1140" y="100" width="310" height="48" rx="10" fill="#0c4f91"/>
+  <rect x="1140" y="128" width="310" height="20" fill="#0c4f91"/>
+  <text x="1295" y="132" fill="#ffffff" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700" text-anchor="middle">Client (clients)</text>
+  <text x="1160" y="180" fill="#dbeafe" font-family="Consolas, monospace" font-size="13">PK id</text>
+  <text x="1160" y="208" fill="#f8fafc" font-family="Consolas, monospace" font-size="13">name</text>
+  <text x="1160" y="236" fill="#f8fafc" font-family="Consolas, monospace" font-size="13">document</text>
+  <text x="1160" y="264" fill="#f8fafc" font-family="Consolas, monospace" font-size="13">email / phone</text>
+  <text x="1160" y="292" fill="#f8fafc" font-family="Consolas, monospace" font-size="13">active</text>
+  <text x="1160" y="320" fill="#f8fafc" font-family="Consolas, monospace" font-size="13">created_at / updated_at</text>
+
+  <!-- CONTRACT -->
+  <rect x="1140" y="450" width="310" height="350" rx="10" fill="#1168bd"/>
+  <rect x="1140" y="450" width="310" height="48" rx="10" fill="#0c4f91"/>
+  <rect x="1140" y="478" width="310" height="20" fill="#0c4f91"/>
+  <text x="1295" y="482" fill="#ffffff" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700" text-anchor="middle">Contract (contracts)</text>
+  <text x="1160" y="530" fill="#dbeafe" font-family="Consolas, monospace" font-size="13">PK id</text>
+  <text x="1160" y="558" fill="#fde68a" font-family="Consolas, monospace" font-size="13">FK client_id</text>
+  <text x="1160" y="586" fill="#f8fafc" font-family="Consolas, monospace" font-size="13">code (unique)</text>
+  <text x="1160" y="614" fill="#f8fafc" font-family="Consolas, monospace" font-size="13">title / description</text>
+  <text x="1160" y="642" fill="#f8fafc" font-family="Consolas, monospace" font-size="13">value</text>
+  <text x="1160" y="670" fill="#f8fafc" font-family="Consolas, monospace" font-size="13">start_date / end_date</text>
+  <text x="1160" y="698" fill="#f8fafc" font-family="Consolas, monospace" font-size="13">status</text>
+  <text x="1160" y="726" fill="#bbf7d0" font-family="Consolas, monospace" font-size="13">response_minutes (SLA)</text>
+  <text x="1160" y="754" fill="#bbf7d0" font-family="Consolas, monospace" font-size="13">resolution_minutes (SLA)</text>
+  <text x="1160" y="782" fill="#f8fafc" font-family="Consolas, monospace" font-size="13">created_at / updated_at</text>
+
+  <!-- TICKET -->
+  <rect x="520" y="140" width="360" height="400" rx="10" fill="#438dd5"/>
+  <rect x="520" y="140" width="360" height="48" rx="10" fill="#2f78bd"/>
+  <rect x="520" y="168" width="360" height="20" fill="#2f78bd"/>
+  <text x="700" y="172" fill="#ffffff" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700" text-anchor="middle">Ticket (tickets)</text>
+  <text x="540" y="220" fill="#dbeafe" font-family="Consolas, monospace" font-size="13">PK id</text>
+  <text x="540" y="248" fill="#fde68a" font-family="Consolas, monospace" font-size="13">FK contract_id</text>
+  <text x="540" y="276" fill="#fde68a" font-family="Consolas, monospace" font-size="13">FK opened_by_id</text>
+  <text x="540" y="304" fill="#fde68a" font-family="Consolas, monospace" font-size="13">FK assigned_to_id (nullable)</text>
+  <text x="540" y="332" fill="#f8fafc" font-family="Consolas, monospace" font-size="13">title / description</text>
+  <text x="540" y="360" fill="#f8fafc" font-family="Consolas, monospace" font-size="13">priority / category</text>
+  <text x="540" y="388" fill="#f8fafc" font-family="Consolas, monospace" font-size="13">status</text>
+  <text x="540" y="416" fill="#bbf7d0" font-family="Consolas, monospace" font-size="13">opened_at</text>
+  <text x="540" y="444" fill="#bbf7d0" font-family="Consolas, monospace" font-size="13">first_response_at</text>
+  <text x="540" y="472" fill="#bbf7d0" font-family="Consolas, monospace" font-size="13">resolved_at / closed_at</text>
+  <text x="540" y="500" fill="#f8fafc" font-family="Consolas, monospace" font-size="13">solution</text>
+  <text x="540" y="528" fill="#f8fafc" font-family="Consolas, monospace" font-size="13">created_at / updated_at</text>
+
+  <!-- TIME ENTRY -->
+  <rect x="520" y="700" width="360" height="210" rx="10" fill="#2e7d32"/>
+  <rect x="520" y="700" width="360" height="48" rx="10" fill="#236223"/>
+  <rect x="520" y="728" width="360" height="20" fill="#236223"/>
+  <text x="700" y="732" fill="#ffffff" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700" text-anchor="middle">TimeEntry (time_entries)</text>
+  <text x="540" y="780" fill="#dbeafe" font-family="Consolas, monospace" font-size="13">PK id</text>
+  <text x="540" y="808" fill="#fde68a" font-family="Consolas, monospace" font-size="13">FK ticket_id</text>
+  <text x="540" y="836" fill="#fde68a" font-family="Consolas, monospace" font-size="13">FK user_id</text>
+  <text x="540" y="864" fill="#f8fafc" font-family="Consolas, monospace" font-size="13">hours / note / worked_at</text>
+  <text x="540" y="892" fill="#f8fafc" font-family="Consolas, monospace" font-size="13">created_at / updated_at</text>
+
+  <!-- RELACOES -->
+
+  <!-- Client -> Contract -->
+  <line x1="1295" y1="350" x2="1295" y2="450" stroke="#334155" stroke-width="2.2" marker-end="url(#crow)"/>
+  <text x="1340" y="405" fill="#334155" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700">1:N</text>
+
+  <!-- Contract -> Ticket -->
+  <path d="M1140,560 H960 V280 H880" fill="none" stroke="#334155" stroke-width="2.2" marker-end="url(#crow)"/>
+  <rect x="970" y="236" width="110" height="28" rx="6" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="1025" y="255" fill="#334155" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" text-anchor="middle">1:N contract</text>
+
+  <!-- User opened_by -> Ticket -->
+  <path d="M360,210 H440 V250 H520" fill="none" stroke="#334155" stroke-width="2.2" marker-end="url(#crow)"/>
+  <rect x="365" y="168" width="130" height="28" rx="6" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="430" y="187" fill="#334155" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" text-anchor="middle">opened_by (1:N)</text>
+
+  <!-- User assigned_to -> Ticket -->
+  <path d="M360,320 H440 V360 H520" fill="none" stroke="#334155" stroke-width="2.2" stroke-dasharray="7 5" marker-end="url(#crow)"/>
+  <rect x="360" y="378" width="140" height="28" rx="6" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="430" y="397" fill="#334155" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" text-anchor="middle">assigned_to (1:N)</text>
+
+  <!-- Ticket -> TimeEntry -->
+  <line x1="700" y1="540" x2="700" y2="700" stroke="#334155" stroke-width="2.2" marker-end="url(#crow)"/>
+  <text x="730" y="625" fill="#334155" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700">1:N</text>
+
+  <!-- User -> TimeEntry -->
+  <path d="M205,390 V840 H520" fill="none" stroke="#334155" stroke-width="2.2" marker-end="url(#crow)"/>
+  <rect x="280" y="798" width="90" height="28" rx="6" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="325" y="817" fill="#334155" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" text-anchor="middle">user (1:N)</text>
+
+  <!-- Legenda -->
+  <rect x="50" y="970" width="18" height="18" fill="#fde68a" stroke="#334155"/>
+  <text x="78" y="984" fill="#334155" font-family="Segoe UI, Arial, sans-serif" font-size="13">FK</text>
+  <rect x="130" y="970" width="18" height="18" fill="#bbf7d0" stroke="#334155"/>
+  <text x="158" y="984" fill="#334155" font-family="Segoe UI, Arial, sans-serif" font-size="13">SLA / tempo</text>
+  <line x1="280" y1="979" x2="330" y2="979" stroke="#334155" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="340" y="984" fill="#334155" font-family="Segoe UI, Arial, sans-serif" font-size="13">atribui&#231;&#227;o opcional (assigned_to)</text>
+</svg>

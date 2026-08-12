@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 680" width="1180" height="680" role="img">
+  <title>C4 N&#237;vel 1 - Diagrama de Contexto - Slanko</title>
+  <desc>Gestor e T&#233;cnico usam o Slanko. Persist&#234;ncia MySQL, CI/CD, SonarCloud e monitoramento.</desc>
+
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#334155"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1180" height="680" fill="#ffffff"/>
+  <text x="40" y="36" fill="#64748b" font-family="Segoe UI, Arial, sans-serif" font-size="13">C4 N&#237;vel 1 - Contexto do Sistema | Slanko</text>
+
+  <!-- Gestor -->
+  <rect x="50" y="170" width="190" height="110" rx="8" fill="#08427b"/>
+  <text x="145" y="205" fill="#ffffff" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" text-anchor="middle">Gestor</text>
+  <text x="145" y="228" fill="#dbeafe" font-family="Segoe UI, Arial, sans-serif" font-size="11" text-anchor="middle">[Pessoa]</text>
+  <text x="145" y="250" fill="#dbeafe" font-family="Segoe UI, Arial, sans-serif" font-size="11" text-anchor="middle">Administra contratos,</text>
+  <text x="145" y="266" fill="#dbeafe" font-family="Segoe UI, Arial, sans-serif" font-size="11" text-anchor="middle">SLA e rentabilidade</text>
+
+  <!-- Tecnico -->
+  <rect x="50" y="340" width="190" height="110" rx="8" fill="#08427b"/>
+  <text x="145" y="375" fill="#ffffff" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" text-anchor="middle">T&#233;cnico</text>
+  <text x="145" y="398" fill="#dbeafe" font-family="Segoe UI, Arial, sans-serif" font-size="11" text-anchor="middle">[Pessoa]</text>
+  <text x="145" y="420" fill="#dbeafe" font-family="Segoe UI, Arial, sans-serif" font-size="11" text-anchor="middle">Opera chamados</text>
+  <text x="145" y="436" fill="#dbeafe" font-family="Segoe UI, Arial, sans-serif" font-size="11" text-anchor="middle">e aponta horas</text>
+
+  <!-- Slanko -->
+  <rect x="390" y="230" width="320" height="150" rx="8" fill="#1168bd"/>
+  <text x="550" y="270" fill="#ffffff" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700" text-anchor="middle">Slanko</text>
+  <text x="550" y="294" fill="#e2e8f0" font-family="Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle">[Software System]</text>
+  <text x="550" y="325" fill="#f1f5f9" font-family="Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle">Gest&#227;o de chamados, SLA</text>
+  <text x="550" y="345" fill="#f1f5f9" font-family="Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle">e rentabilidade por contrato</text>
+
+  <!-- MySQL -->
+  <rect x="860" y="100" width="250" height="110" rx="8" fill="#999999"/>
+  <text x="985" y="140" fill="#ffffff" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="700" text-anchor="middle">MySQL</text>
+  <text x="985" y="164" fill="#e2e8f0" font-family="Segoe UI, Arial, sans-serif" font-size="11" text-anchor="middle">[Software System]</text>
+  <text x="985" y="190" fill="#f1f5f9" font-family="Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle">Persist&#234;ncia relacional</text>
+
+  <!-- GitHub Actions -->
+  <rect x="860" y="250" width="250" height="110" rx="8" fill="#999999"/>
+  <text x="985" y="290" fill="#ffffff" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="700" text-anchor="middle">GitHub Actions</text>
+  <text x="985" y="314" fill="#e2e8f0" font-family="Segoe UI, Arial, sans-serif" font-size="11" text-anchor="middle">[Software System]</text>
+  <text x="985" y="340" fill="#f1f5f9" font-family="Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle">Pipeline CI/CD</text>
+
+  <!-- SonarCloud -->
+  <rect x="860" y="400" width="250" height="110" rx="8" fill="#999999"/>
+  <text x="985" y="440" fill="#ffffff" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="700" text-anchor="middle">SonarCloud</text>
+  <text x="985" y="464" fill="#e2e8f0" font-family="Segoe UI, Arial, sans-serif" font-size="11" text-anchor="middle">[Software System]</text>
+  <text x="985" y="490" fill="#f1f5f9" font-family="Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle">An&#225;lise est&#225;tica</text>
+
+  <!-- Monitoramento -->
+  <rect x="390" y="470" width="320" height="110" rx="8" fill="#999999"/>
+  <text x="550" y="510" fill="#ffffff" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="700" text-anchor="middle">Grafana / Prometheus</text>
+  <text x="550" y="534" fill="#e2e8f0" font-family="Segoe UI, Arial, sans-serif" font-size="11" text-anchor="middle">[Software System]</text>
+  <text x="550" y="560" fill="#f1f5f9" font-family="Segoe UI, Arial, sans-serif" font-size="12" text-anchor="middle">Observabilidade</text>
+
+  <!-- Setas -->
+  <line x1="240" y1="225" x2="390" y2="280" stroke="#334155" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <text x="300" y="235" fill="#334155" font-family="Segoe UI, Arial, sans-serif" font-size="11" text-anchor="middle">Usa (HTTPS / UI)</text>
+
+  <line x1="240" y1="395" x2="390" y2="340" stroke="#334155" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <text x="300" y="385" fill="#334155" font-family="Segoe UI, Arial, sans-serif" font-size="11" text-anchor="middle">Usa (HTTPS / UI)</text>
+
+  <line x1="710" y1="280" x2="860" y2="160" stroke="#334155" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <text x="790" y="200" fill="#334155" font-family="Segoe UI, Arial, sans-serif" font-size="11" text-anchor="middle">L&#234;/grava dados</text>
+
+  <line x1="710" y1="305" x2="860" y2="305" stroke="#334155" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <text x="785" y="295" fill="#334155" font-family="Segoe UI, Arial, sans-serif" font-size="11" text-anchor="middle">Build e testes</text>
+
+  <line x1="710" y1="330" x2="860" y2="450" stroke="#334155" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <text x="790" y="405" fill="#334155" font-family="Segoe UI, Arial, sans-serif" font-size="11" text-anchor="middle">An&#225;lise de c&#243;digo</text>
+
+  <line x1="550" y1="380" x2="550" y2="470" stroke="#334155" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <text x="625" y="430" fill="#334155" font-family="Segoe UI, Arial, sans-serif" font-size="11" text-anchor="middle">M&#233;tricas / logs</text>
+</svg>
