@@ -12,6 +12,7 @@ services:
       MYSQL_PASSWORD: slanko
     volumes:
       - slanko_mysql_data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
       interval: 5s
