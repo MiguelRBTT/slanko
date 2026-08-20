@@ -285,10 +285,10 @@ model TimeEntry {
 }
 ```
 
-Este bloco é referência para o scaffold futuro; ainda não há `prisma/schema.prisma` no repositório.
+Este bloco foi materializado em `prisma/schema.prisma` na branch de setup do banco.
 
 ## Próximos passos técnicos
 
-1. Criar scaffold Next.js + Prisma + Docker MySQL.
-2. Materializar este modelo em `prisma/schema.prisma`.
-3. Gerar migrações e seeds (gestor, técnico, cliente e contrato de exemplo).
+1. Scaffold Next.js consumindo o Prisma Client.
+2. Implementar autenticação e APIs de negócio.
+3. Evoluir seeds e testes de integração.

@@ -84,32 +84,42 @@ A documentação oficial permanece no repositório e, depois, na Wiki do GitHub 
 
 ```text
 slanko/
-├── docs/
-│   ├── RFC.md
-│   ├── casos-de-uso.md
-│   ├── arquitetura-c4.md
-│   ├── modelagem.md
-│   └── assets/                 # diagramas (PNG/SVG)
+├── docs/                       # RFC, casos de uso, C4, modelagem
+├── prisma/
+│   ├── schema.prisma           # modelos do banco (5 entidades)
+│   ├── migrations/             # histórico SQL das tabelas
+│   └── seed.js                 # dados de exemplo (dev)
+├── docker-compose.yml          # MySQL local (slanko-db)
+├── package.json                # scripts db:* e dependências Prisma
+├── .env.example                # modelo de conexão (versionado)
 ├── README.md
 └── .gitignore
 ```
 
-Estrutura prevista após o scaffold:
+Estrutura prevista nas próximas fases:
 
 ```text
 ├── .github/workflows/          # CI/CD (GitHub Actions)
 ├── src/ ou app/                # Next.js (UI, API e regras)
-├── prisma/                     # schema e migrações MySQL
-└── docker/                     # ambiente local (app/db)
+└── src/lib/prisma.ts           # cliente Prisma compartilhado (futuro)
 ```
 
 ### Versionamento
 
-* `Feat:` nova funcionalidade
-* `Fix:` correção
-* `Docs:` documentação
-* `Test:` testes
-* `Chore:` configuração/infra
+Commits em inglês, no padrão Conventional Commits:
+
+* `feat:` new feature
+* `fix:` bug fix
+* `docs:` documentation only
+* `test:` tests
+* `chore:` tooling, config, or maintenance
+* `refactor:` code change without new feature or fix
+
+Exemplos:
+
+* `docs: add RFC, use cases, C4 and data model`
+* `feat: add contract registration API`
+* `fix: correct SLA response time calculation`
 
 ---
 
@@ -250,6 +260,7 @@ Dicionário de dados, regras e esboço Prisma: [docs/modelagem.md](docs/modelage
 | Área | Status |
 |---|---|
 | Documentação (RFC, UC, C4, modelagem) | Concluída (fase de planejamento) |
+| Banco MySQL + Prisma + Docker | Concluído (schema, migrate, seed) |
 | Back-end (Next.js API + services) | Pendente (próximo: scaffold) |
 | Front-end (UI / dashboard) | Pendente |
 | Testes (TDD 75% / 25%) | Pendente |
@@ -262,23 +273,48 @@ Dicionário de dados, regras e esboço Prisma: [docs/modelagem.md](docs/modelage
 
 ## Instruções de execução
 
-### Pré-requisitos (previstos)
+### Pré-requisitos
 
-* Node.js (LTS)
-* Docker e Docker Compose
+* Node.js 18+ (LTS recomendado)
+* [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Windows)
 * Git
 
-### Setup local
+### Setup local (banco de dados)
 
-Ainda em preparação. Quando o scaffold existir, esta seção terá:
+1. Clone o repositório e entre na pasta do projeto.
+2. Copie o arquivo de ambiente:
+   ```bash
+   cp .env.example .env
+   ```
+   No Windows (PowerShell): `Copy-Item .env.example .env`
+3. Instale as dependências:
+   ```bash
+   npm install
+   ```
+4. Suba o MySQL no Docker:
+   ```bash
+   npm run db:up
+   ```
+   Aguarde o container `slanko-db` ficar saudável (`docker ps`).
+5. Crie as tabelas no banco:
+   ```bash
+   npm run db:migrate
+   ```
+   Na primeira execução, confirme o nome da migração (ex.: `init`).
+6. (Opcional) Popule dados de exemplo:
+   ```bash
+   npm run db:seed
+   ```
+7. (Opcional) Abra uma interface visual do banco:
+   ```bash
+   npm run db:studio
+   ```
 
-1. clone do repositório
-2. `.env` a partir de `.env.example`
-3. MySQL via Docker
-4. migrações Prisma
-5. `npm run dev`
+**Usuários de teste (seed):** `gestor@slanko.local` e `tecnico@slanko.local` — senha `Slanko@123`.
 
-Estado atual: documentação de planejamento pronta. Próximo passo: scaffold Next.js + Docker + Prisma.
+**Scripts úteis:** `npm run db:down` (para o MySQL), `npm run db:logs` (logs do container), `npm run db:reset` (apaga e recria tudo — cuidado).
+
+Próximo passo: scaffold Next.js consumindo este banco via Prisma.
 
 ---
 
@@ -306,7 +342,8 @@ O Slanko formaliza um webapp para gestão integrada de contratos de suporte téc
 * [x] Documentar casos de uso
 * [x] Documentar arquitetura C4
 * [x] Elaborar modelagem de dados
-* [ ] Configurar ambiente (Next.js, Docker, Prisma)
+* [x] Configurar banco (Docker MySQL + Prisma + migrate + seed)
+* [ ] Scaffold Next.js (UI + API)
 * [ ] Implementar autenticação e contratos
 * [ ] Implementar chamados, SLA e rentabilidade
 * [ ] Testes, CI/CD, SonarCloud e monitoramento
