@@ -258,11 +258,14 @@ Desenvolvimento ágil iterativo (Kanban), com ciclos curtos de implementação, 
 
 ### Versionamento de commits
 
-* `Feat:` nova funcionalidade
-* `Fix:` correção
-* `Docs:` documentação
-* `Test:` testes
-* `Chore:` configuração/infra
+Commits em inglês (Conventional Commits):
+
+* `feat:` new feature
+* `fix:` bug fix
+* `docs:` documentation only
+* `test:` tests
+* `chore:` tooling, config, or maintenance
+* `refactor:` code change without new feature or fix
 
 ## 5. Próximos Passos
 
