@@ -84,24 +84,18 @@ A documentação oficial permanece no repositório e, depois, na Wiki do GitHub 
 
 ```text
 slanko/
-├── docs/                       # RFC, casos de uso, C4, modelagem
-├── prisma/
-│   ├── schema.prisma           # modelos do banco (5 entidades)
-│   ├── migrations/             # histórico SQL das tabelas
-│   └── seed.js                 # dados de exemplo (dev)
+├── src/
+│   ├── app/                    # Next.js pages and API routes
+│   ├── components/             # UI (dashboard in later iterations)
+│   ├── lib/                    # prisma client, http helpers, errors
+│   ├── repositories/           # data access (Prisma)
+│   ├── services/               # business rules
+│   └── types/                  # shared DTOs
+├── tests/                      # Vitest unit and API route tests
+├── prisma/                     # schema, migrations, seed
 ├── docker-compose.yml          # MySQL local (slanko-db)
-├── package.json                # scripts db:* e dependências Prisma
-├── .env.example                # modelo de conexão (versionado)
-├── README.md
-└── .gitignore
-```
-
-Estrutura prevista nas próximas fases:
-
-```text
-├── .github/workflows/          # CI/CD (GitHub Actions)
-├── src/ ou app/                # Next.js (UI, API e regras)
-└── src/lib/prisma.ts           # cliente Prisma compartilhado (futuro)
+├── package.json
+└── vitest.config.ts
 ```
 
 ### Versionamento
@@ -261,9 +255,9 @@ Dicionário de dados, regras e esboço Prisma: [docs/modelagem.md](docs/modelage
 |---|---|
 | Documentação (RFC, UC, C4, modelagem) | Concluída (fase de planejamento) |
 | Banco MySQL + Prisma + Docker | Concluído (schema, migrate, seed) |
-| Back-end (Next.js API + services) | Pendente (próximo: scaffold) |
+| Back-end (Next.js API + services) | Em andamento (scaffold base) |
 | Front-end (UI / dashboard) | Pendente |
-| Testes (TDD 75% / 25%) | Pendente |
+| Testes (TDD 75% / 25%) | Em andamento (Vitest + testes iniciais) |
 | CI/CD (GitHub Actions) | Pendente |
 | SonarCloud | Pendente |
 | Observabilidade | Pendente |
@@ -314,7 +308,26 @@ Dicionário de dados, regras e esboço Prisma: [docs/modelagem.md](docs/modelage
 
 **Scripts úteis:** `npm run db:down` (para o MySQL), `npm run db:logs` (logs do container), `npm run db:reset` (apaga e recria tudo — cuidado).
 
-Próximo passo: scaffold Next.js consumindo este banco via Prisma.
+### Aplicação (Next.js)
+
+```bash
+npm run dev
+```
+
+Abra [http://localhost:3000](http://localhost:3000). Endpoints iniciais:
+
+* `GET /api/health` — status da app e do MySQL
+* `GET /api/users` — usuários ativos (sem senha)
+* `GET /api/clients` — clientes ativos
+
+### Testes
+
+```bash
+npm test
+npm run test:watch
+```
+
+Próximo passo: autenticação JWT e módulos de contratos/chamados.
 
 ---
 
@@ -343,7 +356,7 @@ O Slanko formaliza um webapp para gestão integrada de contratos de suporte téc
 * [x] Documentar arquitetura C4
 * [x] Elaborar modelagem de dados
 * [x] Configurar banco (Docker MySQL + Prisma + migrate + seed)
-* [ ] Scaffold Next.js (UI + API)
+* [x] Scaffold Next.js (API base + camadas services/repositories)
 * [ ] Implementar autenticação e contratos
 * [ ] Implementar chamados, SLA e rentabilidade
 * [ ] Testes, CI/CD, SonarCloud e monitoramento
