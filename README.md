@@ -258,7 +258,7 @@ Dicionário de dados, regras e esboço Prisma: [docs/modelagem.md](docs/modelage
 | Back-end (Next.js API + services) | Em andamento (scaffold base) |
 | Front-end (UI / dashboard) | Pendente |
 | Testes (TDD 75% / 25%) | Em andamento (Vitest + testes iniciais) |
-| CI/CD (GitHub Actions) | Pendente |
+| CI/CD (GitHub Actions) | Em andamento (CI v1: lint, test, build) |
 | SonarCloud | Pendente |
 | Observabilidade | Pendente |
 | Wiki do GitHub | Pendente |
@@ -327,6 +327,18 @@ npm test
 npm run test:watch
 ```
 
+### CI (GitHub Actions)
+
+O workflow `.github/workflows/ci.yml` roda em todo push/PR para `main`:
+
+1. `npm ci`
+2. `npx prisma validate`
+3. `npm run lint`
+4. `npm test`
+5. `npm run build`
+
+Próximas evoluções previstas: MySQL service para testes de integração, cobertura mínima e SonarCloud.
+
 Próximo passo: autenticação JWT e módulos de contratos/chamados.
 
 ---
@@ -357,6 +369,7 @@ O Slanko formaliza um webapp para gestão integrada de contratos de suporte téc
 * [x] Elaborar modelagem de dados
 * [x] Configurar banco (Docker MySQL + Prisma + migrate + seed)
 * [x] Scaffold Next.js (API base + camadas services/repositories)
+* [ ] CI/CD (GitHub Actions) — v1 em `feat/ci-pipeline`
 * [ ] Implementar autenticação e contratos
 * [ ] Implementar chamados, SLA e rentabilidade
 * [ ] Testes, CI/CD, SonarCloud e monitoramento
