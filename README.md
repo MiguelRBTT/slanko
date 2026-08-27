@@ -255,7 +255,7 @@ Dicionário de dados, regras e esboço Prisma: [docs/modelagem.md](docs/modelage
 |---|---|
 | Documentação (RFC, UC, C4, modelagem) | Concluída (fase de planejamento) |
 | Banco MySQL + Prisma + Docker | Concluído (schema, migrate, seed) |
-| Back-end (Next.js API + services) | Em andamento (scaffold base) |
+| Back-end (Next.js API + services) | Em andamento (auth JWT implementada) |
 | Front-end (UI / dashboard) | Pendente |
 | Testes (TDD 75% / 25%) | Em andamento (Vitest + testes iniciais) |
 | CI/CD (GitHub Actions) | Em andamento (CI v1: lint, test, build) |
@@ -314,11 +314,30 @@ Dicionário de dados, regras e esboço Prisma: [docs/modelagem.md](docs/modelage
 npm run dev
 ```
 
-Abra [http://localhost:3000](http://localhost:3000). Endpoints iniciais:
+Abra [http://localhost:3000](http://localhost:3000).
 
-* `GET /api/health` — status da app e do MySQL
-* `GET /api/users` — usuários ativos (sem senha)
-* `GET /api/clients` — clientes ativos
+**Autenticação (JWT):**
+
+```bash
+# Login
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"gestor@slanko.local\",\"password\":\"Slanko@123\"}"
+
+# Rotas protegidas (use o token retornado)
+curl http://localhost:3000/api/users -H "Authorization: Bearer SEU_TOKEN"
+curl http://localhost:3000/api/clients -H "Authorization: Bearer SEU_TOKEN"
+```
+
+Endpoints:
+
+| Rota | Auth | Perfil |
+|------|------|--------|
+| `GET /api/health` | Pública | — |
+| `POST /api/auth/login` | Pública | — |
+| `GET /api/users` | JWT | gestor ou técnico |
+| `GET /api/users/:id` | JWT | gestor ou técnico |
+| `GET /api/clients` | JWT | gestor only |
 
 ### Testes
 
@@ -339,7 +358,7 @@ O workflow `.github/workflows/ci.yml` roda em todo push/PR para `main`:
 
 Próximas evoluções previstas: MySQL service para testes de integração, cobertura mínima e SonarCloud.
 
-Próximo passo: autenticação JWT e módulos de contratos/chamados.
+Próximo passo: módulos de contratos e chamados.
 
 ---
 
@@ -369,8 +388,9 @@ O Slanko formaliza um webapp para gestão integrada de contratos de suporte téc
 * [x] Elaborar modelagem de dados
 * [x] Configurar banco (Docker MySQL + Prisma + migrate + seed)
 * [x] Scaffold Next.js (API base + camadas services/repositories)
-* [ ] CI/CD (GitHub Actions) — v1 em `feat/ci-pipeline`
-* [ ] Implementar autenticação e contratos
+* [x] CI/CD (GitHub Actions) — v1
+* [x] Autenticação JWT (login + middleware + perfis)
+* [ ] Implementar contratos e chamados
 * [ ] Implementar chamados, SLA e rentabilidade
 * [ ] Testes, CI/CD, SonarCloud e monitoramento
 * [ ] Wiki do GitHub
