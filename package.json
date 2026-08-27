@@ -4,6 +4,12 @@
   "private": true,
   "description": "Slanko - IT support contract management (TCC / Web Apps)",
   "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
     "db:logs": "docker compose logs -f slanko-db",
@@ -18,9 +24,19 @@
   },
   "dependencies": {
     "@prisma/client": "^6.14.0",
-    "bcryptjs": "^3.0.2"
+    "bcryptjs": "^3.0.2",
+    "next": "^15.1.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "prisma": "^6.14.0"
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "eslint": "^9.17.0",
+    "eslint-config-next": "^15.1.0",
+    "prisma": "^6.14.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
   }
 }
