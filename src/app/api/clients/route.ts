@@ -1,7 +1,7 @@
 ﻿import { jsonError, jsonOk } from "@/lib/http/api-response";
 import { clientService } from "@/services/client.service";
 
-// GET /api/clients - list active clients (scaffold endpoint for the data layer).
+// GET /api/clients - list active clients (requires JWT; gestor only).
 
 export async function GET() {
   try {

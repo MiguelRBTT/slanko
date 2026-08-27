@@ -16,3 +16,17 @@ export class NotFoundError extends AppError {
     this.name = "NotFoundError";
   }
 }
+
+export class UnauthorizedError extends AppError {
+  constructor(message = "Unauthorized") {
+    super(message, 401);
+    this.name = "UnauthorizedError";
+  }
+}
+
+export class ForbiddenError extends AppError {
+  constructor(message = "Forbidden") {
+    super(message, 403);
+    this.name = "ForbiddenError";
+  }
+}

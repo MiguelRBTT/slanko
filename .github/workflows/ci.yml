@@ -13,6 +13,8 @@ jobs:
     env:
       # Dummy URL for build/validate; unit tests mock the database layer.
       DATABASE_URL: mysql://slanko:slanko@127.0.0.1:3306/slanko
+      JWT_SECRET: ci-test-secret-key-with-at-least-32-characters
+      JWT_EXPIRES_IN: 1h
 
     steps:
       - name: Checkout
