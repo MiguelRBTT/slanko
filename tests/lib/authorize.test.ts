@@ -21,6 +21,7 @@ describe("authorize helpers", () => {
 
   it("requires gestor role for client routes", () => {
     expect(requiresGestorRole("/api/clients")).toBe(true);
+    expect(requiresGestorRole("/api/sla")).toBe(true);
     expect(requiresGestorRole("/api/tickets")).toBe(false);
     expect(requiresGestorRole("/api/users")).toBe(false);
   });
