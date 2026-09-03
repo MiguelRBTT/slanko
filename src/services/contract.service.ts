@@ -22,10 +22,6 @@ import {
 const CONTRACT_STATUSES: ContractStatus[] = ["DRAFT", "ACTIVE", "SUSPENDED", "FINISHED"];
 
 function parseContractStatus(value: unknown, field = "status"): ContractStatus {
-  if (value === undefined) {
-    throw new BadRequestError(`${field} is required`);
-  }
-
   if (typeof value !== "string" || !CONTRACT_STATUSES.includes(value as ContractStatus)) {
     throw new BadRequestError(`${field} is invalid`);
   }
@@ -82,7 +78,7 @@ export class ContractService {
         value: parsePositiveNumber(input.value, "value"),
         startDate,
         endDate,
-        status: input.status ? parseContractStatus(input.status) : "DRAFT",
+        status: parseOptionalContractStatus(input.status) ?? "DRAFT",
         responseMinutes: parsePositiveInteger(input.responseMinutes, "responseMinutes"),
         resolutionMinutes: parsePositiveInteger(input.resolutionMinutes, "resolutionMinutes"),
       });

@@ -49,9 +49,15 @@ export class ClientService {
 
     const client = await this.clients.update(id, {
       ...(input.name !== undefined ? { name: requireNonEmptyString(input.name, "name") } : {}),
-      ...(input.document !== undefined ? { document: optionalNullableString(input.document) ?? null } : {}),
-      ...(input.email !== undefined ? { email: optionalNullableString(input.email) ?? null } : {}),
-      ...(input.phone !== undefined ? { phone: optionalNullableString(input.phone) ?? null } : {}),
+      ...(input.document !== undefined
+        ? { document: optionalNullableString(input.document) as string | null }
+        : {}),
+      ...(input.email !== undefined
+        ? { email: optionalNullableString(input.email) as string | null }
+        : {}),
+      ...(input.phone !== undefined
+        ? { phone: optionalNullableString(input.phone) as string | null }
+        : {}),
       ...(input.active !== undefined ? { active: input.active } : {}),
     });
 
