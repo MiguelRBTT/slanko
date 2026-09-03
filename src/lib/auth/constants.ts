@@ -1,6 +1,11 @@
 export const PUBLIC_API_PATHS = ["/api/health", "/api/auth/login"] as const;
 
-export const GESTOR_ONLY_API_PREFIXES = ["/api/clients", "/api/contracts", "/api/sla"] as const;
+export const GESTOR_ONLY_API_PREFIXES = [
+  "/api/clients",
+  "/api/contracts",
+  "/api/sla",
+  "/api/profitability",
+] as const;
 
 export const PROTECTED_API_PREFIXES = [
   "/api/users",
@@ -8,6 +13,7 @@ export const PROTECTED_API_PREFIXES = [
   "/api/contracts",
   "/api/tickets",
   "/api/sla",
+  "/api/profitability",
 ] as const;
 
 export const AUTH_HEADER = "authorization";

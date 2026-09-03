@@ -255,7 +255,7 @@ Dicionário de dados, regras e esboço Prisma: [docs/modelagem.md](docs/modelage
 |---|---|
 | Documentação (RFC, UC, C4, modelagem) | Concluída (fase de planejamento) |
 | Banco MySQL + Prisma + Docker | Concluído (schema, migrate, seed) |
-| Back-end (Next.js API + services) | Em andamento (clientes, contratos, chamados, horas e SLA) |
+| Back-end (Next.js API + services) | Em andamento (clientes, contratos, chamados, horas, SLA e rentabilidade) |
 | Front-end (UI / dashboard) | Pendente |
 | Testes (TDD 75% / 25%) | Em andamento (Vitest; cobertura 100% nos módulos de back-end configurados) |
 | CI/CD (GitHub Actions) | Em andamento (lint, test:coverage, build) |
@@ -355,8 +355,10 @@ Endpoints:
 | `POST /api/tickets/:id/time-entries` | JWT | gestor ou técnico |
 | `GET /api/sla/summary` | JWT | gestor only |
 | `GET /api/sla/contracts/:id` | JWT | gestor only |
+| `GET /api/profitability/summary` | JWT | gestor only |
+| `GET /api/profitability/contracts/:id` | JWT | gestor only |
 
-Filtros úteis: `GET /api/sla/summary` aceita `clientId`, `contractId`, `startDate` e `endDate` (YYYY-MM-DD). O relatório por contrato aceita `startDate` e `endDate`.
+Filtros úteis: `GET /api/sla/summary` aceita `clientId`, `contractId`, `startDate` e `endDate` (YYYY-MM-DD). O relatório por contrato aceita `startDate` e `endDate`. Os endpoints de rentabilidade usam os mesmos filtros de período sobre `workedAt` das horas apontadas.
 
 ### Testes
 
@@ -366,7 +368,7 @@ npm run test:watch
 npm run test:coverage
 ```
 
-O comando `test:coverage` valida cobertura mínima de 100% nos módulos de back-end configurados em `vitest.config.ts` (clientes, contratos, chamados, horas e SLA).
+O comando `test:coverage` valida cobertura mínima de 100% nos módulos de back-end configurados em `vitest.config.ts` (clientes, contratos, chamados, horas, SLA e rentabilidade).
 
 ### CI (GitHub Actions)
 
@@ -414,7 +416,7 @@ O Slanko formaliza um webapp para gestão integrada de contratos de suporte téc
 * [x] Chamados e apontamento de horas (UC05–UC08)
 * [x] Testes automatizados dos módulos de back-end + cobertura no CI
 * [x] Monitoramento de SLA (UC09)
-* [ ] Análise de rentabilidade (UC10)
+* [x] Análise de rentabilidade (UC10)
 * [ ] Front-end / dashboard (UC11)
 * [ ] SonarCloud, Wiki e metas globais de cobertura (75%/25%)
 
