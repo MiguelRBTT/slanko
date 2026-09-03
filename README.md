@@ -255,10 +255,10 @@ Dicionário de dados, regras e esboço Prisma: [docs/modelagem.md](docs/modelage
 |---|---|
 | Documentação (RFC, UC, C4, modelagem) | Concluída (fase de planejamento) |
 | Banco MySQL + Prisma + Docker | Concluído (schema, migrate, seed) |
-| Back-end (Next.js API + services) | Em andamento (clientes/contratos CRUD) |
+| Back-end (Next.js API + services) | Em andamento (clientes, contratos, chamados, horas e SLA) |
 | Front-end (UI / dashboard) | Pendente |
-| Testes (TDD 75% / 25%) | Em andamento (Vitest + testes iniciais) |
-| CI/CD (GitHub Actions) | Em andamento (CI v1: lint, test, build) |
+| Testes (TDD 75% / 25%) | Em andamento (Vitest; cobertura 100% nos módulos de back-end configurados) |
+| CI/CD (GitHub Actions) | Em andamento (lint, test:coverage, build) |
 | SonarCloud | Pendente |
 | Observabilidade | Pendente |
 | Wiki do GitHub | Pendente |
@@ -347,13 +347,26 @@ Endpoints:
 | `GET /api/contracts/:id` | JWT | gestor only |
 | `PUT /api/contracts/:id` | JWT | gestor only |
 | `DELETE /api/contracts/:id` | JWT | gestor only |
+| `GET /api/tickets` | JWT | gestor ou técnico |
+| `POST /api/tickets` | JWT | gestor ou técnico |
+| `GET /api/tickets/:id` | JWT | gestor ou técnico |
+| `PUT /api/tickets/:id` | JWT | gestor ou técnico |
+| `GET /api/tickets/:id/time-entries` | JWT | gestor ou técnico |
+| `POST /api/tickets/:id/time-entries` | JWT | gestor ou técnico |
+| `GET /api/sla/summary` | JWT | gestor only |
+| `GET /api/sla/contracts/:id` | JWT | gestor only |
+
+Filtros úteis: `GET /api/sla/summary` aceita `clientId`, `contractId`, `startDate` e `endDate` (YYYY-MM-DD). O relatório por contrato aceita `startDate` e `endDate`.
 
 ### Testes
 
 ```bash
 npm test
 npm run test:watch
+npm run test:coverage
 ```
+
+O comando `test:coverage` valida cobertura mínima de 100% nos módulos de back-end configurados em `vitest.config.ts` (clientes, contratos, chamados, horas e SLA).
 
 ### CI (GitHub Actions)
 
@@ -362,12 +375,10 @@ O workflow `.github/workflows/ci.yml` roda em todo push/PR para `main`:
 1. `npm ci`
 2. `npx prisma validate`
 3. `npm run lint`
-4. `npm test`
+4. `npm run test:coverage`
 5. `npm run build`
 
-Próximas evoluções previstas: MySQL service para testes de integração, cobertura mínima e SonarCloud.
-
-Próximo passo: testes do CRUD de clientes/contratos e módulo de chamados.
+Próximas evoluções previstas: MySQL service para testes de integração, metas globais de cobertura (75%/25%) e SonarCloud.
 
 ---
 
@@ -399,10 +410,13 @@ O Slanko formaliza um webapp para gestão integrada de contratos de suporte téc
 * [x] Scaffold Next.js (API base + camadas services/repositories)
 * [x] CI/CD (GitHub Actions) — v1
 * [x] Autenticação JWT (login + middleware + perfis)
-* [ ] Implementar contratos e chamados
-* [ ] Implementar chamados, SLA e rentabilidade
-* [ ] Testes, CI/CD, SonarCloud e monitoramento
-* [ ] Wiki do GitHub
+* [x] CRUD de clientes e contratos
+* [x] Chamados e apontamento de horas (UC05–UC08)
+* [x] Testes automatizados dos módulos de back-end + cobertura no CI
+* [x] Monitoramento de SLA (UC09)
+* [ ] Análise de rentabilidade (UC10)
+* [ ] Front-end / dashboard (UC11)
+* [ ] SonarCloud, Wiki e metas globais de cobertura (75%/25%)
 
 ---
 
