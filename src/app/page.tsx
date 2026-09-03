@@ -13,7 +13,10 @@ export default function HomePage() {
           <code>GET /api/users</code>
         </li>
         <li>
-          <code>GET /api/clients</code>
+          <code>GET/POST /api/clients</code>
+        </li>
+        <li>
+          <code>GET/POST /api/contracts</code>
         </li>
       </ul>
     </main>

@@ -18,8 +18,11 @@ const sampleClient = {
 
 describe("ClientService", () => {
   const mockRepository: ClientRepository = {
+    findMany: vi.fn(),
     findAllActive: vi.fn(),
     findById: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
   };
 
   beforeEach(() => {
@@ -27,10 +30,12 @@ describe("ClientService", () => {
   });
 
   it("lists active clients", async () => {
-    vi.mocked(mockRepository.findAllActive).mockResolvedValue([sampleClient]);
+    vi.mocked(mockRepository.findMany).mockResolvedValue([sampleClient]);
 
     const service = new ClientService(mockRepository);
     const clients = await service.listActiveClients();
+
+    expect(mockRepository.findMany).toHaveBeenCalledWith({ includeInactive: false });
 
     expect(clients).toHaveLength(1);
     expect(clients[0].name).toBe("Tech Solutions Ltda");

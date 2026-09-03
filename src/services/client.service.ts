@@ -1,51 +1,65 @@
 ﻿import { ClientRepository, clientRepository } from "@/repositories/client.repository";
 import { NotFoundError } from "@/lib/errors/app-error";
-
-// Business rules for client listing and lookup.
-
-export type PublicClient = {
-  id: string;
-  name: string;
-  document: string | null;
-  email: string | null;
-  phone: string | null;
-  active: boolean;
-};
-
-function toPublicClient(client: {
-  id: string;
-  name: string;
-  document: string | null;
-  email: string | null;
-  phone: string | null;
-  active: boolean;
-}): PublicClient {
-  return {
-    id: client.id,
-    name: client.name,
-    document: client.document,
-    email: client.email,
-    phone: client.phone,
-    active: client.active,
-  };
-}
+import {
+  optionalNullableString,
+  requireNonEmptyString,
+} from "@/lib/validation/fields";
+import {
+  toPublicClient,
+  type CreateClientInput,
+  type PublicClient,
+  type UpdateClientInput,
+} from "@/types/client";
 
 export class ClientService {
   constructor(private readonly clients: ClientRepository = clientRepository) {}
 
-  async listActiveClients(): Promise<PublicClient[]> {
-    const rows = await this.clients.findAllActive();
+  async listClients(includeInactive = false): Promise<PublicClient[]> {
+    const rows = await this.clients.findMany({ includeInactive });
     return rows.map(toPublicClient);
   }
 
-  async getClientById(id: string): Promise<PublicClient> {
+  async listActiveClients(): Promise<PublicClient[]> {
+    return this.listClients(false);
+  }
+
+  async getClientById(id: string, includeInactive = false): Promise<PublicClient> {
     const client = await this.clients.findById(id);
 
-    if (!client || !client.active) {
+    if (!client || (!includeInactive && !client.active)) {
       throw new NotFoundError("Client not found");
     }
 
     return toPublicClient(client);
+  }
+
+  async createClient(input: CreateClientInput): Promise<PublicClient> {
+    const client = await this.clients.create({
+      name: requireNonEmptyString(input.name, "name"),
+      document: optionalNullableString(input.document) ?? null,
+      email: optionalNullableString(input.email) ?? null,
+      phone: optionalNullableString(input.phone) ?? null,
+    });
+
+    return toPublicClient(client);
+  }
+
+  async updateClient(id: string, input: UpdateClientInput): Promise<PublicClient> {
+    await this.getClientById(id, true);
+
+    const client = await this.clients.update(id, {
+      ...(input.name !== undefined ? { name: requireNonEmptyString(input.name, "name") } : {}),
+      ...(input.document !== undefined ? { document: optionalNullableString(input.document) ?? null } : {}),
+      ...(input.email !== undefined ? { email: optionalNullableString(input.email) ?? null } : {}),
+      ...(input.phone !== undefined ? { phone: optionalNullableString(input.phone) ?? null } : {}),
+      ...(input.active !== undefined ? { active: input.active } : {}),
+    });
+
+    return toPublicClient(client);
+  }
+
+  async deactivateClient(id: string): Promise<PublicClient> {
+    return this.updateClient(id, { active: false });
   }
 }
 
