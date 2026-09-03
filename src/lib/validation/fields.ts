@@ -59,6 +59,14 @@ export function parseDateOnly(value: unknown, field: string): Date {
   return date;
 }
 
+export function parseDateTime(value: unknown, field: string): Date {
+  if (typeof value !== "string" || Number.isNaN(Date.parse(value))) {
+    throw new BadRequestError(`${field} must be a valid ISO datetime`);
+  }
+
+  return new Date(value);
+}
+
 export function parseOptionalDateOnly(value: unknown, field: string): Date | null | undefined {
   if (value === undefined) {
     return undefined;

@@ -4,6 +4,7 @@ import {
   isUniqueConstraintError,
   optionalNullableString,
   parseDateOnly,
+  parseDateTime,
   parseOptionalDateOnly,
   parsePositiveInteger,
   parsePositiveNumber,
@@ -48,6 +49,12 @@ describe("validation fields", () => {
     expect(date.toISOString()).toBe("2026-09-01T00:00:00.000Z");
     expect(() => parseDateOnly("2026/09/01", "startDate")).toThrow(BadRequestError);
     expect(() => parseDateOnly("2026-99-99", "startDate")).toThrow(BadRequestError);
+  });
+
+  it("parseDateTime validates ISO datetimes", () => {
+    const date = parseDateTime("2026-08-19T14:00:00.000Z", "workedAt");
+    expect(date.toISOString()).toBe("2026-08-19T14:00:00.000Z");
+    expect(() => parseDateTime("invalid", "workedAt")).toThrow(BadRequestError);
   });
 
   it("parseOptionalDateOnly handles optional date values", () => {
