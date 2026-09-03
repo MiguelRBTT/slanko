@@ -6,7 +6,7 @@ import { clientService } from "@/services/client.service";
 
 vi.mock("@/services/client.service", () => ({
   clientService: {
-    listActiveClients: vi.fn(),
+    listClients: vi.fn(),
   },
 }));
 
@@ -16,7 +16,7 @@ describe("GET /api/clients", () => {
   });
 
   it("returns active clients as JSON", async () => {
-    vi.mocked(clientService.listActiveClients).mockResolvedValue([
+    vi.mocked(clientService.listClients).mockResolvedValue([
       {
         id: "client-1",
         name: "Tech Solutions Ltda",
@@ -27,8 +27,10 @@ describe("GET /api/clients", () => {
       },
     ]);
 
-    const response = await GET();
+    const response = await GET(new Request("http://localhost/api/clients"));
     const body = await response.json();
+
+    expect(clientService.listClients).toHaveBeenCalledWith(false);
 
     expect(response.status).toBe(200);
     expect(body.clients[0].name).toBe("Tech Solutions Ltda");

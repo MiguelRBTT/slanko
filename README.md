@@ -255,7 +255,7 @@ Dicionário de dados, regras e esboço Prisma: [docs/modelagem.md](docs/modelage
 |---|---|
 | Documentação (RFC, UC, C4, modelagem) | Concluída (fase de planejamento) |
 | Banco MySQL + Prisma + Docker | Concluído (schema, migrate, seed) |
-| Back-end (Next.js API + services) | Em andamento (auth JWT implementada) |
+| Back-end (Next.js API + services) | Em andamento (clientes/contratos CRUD) |
 | Front-end (UI / dashboard) | Pendente |
 | Testes (TDD 75% / 25%) | Em andamento (Vitest + testes iniciais) |
 | CI/CD (GitHub Actions) | Em andamento (CI v1: lint, test, build) |
@@ -338,6 +338,15 @@ Endpoints:
 | `GET /api/users` | JWT | gestor ou técnico |
 | `GET /api/users/:id` | JWT | gestor ou técnico |
 | `GET /api/clients` | JWT | gestor only |
+| `POST /api/clients` | JWT | gestor only |
+| `GET /api/clients/:id` | JWT | gestor only |
+| `PUT /api/clients/:id` | JWT | gestor only |
+| `DELETE /api/clients/:id` | JWT | gestor only (soft delete) |
+| `GET /api/contracts` | JWT | gestor only |
+| `POST /api/contracts` | JWT | gestor only |
+| `GET /api/contracts/:id` | JWT | gestor only |
+| `PUT /api/contracts/:id` | JWT | gestor only |
+| `DELETE /api/contracts/:id` | JWT | gestor only |
 
 ### Testes
 
@@ -358,7 +367,7 @@ O workflow `.github/workflows/ci.yml` roda em todo push/PR para `main`:
 
 Próximas evoluções previstas: MySQL service para testes de integração, cobertura mínima e SonarCloud.
 
-Próximo passo: módulos de contratos e chamados.
+Próximo passo: testes do CRUD de clientes/contratos e módulo de chamados.
 
 ---
 
