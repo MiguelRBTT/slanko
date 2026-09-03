@@ -15,11 +15,13 @@ describe("authorize helpers", () => {
     expect(isPublicApiPath("/api/auth/login")).toBe(true);
     expect(isProtectedApiPath("/api/users")).toBe(true);
     expect(isProtectedApiPath("/api/clients")).toBe(true);
+    expect(isProtectedApiPath("/api/tickets")).toBe(true);
     expect(isProtectedApiPath("/api/health")).toBe(false);
   });
 
   it("requires gestor role for client routes", () => {
     expect(requiresGestorRole("/api/clients")).toBe(true);
+    expect(requiresGestorRole("/api/tickets")).toBe(false);
     expect(requiresGestorRole("/api/users")).toBe(false);
   });
 
