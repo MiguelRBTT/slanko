@@ -1,6 +1,7 @@
 import type { ContractStatus } from "@prisma/client";
 import { jsonError, jsonOk } from "@/lib/http/api-response";
 import { BadRequestError } from "@/lib/errors/app-error";
+import { assertGestor } from "@/lib/auth/require-gestor";
 import { contractService } from "@/services/contract.service";
 import type { CreateContractInput } from "@/types/contract";
 
@@ -18,8 +19,8 @@ function parseStatusFilter(value: string | null): ContractStatus | undefined {
   return value as ContractStatus;
 }
 
-// GET /api/contracts - list contracts (requires JWT; gestor only).
-// POST /api/contracts - create contract.
+// GET /api/contracts - list contracts (JWT; gestor or tecnico).
+// POST /api/contracts - create contract (gestor only).
 
 export async function GET(request: Request) {
   try {
@@ -37,6 +38,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    assertGestor(request);
     const body = (await request.json()) as CreateContractInput;
     const contract = await contractService.createContract(body);
 

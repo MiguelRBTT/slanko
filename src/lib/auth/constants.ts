@@ -2,7 +2,6 @@ export const PUBLIC_API_PATHS = ["/api/health", "/api/auth/login"] as const;
 
 export const GESTOR_ONLY_API_PREFIXES = [
   "/api/clients",
-  "/api/contracts",
   "/api/sla",
   "/api/profitability",
 ] as const;

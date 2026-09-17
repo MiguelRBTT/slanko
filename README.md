@@ -255,8 +255,8 @@ Dicionário de dados, regras e esboço Prisma: [docs/modelagem.md](docs/modelage
 |---|---|
 | Documentação (RFC, UC, C4, modelagem) | Concluída (fase de planejamento) |
 | Banco MySQL + Prisma + Docker | Concluído (schema, migrate, seed) |
-| Back-end (Next.js API + services) | Em andamento (clientes, contratos, chamados, horas, SLA e rentabilidade) |
-| Front-end (UI / dashboard) | Pendente |
+| Back-end (Next.js API + services) | Concluído (clientes, contratos, chamados, horas, SLA e rentabilidade) |
+| Front-end (UI / dashboard) | Em andamento (login + painel + operações) |
 | Testes (TDD 75% / 25%) | Em andamento (Vitest; cobertura 100% nos módulos de back-end configurados) |
 | CI/CD (GitHub Actions) | Em andamento (lint, test:coverage, build) |
 | SonarCloud | Pendente |
@@ -314,7 +314,15 @@ Dicionário de dados, regras e esboço Prisma: [docs/modelagem.md](docs/modelage
 npm run dev
 ```
 
-Abra [http://localhost:3000](http://localhost:3000).
+Abra [http://localhost:3000](http://localhost:3000). A home redireciona para `/login`.
+
+**Interface web:**
+
+* `/login` — autenticação JWT
+* `/dashboard` — painel de SLA e rentabilidade (gestor)
+* `/clients` — clientes (gestor)
+* `/contracts` — contratos (gestor cria; técnico lista ativos)
+* `/tickets` — chamados (gestor e técnico)
 
 **Autenticação (JWT):**
 
@@ -342,9 +350,9 @@ Endpoints:
 | `GET /api/clients/:id` | JWT | gestor only |
 | `PUT /api/clients/:id` | JWT | gestor only |
 | `DELETE /api/clients/:id` | JWT | gestor only (soft delete) |
-| `GET /api/contracts` | JWT | gestor only |
+| `GET /api/contracts` | JWT | gestor ou técnico |
 | `POST /api/contracts` | JWT | gestor only |
-| `GET /api/contracts/:id` | JWT | gestor only |
+| `GET /api/contracts/:id` | JWT | gestor ou técnico |
 | `PUT /api/contracts/:id` | JWT | gestor only |
 | `DELETE /api/contracts/:id` | JWT | gestor only |
 | `GET /api/tickets` | JWT | gestor ou técnico |
@@ -417,7 +425,7 @@ O Slanko formaliza um webapp para gestão integrada de contratos de suporte téc
 * [x] Testes automatizados dos módulos de back-end + cobertura no CI
 * [x] Monitoramento de SLA (UC09)
 * [x] Análise de rentabilidade (UC10)
-* [ ] Front-end / dashboard (UC11)
+* [x] Front-end / dashboard (UC11) — login, painel SLA/rentabilidade, clientes, contratos e chamados
 * [ ] SonarCloud, Wiki e metas globais de cobertura (75%/25%)
 
 ---

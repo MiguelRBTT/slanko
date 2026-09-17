@@ -26,15 +26,19 @@ export async function middleware(request: NextRequest) {
 
   try {
     const authContext = await authenticateRequest(request.headers.get(AUTH_HEADER), pathname);
-    const response = NextResponse.next();
+    const requestHeaders = new Headers(request.headers);
 
     if (authContext) {
-      response.headers.set(USER_ID_HEADER, authContext.userId);
-      response.headers.set(USER_EMAIL_HEADER, authContext.email);
-      response.headers.set(USER_ROLE_HEADER, authContext.role);
+      requestHeaders.set(USER_ID_HEADER, authContext.userId);
+      requestHeaders.set(USER_EMAIL_HEADER, authContext.email);
+      requestHeaders.set(USER_ROLE_HEADER, authContext.role);
     }
 
-    return response;
+    return NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    });
   } catch (error) {
     if (error instanceof AppError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode });

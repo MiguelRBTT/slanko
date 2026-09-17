@@ -16,6 +16,7 @@ const crudCoverageInclude = [
   "src/services/profitability.service.ts",
   "src/lib/validation/fields.ts",
   "src/lib/auth/request-context.ts",
+  "src/lib/auth/require-gestor.ts",
   "src/lib/sla/**/*.ts",
   "src/lib/profitability/**/*.ts",
   "src/types/client.ts",
