@@ -1,0 +1,37 @@
+.page {
+  display: grid;
+  gap: 1.2rem;
+}
+
+.header h1 {
+  font-size: clamp(1.8rem, 3vw, 2.2rem);
+  letter-spacing: -0.03em;
+  margin-bottom: 0.3rem;
+}
+
+.formPanel,
+.listPanel {
+  padding: 1.15rem 1.2rem;
+}
+
+.formPanel h2 {
+  font-size: 1.05rem;
+  margin-bottom: 0.9rem;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.full {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 760px) {
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+}

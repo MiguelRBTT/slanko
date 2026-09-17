@@ -1,10 +1,17 @@
 ﻿import type { Metadata } from "next";
+import { Plus_Jakarta_Sans } from "next/font/google";
+import "./globals.css";
 
-// Root layout placeholder until the dashboard UI is implemented.
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-jakarta",
+  display: "swap",
+  weight: ["500", "600", "700", "800"],
+});
 
 export const metadata: Metadata = {
   title: "Slanko",
-  description: "IT support contract management",
+  description: "Gestão de contratos de suporte com SLA e rentabilidade",
 };
 
 export default function RootLayout({
@@ -14,7 +21,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
-      <body>{children}</body>
+      <body className={`${jakarta.variable} ${jakarta.className}`}>{children}</body>
     </html>
   );
 }

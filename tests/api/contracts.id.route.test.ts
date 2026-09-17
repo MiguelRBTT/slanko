@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DELETE, GET, PUT } from "@/app/api/contracts/[id]/route";
 import { contractService } from "@/services/contract.service";
+import {
+  USER_EMAIL_HEADER,
+  USER_ID_HEADER,
+  USER_ROLE_HEADER,
+} from "@/lib/auth/constants";
 import { ConflictError, NotFoundError } from "@/lib/errors/app-error";
 
 vi.mock("@/services/contract.service", () => ({
@@ -12,6 +17,12 @@ vi.mock("@/services/contract.service", () => ({
 }));
 
 const routeContext = { params: Promise.resolve({ id: "contract-1" }) };
+
+const gestorHeaders = {
+  [USER_ID_HEADER]: "user-gestor",
+  [USER_EMAIL_HEADER]: "gestor@slanko.local",
+  [USER_ROLE_HEADER]: "GESTOR",
+};
 
 const sampleContract = {
   id: "contract-1",
@@ -69,6 +80,7 @@ describe("PUT /api/contracts/:id", () => {
     const response = await PUT(
       new Request("http://localhost", {
         method: "PUT",
+        headers: gestorHeaders,
         body: JSON.stringify({ title: "Updated" }),
       }),
       routeContext,
@@ -87,6 +99,7 @@ describe("PUT /api/contracts/:id", () => {
     const response = await PUT(
       new Request("http://localhost", {
         method: "PUT",
+        headers: gestorHeaders,
         body: JSON.stringify({ title: "Updated" }),
       }),
       routeContext,
@@ -104,7 +117,10 @@ describe("DELETE /api/contracts/:id", () => {
   it("deletes a contract", async () => {
     vi.mocked(contractService.deleteContract).mockResolvedValue(undefined);
 
-    const response = await DELETE(new Request("http://localhost"), routeContext);
+    const response = await DELETE(
+      new Request("http://localhost", { headers: gestorHeaders }),
+      routeContext,
+    );
     const body = await response.json();
 
     expect(response.status).toBe(200);
@@ -116,7 +132,10 @@ describe("DELETE /api/contracts/:id", () => {
       new ConflictError("Contract cannot be deleted while tickets exist"),
     );
 
-    const response = await DELETE(new Request("http://localhost"), routeContext);
+    const response = await DELETE(
+      new Request("http://localhost", { headers: gestorHeaders }),
+      routeContext,
+    );
     const body = await response.json();
 
     expect(response.status).toBe(409);

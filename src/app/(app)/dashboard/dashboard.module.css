@@ -1,0 +1,79 @@
+.page {
+  display: grid;
+  gap: 1.35rem;
+}
+
+.header h1 {
+  font-size: clamp(1.8rem, 3vw, 2.3rem);
+  letter-spacing: -0.03em;
+  margin-bottom: 0.35rem;
+}
+
+.loading {
+  padding: 3rem 0;
+  color: var(--ink-muted);
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.metric {
+  padding: 1.1rem 1.15rem;
+}
+
+.metricLabel {
+  color: var(--ink-muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.55rem;
+}
+
+.metric strong {
+  display: block;
+  font-size: 1.7rem;
+  letter-spacing: -0.03em;
+  margin-bottom: 0.35rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.9rem;
+}
+
+.grid > section {
+  padding: 1rem 1.1rem 0.4rem;
+}
+
+.sectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.sectionHead h2 {
+  font-size: 1.05rem;
+}
+
+@media (max-width: 1100px) {
+  .metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .metrics {
+    grid-template-columns: 1fr;
+  }
+}

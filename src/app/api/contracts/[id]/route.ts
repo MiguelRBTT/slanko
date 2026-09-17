@@ -1,4 +1,5 @@
 import { jsonError, jsonOk } from "@/lib/http/api-response";
+import { assertGestor } from "@/lib/auth/require-gestor";
 import { contractService } from "@/services/contract.service";
 import type { UpdateContractInput } from "@/types/contract";
 
@@ -6,9 +7,8 @@ type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
-// GET /api/contracts/:id - fetch contract by id.
-// PUT /api/contracts/:id - update contract.
-// DELETE /api/contracts/:id - delete contract when it has no tickets.
+// GET /api/contracts/:id - fetch contract by id (JWT).
+// PUT / DELETE - gestor only.
 
 export async function GET(_request: Request, context: RouteContext) {
   try {
@@ -23,6 +23,7 @@ export async function GET(_request: Request, context: RouteContext) {
 
 export async function PUT(request: Request, context: RouteContext) {
   try {
+    assertGestor(request);
     const { id } = await context.params;
     const body = (await request.json()) as UpdateContractInput;
     const contract = await contractService.updateContract(id, body);
@@ -33,8 +34,9 @@ export async function PUT(request: Request, context: RouteContext) {
   }
 }
 
-export async function DELETE(_request: Request, context: RouteContext) {
+export async function DELETE(request: Request, context: RouteContext) {
   try {
+    assertGestor(request);
     const { id } = await context.params;
     await contractService.deleteContract(id);
 

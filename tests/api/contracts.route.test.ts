@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GET, POST } from "@/app/api/contracts/route";
 import { contractService } from "@/services/contract.service";
+import {
+  USER_EMAIL_HEADER,
+  USER_ID_HEADER,
+  USER_ROLE_HEADER,
+} from "@/lib/auth/constants";
 import { BadRequestError } from "@/lib/errors/app-error";
 
 vi.mock("@/services/contract.service", () => ({
@@ -9,6 +14,18 @@ vi.mock("@/services/contract.service", () => ({
     createContract: vi.fn(),
   },
 }));
+
+const gestorHeaders = {
+  [USER_ID_HEADER]: "user-gestor",
+  [USER_EMAIL_HEADER]: "gestor@slanko.local",
+  [USER_ROLE_HEADER]: "GESTOR",
+};
+
+const tecnicoHeaders = {
+  [USER_ID_HEADER]: "user-tecnico",
+  [USER_EMAIL_HEADER]: "tecnico@slanko.local",
+  [USER_ROLE_HEADER]: "TECNICO",
+};
 
 const sampleContract = {
   id: "contract-1",
@@ -81,6 +98,7 @@ describe("POST /api/contracts", () => {
     const response = await POST(
       new Request("http://localhost/api/contracts", {
         method: "POST",
+        headers: gestorHeaders,
         body: JSON.stringify({
           clientId: "client-1",
           code: "CTR-2026-001",
@@ -98,6 +116,26 @@ describe("POST /api/contracts", () => {
     expect(body.contract.code).toBe("CTR-2026-001");
   });
 
+  it("blocks tecnico from creating contracts", async () => {
+    const response = await POST(
+      new Request("http://localhost/api/contracts", {
+        method: "POST",
+        headers: tecnicoHeaders,
+        body: JSON.stringify({
+          clientId: "client-1",
+          code: "CTR-2026-001",
+          title: "Suporte mensal",
+          value: 4500,
+          startDate: "2026-01-01",
+          responseMinutes: 60,
+          resolutionMinutes: 480,
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(403);
+  });
+
   it("returns validation errors from the service", async () => {
     vi.mocked(contractService.createContract).mockRejectedValue(
       new BadRequestError("clientId is required"),
@@ -106,6 +144,7 @@ describe("POST /api/contracts", () => {
     const response = await POST(
       new Request("http://localhost/api/contracts", {
         method: "POST",
+        headers: gestorHeaders,
         body: JSON.stringify({ code: "CTR-001" }),
       }),
     );
