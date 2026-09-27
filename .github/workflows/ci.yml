@@ -15,10 +15,14 @@ jobs:
       DATABASE_URL: mysql://slanko:slanko@127.0.0.1:3306/slanko
       JWT_SECRET: ci-test-secret-key-with-at-least-32-characters
       JWT_EXPIRES_IN: 1h
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_HOST_URL: https://sonarcloud.io
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -40,3 +44,12 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: SonarCloud Scan
+        if: env.SONAR_TOKEN != ''
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: >
+            -Dsonar.qualitygate.wait=true

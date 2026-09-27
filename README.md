@@ -5,6 +5,9 @@
 **Instituição:** Centro Universitário Católica de Santa Catarina  
 **Linha de projeto:** Web Apps  
 
+[![CI](https://github.com/MiguelRBTT/slanko/actions/workflows/ci.yml/badge.svg)](https://github.com/MiguelRBTT/slanko/actions/workflows/ci.yml)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=MiguelRBTT_slanko&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=MiguelRBTT_slanko)
+
 Sistema web para gestão de contratos de suporte técnico com análise de SLA e rentabilidade.
 
 ---
@@ -256,10 +259,10 @@ Dicionário de dados, regras e esboço Prisma: [docs/modelagem.md](docs/modelage
 | Documentação (RFC, UC, C4, modelagem) | Concluída (fase de planejamento) |
 | Banco MySQL + Prisma + Docker | Concluído (schema, migrate, seed) |
 | Back-end (Next.js API + services) | Concluído (clientes, contratos, chamados, horas, SLA e rentabilidade) |
-| Front-end (UI / dashboard) | Em andamento (login + painel + operações) |
+| Front-end (UI / dashboard) | Concluído (login, painel SLA/rentabilidade, clientes, contratos e chamados) |
 | Testes (TDD 75% / 25%) | Em andamento (Vitest; cobertura 100% nos módulos de back-end configurados) |
-| CI/CD (GitHub Actions) | Em andamento (lint, test:coverage, build) |
-| SonarCloud | Pendente |
+| CI/CD (GitHub Actions) | Em andamento (lint, test:coverage, build, SonarCloud) |
+| SonarCloud | Em andamento (scan no CI; requer `SONAR_TOKEN` e projeto no SonarCloud) |
 | Observabilidade | Pendente |
 | Wiki do GitHub | Pendente |
 
@@ -385,10 +388,32 @@ O workflow `.github/workflows/ci.yml` roda em todo push/PR para `main`:
 1. `npm ci`
 2. `npx prisma validate`
 3. `npm run lint`
-4. `npm run test:coverage`
+4. `npm run test:coverage` (gera `coverage/lcov.info` para o SonarCloud)
 5. `npm run build`
+6. SonarCloud Scan (quando o secret `SONAR_TOKEN` estiver configurado)
 
-Próximas evoluções previstas: MySQL service para testes de integração, metas globais de cobertura (75%/25%) e SonarCloud.
+### SonarCloud (RNF06)
+
+Análise estática via [SonarCloud](https://sonarcloud.io) no CI, com Quality Gate (`sonar.qualitygate.wait=true`) e cobertura LCOV do Vitest.
+
+Arquivos:
+
+* `sonar-project.properties` — chave do projeto, organização, exclusões e caminho do LCOV
+* `.github/workflows/ci.yml` — passo `SonarCloud Scan`
+
+Setup (uma vez):
+
+1. Crie uma conta em [sonarcloud.io](https://sonarcloud.io) e importe o repositório `MiguelRBTT/slanko` (GitHub App).
+2. Confira se `sonar.organization` e `sonar.projectKey` em `sonar-project.properties` batem com o projeto criado (padrão típico: org `miguelrbtt`, key `MiguelRBTT_slanko`).
+3. Gere um token em SonarCloud (**My Account → Security**) e adicione o secret no GitHub:
+   * Repositório → **Settings → Secrets and variables → Actions**
+   * Nome: `SONAR_TOKEN`
+   * Valor: o token gerado
+4. No próximo push/PR para `main`, o CI roda o scan. Sem o secret, o restante do CI segue normalmente e o passo Sonar é pulado.
+
+Painel do projeto (após o primeiro scan): [SonarCloud — Slanko](https://sonarcloud.io/summary/new_code?id=MiguelRBTT_slanko)
+
+Próximas evoluções previstas: MySQL service para testes de integração e metas globais de cobertura (75%/25%).
 
 ---
 
@@ -426,7 +451,9 @@ O Slanko formaliza um webapp para gestão integrada de contratos de suporte téc
 * [x] Monitoramento de SLA (UC09)
 * [x] Análise de rentabilidade (UC10)
 * [x] Front-end / dashboard (UC11) — login, painel SLA/rentabilidade, clientes, contratos e chamados
-* [ ] SonarCloud, Wiki e metas globais de cobertura (75%/25%)
+* [x] SonarCloud no CI (RNF06) — scan + Quality Gate + LCOV; requer secret `SONAR_TOKEN`
+* [ ] Wiki e metas globais de cobertura (75%/25%)
+* [ ] Observabilidade (Grafana e/ou Prometheus)
 
 ---
 
