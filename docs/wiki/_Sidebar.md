@@ -1,0 +1,13 @@
+* [Home](Home)
+* [Guia de Execução](Guia-de-Execucao)
+* [Arquitetura](Arquitetura)
+* [API](API)
+* [Autenticação](Autenticacao)
+* [Casos de Uso](Casos-de-Uso)
+* [Modelagem de Dados](Modelagem-de-Dados)
+* [CI/CD e Qualidade](CI-CD-e-Qualidade)
+* [Documentação Técnica](Documentacao-Tecnica)
+* ---
+* [Repositório](https://github.com/MiguelRBTT/slanko)
+* [Actions](https://github.com/MiguelRBTT/slanko/actions)
+* [SonarCloud](https://sonarcloud.io/summary/new_code?id=MiguelRBTT_slanko)
