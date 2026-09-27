@@ -109,3 +109,16 @@ curl http://localhost:3000/api/clients -H "Authorization: Bearer SEU_TOKEN"
 ```
 
 Mais endpoints: [API](API).
+
+## 6. Observabilidade (opcional)
+
+Com a app na porta 3000:
+
+```bash
+npm run obs:up
+```
+
+* Prometheus: http://localhost:9090  
+* Grafana: http://localhost:3001 (`admin` / `slanko`)  
+
+Detalhes: [Observabilidade](Observabilidade).
