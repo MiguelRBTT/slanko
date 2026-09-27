@@ -265,11 +265,11 @@ Dicionário de dados, regras e esboço Prisma: [docs/modelagem.md](docs/modelage
 | Banco MySQL + Prisma + Docker | Concluído (schema, migrate, seed) |
 | Back-end (Next.js API + services) | Concluído (clientes, contratos, chamados, horas, SLA e rentabilidade) |
 | Front-end (UI / dashboard) | Concluído (login, painel SLA/rentabilidade, clientes, contratos e chamados) |
-| Testes (TDD 75% / 25%) | Em andamento (Vitest; cobertura 100% nos módulos de back-end configurados) |
+| Testes (TDD 75% / 25%) | Concluído (Vitest: ≥75% backend + ≥25% frontend no CI) |
 | CI/CD (GitHub Actions) | Em andamento (lint, test:coverage, build, SonarCloud) |
 | SonarCloud | Concluído (scan no CI + Quality Gate; secret `SONAR_TOKEN`) |
 | Observabilidade | Pendente |
-| Wiki do GitHub | Em andamento (páginas em `docs/wiki/`; publicar com `scripts/publish-wiki.ps1`) |
+| Wiki do GitHub | Concluído (páginas em `docs/wiki/` + Wiki no GitHub) |
 
 ---
 
@@ -382,9 +382,16 @@ Filtros úteis: `GET /api/sla/summary` aceita `clientId`, `contractId`, `startDa
 npm test
 npm run test:watch
 npm run test:coverage
+npm run test:coverage:backend
+npm run test:coverage:frontend
 ```
 
-O comando `test:coverage` valida cobertura mínima de 100% nos módulos de back-end configurados em `vitest.config.ts` (clientes, contratos, chamados, horas, SLA e rentabilidade).
+`test:coverage` (RNF04) roda as duas metas:
+
+* **Backend ≥ 75%** — `vitest.config.ts` + `coverage/` (LCOV usado pelo SonarCloud)
+* **Frontend ≥ 25%** — `vitest.frontend.config.ts` + `coverage-frontend/`
+
+Escopos em `vitest.coverage.ts`. Testes de UI em `tests/frontend/` (jsdom + Testing Library).
 
 ### CI (GitHub Actions)
 
@@ -393,7 +400,7 @@ O workflow `.github/workflows/ci.yml` roda em todo push/PR para `main`:
 1. `npm ci`
 2. `npx prisma validate`
 3. `npm run lint`
-4. `npm run test:coverage` (gera `coverage/lcov.info` para o SonarCloud)
+4. `npm run test:coverage` (backend ≥75% + frontend ≥25%; LCOV backend em `coverage/lcov.info`)
 5. `npm run build`
 6. SonarCloud Scan (quando o secret `SONAR_TOKEN` estiver configurado)
 
@@ -430,7 +437,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\publish-wiki.ps1
 
 URL: [github.com/MiguelRBTT/slanko/wiki](https://github.com/MiguelRBTT/slanko/wiki)
 
-Próximas evoluções previstas: MySQL service para testes de integração e metas globais de cobertura (75%/25%).
+Próximas evoluções previstas: MySQL service para testes de integração e observabilidade (Grafana/Prometheus).
 
 ---
 
@@ -470,7 +477,7 @@ O Slanko formaliza um webapp para gestão integrada de contratos de suporte téc
 * [x] Front-end / dashboard (UC11) — login, painel SLA/rentabilidade, clientes, contratos e chamados
 * [x] SonarCloud no CI (RNF06) — scan + Quality Gate + LCOV; requer secret `SONAR_TOKEN`
 * [x] Wiki do GitHub (RNF10) — páginas em `docs/wiki/` + script `scripts/publish-wiki.ps1`
-* [ ] Metas globais de cobertura (75%/25%)
+* [x] Metas globais de cobertura (RNF04) — ≥75% backend e ≥25% frontend no CI
 * [ ] Observabilidade (Grafana e/ou Prometheus)
 
 ---
