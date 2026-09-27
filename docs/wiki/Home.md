@@ -31,6 +31,7 @@ Três fluxos de negócio:
 | [Casos de Uso](Casos-de-Uso) | UC01–UC11 |
 | [Modelagem de Dados](Modelagem-de-Dados) | Entidades e Prisma |
 | [CI/CD e Qualidade](CI-CD-e-Qualidade) | GitHub Actions e SonarCloud |
+| [Observabilidade](Observabilidade) | Prometheus, Grafana e `/api/metrics` |
 | [Documentação Técnica](Documentacao-Tecnica) | Links para `docs/` no repositório |
 
 ## Links rápidos
@@ -42,4 +43,4 @@ Três fluxos de negócio:
 
 ## Status
 
-Back-end, front-end (dashboard), testes, CI e SonarCloud concluídos. Observabilidade (Grafana/Prometheus) e metas globais de cobertura 75%/25% seguem no roadmap.
+Back-end, front-end (dashboard), testes (metas 75%/25%), CI, SonarCloud, Wiki e observabilidade (Prometheus/Grafana) concluídos.

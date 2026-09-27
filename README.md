@@ -268,7 +268,7 @@ Dicionário de dados, regras e esboço Prisma: [docs/modelagem.md](docs/modelage
 | Testes (TDD 75% / 25%) | Concluído (Vitest: ≥75% backend + ≥25% frontend no CI) |
 | CI/CD (GitHub Actions) | Em andamento (lint, test:coverage, build, SonarCloud) |
 | SonarCloud | Concluído (scan no CI + Quality Gate; secret `SONAR_TOKEN`) |
-| Observabilidade | Pendente |
+| Observabilidade | Concluído (Prometheus + Grafana + `/api/metrics`) |
 | Wiki do GitHub | Concluído (páginas em `docs/wiki/` + Wiki no GitHub) |
 
 ---
@@ -350,6 +350,7 @@ Endpoints:
 | Rota | Auth | Perfil |
 |------|------|--------|
 | `GET /api/health` | Pública | — |
+| `GET /api/metrics` | Pública | — (Prometheus) |
 | `POST /api/auth/login` | Pública | — |
 | `GET /api/users` | JWT | gestor ou técnico |
 | `GET /api/users/:id` | JWT | gestor ou técnico |
@@ -437,7 +438,30 @@ powershell -ExecutionPolicy Bypass -File .\scripts\publish-wiki.ps1
 
 URL: [github.com/MiguelRBTT/slanko/wiki](https://github.com/MiguelRBTT/slanko/wiki)
 
-Próximas evoluções previstas: MySQL service para testes de integração e observabilidade (Grafana/Prometheus).
+### Observabilidade (RNF07)
+
+Stack local com **Prometheus** + **Grafana** e endpoint Prometheus na app.
+
+| Serviço | URL |
+|---|---|
+| Métricas | http://localhost:3000/api/metrics |
+| Health | http://localhost:3000/api/health |
+| Prometheus | http://localhost:9090 |
+| Grafana | http://localhost:3001 (user `admin` / senha `slanko`) |
+
+Com a app em `npm run dev` (porta 3000):
+
+```bash
+docker compose up -d
+# ou só o monitoramento:
+npm run obs:up
+```
+
+Gere tráfego de saúde (`curl http://localhost:3000/api/health`) para atualizar gauges. Dashboard provisionado: **Slanko Overview** (pasta Slanko no Grafana).
+
+Arquivos: `docker/prometheus/`, `docker/grafana/provisioning/`, `src/lib/observability/metrics.ts`. Detalhes: [docs/wiki/Observabilidade.md](docs/wiki/Observabilidade.md).
+
+Próximas evoluções previstas: MySQL service para testes de integração no CI.
 
 ---
 
@@ -478,7 +502,7 @@ O Slanko formaliza um webapp para gestão integrada de contratos de suporte téc
 * [x] SonarCloud no CI (RNF06) — scan + Quality Gate + LCOV; requer secret `SONAR_TOKEN`
 * [x] Wiki do GitHub (RNF10) — páginas em `docs/wiki/` + script `scripts/publish-wiki.ps1`
 * [x] Metas globais de cobertura (RNF04) — ≥75% backend e ≥25% frontend no CI
-* [ ] Observabilidade (Grafana e/ou Prometheus)
+* [x] Observabilidade (RNF07) — Prometheus, Grafana e `/api/metrics`
 
 ---
 

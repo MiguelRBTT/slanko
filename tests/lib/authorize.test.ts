@@ -13,6 +13,7 @@ describe("authorize helpers", () => {
   it("identifies public and protected API paths", () => {
     expect(isPublicApiPath("/api/health")).toBe(true);
     expect(isPublicApiPath("/api/auth/login")).toBe(true);
+    expect(isPublicApiPath("/api/metrics")).toBe(true);
     expect(isProtectedApiPath("/api/users")).toBe(true);
     expect(isProtectedApiPath("/api/clients")).toBe(true);
     expect(isProtectedApiPath("/api/tickets")).toBe(true);

@@ -1,4 +1,4 @@
-export const PUBLIC_API_PATHS = ["/api/health", "/api/auth/login"] as const;
+export const PUBLIC_API_PATHS = ["/api/health", "/api/auth/login", "/api/metrics"] as const;
 
 export const GESTOR_ONLY_API_PREFIXES = [
   "/api/clients",

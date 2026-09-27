@@ -6,6 +6,7 @@
 * [Casos de Uso](Casos-de-Uso)
 * [Modelagem de Dados](Modelagem-de-Dados)
 * [CI/CD e Qualidade](CI-CD-e-Qualidade)
+* [Observabilidade](Observabilidade)
 * [Documentação Técnica](Documentacao-Tecnica)
 * ---
 * [Repositório](https://github.com/MiguelRBTT/slanko)
