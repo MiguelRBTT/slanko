@@ -81,7 +81,7 @@ A lacuna comum é a baixa integração entre operação e rentabilidade por hora
 | [docs/arquitetura-c4.md](docs/arquitetura-c4.md) | C4 (contexto, contêineres e componentes) |
 | [docs/modelagem.md](docs/modelagem.md) | DER, dicionário de dados, regras e esboço Prisma |
 
-A documentação oficial permanece no repositório e, depois, na Wiki do GitHub (não em Notion/Obsidian para entrega).
+A documentação oficial permanece no repositório e na [Wiki do GitHub](https://github.com/MiguelRBTT/slanko/wiki) (não em Notion/Obsidian para entrega). Fonte das páginas da Wiki: [`docs/wiki/`](docs/wiki/).
 
 ### Estrutura atual do repositório
 
@@ -96,6 +96,11 @@ slanko/
 │   └── types/                  # shared DTOs
 ├── tests/                      # Vitest unit and API route tests
 ├── prisma/                     # schema, migrations, seed
+├── docs/
+│   ├── RFC.md, casos-de-uso.md, arquitetura-c4.md, modelagem.md
+│   └── wiki/                   # fonte das páginas da Wiki do GitHub
+├── scripts/
+│   └── publish-wiki.ps1        # publica docs/wiki no GitHub Wiki
 ├── docker-compose.yml          # MySQL local (slanko-db)
 ├── package.json
 └── vitest.config.ts
@@ -262,9 +267,9 @@ Dicionário de dados, regras e esboço Prisma: [docs/modelagem.md](docs/modelage
 | Front-end (UI / dashboard) | Concluído (login, painel SLA/rentabilidade, clientes, contratos e chamados) |
 | Testes (TDD 75% / 25%) | Em andamento (Vitest; cobertura 100% nos módulos de back-end configurados) |
 | CI/CD (GitHub Actions) | Em andamento (lint, test:coverage, build, SonarCloud) |
-| SonarCloud | Em andamento (scan no CI; requer `SONAR_TOKEN` e projeto no SonarCloud) |
+| SonarCloud | Concluído (scan no CI + Quality Gate; secret `SONAR_TOKEN`) |
 | Observabilidade | Pendente |
-| Wiki do GitHub | Pendente |
+| Wiki do GitHub | Em andamento (páginas em `docs/wiki/`; publicar com `scripts/publish-wiki.ps1`) |
 
 ---
 
@@ -413,6 +418,18 @@ Setup (uma vez):
 
 Painel do projeto (após o primeiro scan): [SonarCloud — Slanko](https://sonarcloud.io/summary/new_code?id=MiguelRBTT_slanko)
 
+### Wiki do GitHub (RNF10)
+
+Páginas versionadas em [`docs/wiki/`](docs/wiki/) (Home, guia de execução, arquitetura, API, autenticação, casos de uso, modelagem, CI/SonarCloud).
+
+Publicar na Wiki (após habilitar Wikis no repositório e criar a primeira página Home uma vez na UI):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\publish-wiki.ps1
+```
+
+URL: [github.com/MiguelRBTT/slanko/wiki](https://github.com/MiguelRBTT/slanko/wiki)
+
 Próximas evoluções previstas: MySQL service para testes de integração e metas globais de cobertura (75%/25%).
 
 ---
@@ -452,7 +469,8 @@ O Slanko formaliza um webapp para gestão integrada de contratos de suporte téc
 * [x] Análise de rentabilidade (UC10)
 * [x] Front-end / dashboard (UC11) — login, painel SLA/rentabilidade, clientes, contratos e chamados
 * [x] SonarCloud no CI (RNF06) — scan + Quality Gate + LCOV; requer secret `SONAR_TOKEN`
-* [ ] Wiki e metas globais de cobertura (75%/25%)
+* [x] Wiki do GitHub (RNF10) — páginas em `docs/wiki/` + script `scripts/publish-wiki.ps1`
+* [ ] Metas globais de cobertura (75%/25%)
 * [ ] Observabilidade (Grafana e/ou Prometheus)
 
 ---
