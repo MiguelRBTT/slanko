@@ -31,5 +31,9 @@ Automatic Analysis do SonarCloud deve ficar **desligada** (o scan é só via CI)
 
 ## Cobertura de testes
 
-Hoje: 100% nos módulos de back-end configurados em `vitest.config.ts`.  
-Meta global da linha Web Apps (75% backend / 25% frontend) ainda no roadmap.
+Metas RNF04 no CI (`npm run test:coverage`):
+
+* Backend ≥ **75%** (`vitest.config.ts` → `coverage/`)
+* Frontend ≥ **25%** (`vitest.frontend.config.ts` → `coverage-frontend/`)
+
+Escopos em `vitest.coverage.ts`. Testes de UI em `tests/frontend/`.
