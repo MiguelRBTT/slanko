@@ -30,6 +30,19 @@
   grid-column: 1 / -1;
 }
 
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.formActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+}
+
 @media (max-width: 760px) {
   .formGrid {
     grid-template-columns: 1fr;

@@ -152,6 +152,16 @@ h3 {
   color: var(--brand-deep);
 }
 
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #b91c1c;
+  transform: translateY(-1px);
+}
+
 .field {
   display: grid;
   gap: 0.4rem;

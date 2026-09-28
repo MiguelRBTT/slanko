@@ -15,8 +15,10 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (getSession()) {
-      router.replace("/dashboard");
+    const session = getSession();
+
+    if (session) {
+      router.replace(session.user.role === "GESTOR" ? "/dashboard" : "/tickets");
     }
   }, [router]);
 
@@ -37,7 +39,7 @@ export default function LoginPage() {
         user: result.user as SessionUser,
       });
 
-      router.replace("/dashboard");
+      router.replace(result.user.role === "GESTOR" ? "/dashboard" : "/tickets");
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : "Não foi possível entrar");
     } finally {

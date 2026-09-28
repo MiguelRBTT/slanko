@@ -79,6 +79,30 @@ describe("LoginPage", () => {
     });
   });
 
+  it("redirects tecnico login to tickets", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(authSession, "getSession").mockReturnValue(null);
+    vi.spyOn(authSession, "saveSession").mockImplementation(() => undefined);
+    vi.spyOn(api, "apiRequest").mockResolvedValue({
+      token: "jwt",
+      user: {
+        id: "2",
+        name: "Técnico",
+        email: "tecnico@slanko.local",
+        role: "TECNICO",
+        hourlyCost: "1",
+        active: true,
+      },
+    });
+
+    render(<LoginPage />);
+    await user.click(screen.getByRole("button", { name: "Acessar painel" }));
+
+    await waitFor(() => {
+      expect(replace).toHaveBeenCalledWith("/tickets");
+    });
+  });
+
   it("shows ApiClientError message on failure", async () => {
     const user = userEvent.setup();
     vi.spyOn(authSession, "getSession").mockReturnValue(null);

@@ -2,6 +2,15 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { apiRequest, ApiClientError } from "@/lib/client/api";
+import {
+  formatMoneyBRL,
+  formatMoneyInputValue,
+  parseMoneyInput,
+} from "@/lib/client/format";
+import {
+  contractStatusBadgeClass,
+  labelContractStatus,
+} from "@/lib/client/labels";
 import type { PublicClient } from "@/types/client";
 import type { PublicContract } from "@/types/contract";
 import styles from "../page-shared.module.css";
@@ -9,14 +18,23 @@ import styles from "../page-shared.module.css";
 type ClientsPayload = { clients: PublicClient[] };
 type ContractsPayload = { contracts: PublicContract[] };
 
+const CONTRACT_STATUSES = [
+  { value: "DRAFT", label: "Rascunho" },
+  { value: "ACTIVE", label: "Ativo" },
+  { value: "SUSPENDED", label: "Suspenso" },
+  { value: "FINISHED", label: "Finalizado" },
+] as const;
+
 export default function ContractsPage() {
   const [contracts, setContracts] = useState<PublicContract[]>([]);
   const [clients, setClients] = useState<PublicClient[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [clientId, setClientId] = useState("");
   const [code, setCode] = useState("");
   const [title, setTitle] = useState("");
-  const [value, setValue] = useState("4500");
+  const [value, setValue] = useState("4.500,00");
   const [startDate, setStartDate] = useState("2026-01-01");
+  const [status, setStatus] = useState("ACTIVE");
   const [responseMinutes, setResponseMinutes] = useState("60");
   const [resolutionMinutes, setResolutionMinutes] = useState("480");
   const [error, setError] = useState<string | null>(null);
@@ -49,32 +67,104 @@ export default function ContractsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function onCreate(event: FormEvent<HTMLFormElement>) {
+  function resetForm() {
+    setEditingId(null);
+    setCode("");
+    setTitle("");
+    setValue("4.500,00");
+    setStartDate("2026-01-01");
+    setStatus("ACTIVE");
+    setResponseMinutes("60");
+    setResolutionMinutes("480");
+    if (clients[0]) {
+      setClientId(clients[0].id);
+    }
+  }
+
+  function startEdit(contract: PublicContract) {
+    setEditingId(contract.id);
+    setClientId(contract.clientId);
+    setCode(contract.code);
+    setTitle(contract.title);
+    setValue(formatMoneyInputValue(contract.value));
+    setStartDate(contract.startDate);
+    setStatus(contract.status);
+    setResponseMinutes(String(contract.responseMinutes));
+    setResolutionMinutes(String(contract.resolutionMinutes));
+    setError(null);
+  }
+
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaving(true);
     setError(null);
 
+    const parsedValue = parseMoneyInput(value);
+
+    if (!Number.isFinite(parsedValue) || parsedValue <= 0) {
+      setError("Informe um valor válido em reais (ex.: 10.000,00).");
+      setSaving(false);
+      return;
+    }
+
+    const payload = {
+      clientId,
+      code,
+      title,
+      value: parsedValue,
+      startDate,
+      status,
+      responseMinutes: Number(responseMinutes),
+      resolutionMinutes: Number(resolutionMinutes),
+    };
+
     try {
-      await apiRequest("/api/contracts", {
-        method: "POST",
-        body: {
-          clientId,
-          code,
-          title,
-          value: Number(value),
-          startDate,
-          status: "ACTIVE",
-          responseMinutes: Number(responseMinutes),
-          resolutionMinutes: Number(resolutionMinutes),
-        },
-      });
-      setCode("");
-      setTitle("");
+      if (editingId) {
+        await apiRequest(`/api/contracts/${editingId}`, {
+          method: "PUT",
+          body: payload,
+        });
+      } else {
+        await apiRequest("/api/contracts", {
+          method: "POST",
+          body: payload,
+        });
+      }
+
+      resetForm();
       await load();
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Falha ao criar contrato");
+      setError(
+        err instanceof ApiClientError
+          ? err.message
+          : editingId
+            ? "Falha ao atualizar contrato"
+            : "Falha ao criar contrato",
+      );
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function removeContract(contract: PublicContract) {
+    const confirmed = window.confirm(
+      `Excluir o contrato "${contract.code}"? Esta ação não pode ser desfeita.`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setError(null);
+
+    try {
+      await apiRequest(`/api/contracts/${contract.id}`, { method: "DELETE" });
+      if (editingId === contract.id) {
+        resetForm();
+      }
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : "Falha ao excluir contrato");
     }
   }
 
@@ -89,8 +179,8 @@ export default function ContractsPage() {
 
       {error ? <div className="error-banner">{error}</div> : null}
 
-      <form className={`${styles.formPanel} panel`} onSubmit={onCreate}>
-        <h2>Novo contrato</h2>
+      <form className={`${styles.formPanel} panel`} onSubmit={onSubmit}>
+        <h2>{editingId ? "Editar contrato" : "Novo contrato"}</h2>
         <div className={styles.formGrid}>
           <div className="field">
             <label htmlFor="clientId">Cliente</label>
@@ -122,9 +212,8 @@ export default function ContractsPage() {
             <label htmlFor="value">Valor (R$)</label>
             <input
               id="value"
-              type="number"
-              min="1"
-              step="0.01"
+              inputMode="decimal"
+              placeholder="10.000,00"
               value={value}
               onChange={(e) => setValue(e.target.value)}
               required
@@ -141,7 +230,17 @@ export default function ContractsPage() {
             />
           </div>
           <div className="field">
-            <label htmlFor="responseMinutes">SLA resposta (min)</label>
+            <label htmlFor="status">Situação</label>
+            <select id="status" value={status} onChange={(e) => setStatus(e.target.value)}>
+              {CONTRACT_STATUSES.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="responseMinutes">SLA de resposta (minutos)</label>
             <input
               id="responseMinutes"
               type="number"
@@ -152,7 +251,7 @@ export default function ContractsPage() {
             />
           </div>
           <div className="field">
-            <label htmlFor="resolutionMinutes">SLA resolução (min)</label>
+            <label htmlFor="resolutionMinutes">SLA de resolução (minutos)</label>
             <input
               id="resolutionMinutes"
               type="number"
@@ -163,9 +262,16 @@ export default function ContractsPage() {
             />
           </div>
         </div>
-        <button className="btn btn-primary" type="submit" disabled={saving || !clientId}>
-          {saving ? "Salvando…" : "Cadastrar"}
-        </button>
+        <div className={styles.formActions}>
+          <button className="btn btn-primary" type="submit" disabled={saving || !clientId}>
+            {saving ? "Salvando…" : editingId ? "Salvar alterações" : "Cadastrar"}
+          </button>
+          {editingId ? (
+            <button className="btn btn-ghost" type="button" onClick={resetForm} disabled={saving}>
+              Cancelar edição
+            </button>
+          ) : null}
+        </div>
       </form>
 
       <section className={`${styles.listPanel} panel`}>
@@ -182,7 +288,8 @@ export default function ContractsPage() {
                   <th>Título</th>
                   <th>Valor</th>
                   <th>SLA</th>
-                  <th>Status</th>
+                  <th>Situação</th>
+                  <th>Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -192,12 +299,33 @@ export default function ContractsPage() {
                       <strong>{contract.code}</strong>
                     </td>
                     <td>{contract.title}</td>
-                    <td>R$ {contract.value}</td>
+                    <td>{formatMoneyBRL(contract.value)}</td>
                     <td>
-                      {contract.responseMinutes} / {contract.resolutionMinutes} min
+                      Resposta {contract.responseMinutes} min / Resolução{" "}
+                      {contract.resolutionMinutes} min
                     </td>
                     <td>
-                      <span className="badge badge-neutral">{contract.status}</span>
+                      <span className={contractStatusBadgeClass(contract.status)}>
+                        {labelContractStatus(contract.status)}
+                      </span>
+                    </td>
+                    <td>
+                      <div className={styles.actions}>
+                        <button
+                          type="button"
+                          className="btn btn-ghost"
+                          onClick={() => startEdit(contract)}
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-danger"
+                          onClick={() => void removeContract(contract)}
+                        >
+                          Excluir
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

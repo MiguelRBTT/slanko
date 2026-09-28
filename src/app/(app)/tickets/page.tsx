@@ -2,6 +2,12 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { apiRequest, ApiClientError } from "@/lib/client/api";
+import {
+  labelTicketPriority,
+  labelTicketStatus,
+  ticketPriorityBadgeClass,
+  ticketStatusBadgeClass,
+} from "@/lib/client/labels";
 import type { PublicContract } from "@/types/contract";
 import type { PublicTicket } from "@/types/ticket";
 import styles from "../page-shared.module.css";
@@ -9,14 +15,40 @@ import styles from "../page-shared.module.css";
 type TicketsPayload = { tickets: PublicTicket[] };
 type ContractsPayload = { contracts: PublicContract[] };
 
+const PRIORITIES = [
+  { value: "LOW", label: "Baixa" },
+  { value: "MEDIUM", label: "Média" },
+  { value: "HIGH", label: "Alta" },
+  { value: "CRITICAL", label: "Crítica" },
+] as const;
+
+const STATUSES = [
+  { value: "OPEN", label: "Aberto" },
+  { value: "IN_PROGRESS", label: "Em andamento" },
+  { value: "WAITING", label: "Aguardando" },
+  { value: "RESOLVED", label: "Resolvido" },
+  { value: "CLOSED", label: "Encerrado" },
+] as const;
+
+function isTicketClosed(status: string): boolean {
+  return status === "CLOSED";
+}
+
+function canMutateTicket(status: string): boolean {
+  return !isTicketClosed(status);
+}
+
 export default function TicketsPage() {
   const [tickets, setTickets] = useState<PublicTicket[]>([]);
   const [contracts, setContracts] = useState<PublicContract[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [contractId, setContractId] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("MEDIUM");
   const [category, setCategory] = useState("Suporte");
+  const [status, setStatus] = useState("OPEN");
+  const [solution, setSolution] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -49,46 +81,136 @@ export default function TicketsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function onCreate(event: FormEvent<HTMLFormElement>) {
+  function resetForm() {
+    setEditingId(null);
+    setTitle("");
+    setDescription("");
+    setPriority("MEDIUM");
+    setCategory("Suporte");
+    setStatus("OPEN");
+    setSolution("");
+    if (contracts[0]) {
+      setContractId(contracts[0].id);
+    }
+  }
+
+  function startEdit(ticket: PublicTicket) {
+    if (!canMutateTicket(ticket.status)) {
+      setError("Chamados encerrados não podem ser editados.");
+      return;
+    }
+
+    setEditingId(ticket.id);
+    setContractId(ticket.contractId);
+    setTitle(ticket.title);
+    setDescription(ticket.description);
+    setPriority(ticket.priority);
+    setCategory(ticket.category);
+    setStatus(ticket.status);
+    setSolution(ticket.solution ?? "");
+    setError(null);
+  }
+
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaving(true);
     setError(null);
 
     try {
-      await apiRequest("/api/tickets", {
-        method: "POST",
-        body: {
-          contractId,
-          title,
-          description,
-          priority,
-          category,
-        },
-      });
-      setTitle("");
-      setDescription("");
+      if (editingId) {
+        if (
+          (status === "RESOLVED" || status === "CLOSED") &&
+          !solution.trim()
+        ) {
+          setError("Informe a solução para marcar o chamado como resolvido ou encerrado.");
+          setSaving(false);
+          return;
+        }
+
+        await apiRequest(`/api/tickets/${editingId}`, {
+          method: "PUT",
+          body: {
+            title,
+            description,
+            priority,
+            category,
+            status,
+            solution: solution.trim() || null,
+          },
+        });
+      } else {
+        await apiRequest("/api/tickets", {
+          method: "POST",
+          body: {
+            contractId,
+            title,
+            description,
+            priority,
+            category,
+          },
+        });
+      }
+
+      resetForm();
       await load();
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Falha ao abrir chamado");
+      setError(
+        err instanceof ApiClientError
+          ? err.message
+          : editingId
+            ? "Falha ao atualizar chamado"
+            : "Falha ao abrir chamado",
+      );
     } finally {
       setSaving(false);
     }
   }
 
-  async function resolveTicket(ticketId: string) {
+  async function resolveTicket(ticket: PublicTicket) {
     setError(null);
 
     try {
-      await apiRequest(`/api/tickets/${ticketId}`, {
+      await apiRequest(`/api/tickets/${ticket.id}`, {
         method: "PUT",
         body: {
           status: "RESOLVED",
-          solution: "Atendimento concluído via painel Slanko.",
+          solution: ticket.solution?.trim() || "Atendimento concluído pelo painel Slanko.",
         },
       });
+      if (editingId === ticket.id) {
+        resetForm();
+      }
       await load();
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : "Falha ao resolver chamado");
+    }
+  }
+
+  async function closeTicket(ticket: PublicTicket) {
+    const confirmed = window.confirm(
+      `Encerrar o chamado "${ticket.title}"? Ele não poderá mais ser editado.`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setError(null);
+
+    try {
+      await apiRequest(`/api/tickets/${ticket.id}`, {
+        method: "PUT",
+        body: {
+          status: "CLOSED",
+          solution: ticket.solution?.trim() || "Chamado encerrado pelo painel Slanko.",
+        },
+      });
+      if (editingId === ticket.id) {
+        resetForm();
+      }
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : "Falha ao encerrar chamado");
     }
   }
 
@@ -97,14 +219,14 @@ export default function TicketsPage() {
       <header className={styles.header}>
         <div>
           <h1>Chamados</h1>
-          <p className="muted">Abertura, acompanhamento e encerramento com solução.</p>
+          <p className="muted">Abertura, acompanhamento, edição e encerramento com solução.</p>
         </div>
       </header>
 
       {error ? <div className="error-banner">{error}</div> : null}
 
-      <form className={`${styles.formPanel} panel`} onSubmit={onCreate}>
-        <h2>Abrir chamado</h2>
+      <form className={`${styles.formPanel} panel`} onSubmit={onSubmit}>
+        <h2>{editingId ? "Editar chamado" : "Abrir chamado"}</h2>
         <div className={styles.formGrid}>
           <div className="field">
             <label htmlFor="contractId">Contrato ativo</label>
@@ -113,6 +235,7 @@ export default function TicketsPage() {
               value={contractId}
               onChange={(e) => setContractId(e.target.value)}
               required
+              disabled={Boolean(editingId)}
             >
               <option value="" disabled>
                 Selecione
@@ -131,10 +254,11 @@ export default function TicketsPage() {
           <div className="field">
             <label htmlFor="priority">Prioridade</label>
             <select id="priority" value={priority} onChange={(e) => setPriority(e.target.value)}>
-              <option value="LOW">Baixa</option>
-              <option value="MEDIUM">Média</option>
-              <option value="HIGH">Alta</option>
-              <option value="CRITICAL">Crítica</option>
+              {PRIORITIES.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
             </select>
           </div>
           <div className="field">
@@ -146,6 +270,18 @@ export default function TicketsPage() {
               required
             />
           </div>
+          {editingId ? (
+            <div className="field">
+              <label htmlFor="status">Situação</label>
+              <select id="status" value={status} onChange={(e) => setStatus(e.target.value)}>
+                {STATUSES.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
           <div className={`field ${styles.full}`}>
             <label htmlFor="description">Descrição</label>
             <textarea
@@ -156,10 +292,33 @@ export default function TicketsPage() {
               required
             />
           </div>
+          {editingId ? (
+            <div className={`field ${styles.full}`}>
+              <label htmlFor="solution">Solução</label>
+              <textarea
+                id="solution"
+                rows={2}
+                value={solution}
+                onChange={(e) => setSolution(e.target.value)}
+                placeholder="Obrigatória ao resolver ou encerrar"
+              />
+            </div>
+          ) : null}
         </div>
-        <button className="btn btn-primary" type="submit" disabled={saving || !contractId}>
-          {saving ? "Abrindo…" : "Abrir chamado"}
-        </button>
+        <div className={styles.formActions}>
+          <button className="btn btn-primary" type="submit" disabled={saving || !contractId}>
+            {saving
+              ? "Salvando…"
+              : editingId
+                ? "Salvar alterações"
+                : "Abrir chamado"}
+          </button>
+          {editingId ? (
+            <button className="btn btn-ghost" type="button" onClick={resetForm} disabled={saving}>
+              Cancelar edição
+            </button>
+          ) : null}
+        </div>
       </form>
 
       <section className={`${styles.listPanel} panel`}>
@@ -174,8 +333,8 @@ export default function TicketsPage() {
                 <tr>
                   <th>Chamado</th>
                   <th>Prioridade</th>
-                  <th>Status</th>
-                  <th>Ação</th>
+                  <th>Situação</th>
+                  <th>Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -186,22 +345,44 @@ export default function TicketsPage() {
                       <div className="muted">{ticket.category}</div>
                     </td>
                     <td>
-                      <span className="badge badge-warn">{ticket.priority}</span>
+                      <span className={ticketPriorityBadgeClass(ticket.priority)}>
+                        {labelTicketPriority(ticket.priority)}
+                      </span>
                     </td>
                     <td>
-                      <span className="badge badge-neutral">{ticket.status}</span>
+                      <span className={ticketStatusBadgeClass(ticket.status)}>
+                        {labelTicketStatus(ticket.status)}
+                      </span>
                     </td>
                     <td>
-                      {ticket.status !== "CLOSED" && ticket.status !== "RESOLVED" ? (
-                        <button
-                          type="button"
-                          className="btn btn-ghost"
-                          onClick={() => void resolveTicket(ticket.id)}
-                        >
-                          Resolver
-                        </button>
+                      {canMutateTicket(ticket.status) ? (
+                        <div className={styles.actions}>
+                          <button
+                            type="button"
+                            className="btn btn-ghost"
+                            onClick={() => startEdit(ticket)}
+                          >
+                            Editar
+                          </button>
+                          {ticket.status !== "RESOLVED" ? (
+                            <button
+                              type="button"
+                              className="btn btn-ghost"
+                              onClick={() => void resolveTicket(ticket)}
+                            >
+                              Resolver
+                            </button>
+                          ) : null}
+                          <button
+                            type="button"
+                            className="btn btn-danger"
+                            onClick={() => void closeTicket(ticket)}
+                          >
+                            Encerrar
+                          </button>
+                        </div>
                       ) : (
-                        <span className="muted">n/d</span>
+                        <span className="muted">Encerrado</span>
                       )}
                     </td>
                   </tr>
