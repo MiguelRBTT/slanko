@@ -101,7 +101,7 @@ describe("AppShell", () => {
     expect(replace).toHaveBeenCalledWith("/login");
   });
 
-  it("hides gestor-only links for tecnico", async () => {
+  it("hides gestor-only links for tecnico and sends them to chamados", async () => {
     vi.spyOn(authSession, "getSession").mockReturnValue({
       token: "t",
       user: { ...gestor, name: "Bob", role: "TECNICO" },
@@ -118,9 +118,12 @@ describe("AppShell", () => {
     });
 
     expect(screen.getByText("Técnico")).toBeTruthy();
-    expect(screen.getByText("Painel")).toBeTruthy();
+    expect(screen.queryByText("Painel")).toBeNull();
     expect(screen.getByText("Chamados")).toBeTruthy();
     expect(screen.queryByText("Clientes")).toBeNull();
     expect(screen.queryByText("Contratos")).toBeNull();
+    await waitFor(() => {
+      expect(replace).toHaveBeenCalledWith("/tickets");
+    });
   });
 });

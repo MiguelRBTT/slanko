@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { apiRequest, ApiClientError } from "@/lib/client/api";
+import { formatHours, formatMoneyBRL, formatPercent } from "@/lib/client/format";
+import { labelSlaCheck, labelTicketStatus, slaCheckBadgeClass } from "@/lib/client/labels";
 import { getSession } from "@/lib/client/auth-session";
 import type { PublicProfitabilitySummary } from "@/types/profitability";
 import type { PublicSlaSummary } from "@/types/sla";
@@ -9,10 +11,6 @@ import styles from "./dashboard.module.css";
 
 type SlaPayload = { summary: PublicSlaSummary };
 type ProfitPayload = { summary: PublicProfitabilitySummary };
-
-function formatRate(value: number | null): string {
-  return value === null ? "n/d" : `${value.toFixed(1)}%`;
-}
 
 export default function DashboardPage() {
   const [sla, setSla] = useState<PublicSlaSummary | null>(null);
@@ -51,17 +49,7 @@ export default function DashboardPage() {
   }, []);
 
   if (!isGestor) {
-    return (
-      <section className={styles.page}>
-        <header className={styles.header}>
-          <h1>Painel</h1>
-          <p className="muted">
-            Indicadores de SLA e rentabilidade ficam disponíveis para o perfil gestor. Como técnico,
-            use a área de chamados para operar atendimentos.
-          </p>
-        </header>
-      </section>
-    );
+    return <div className={styles.loading}>Redirecionando para chamados…</div>;
   }
 
   if (loading) {
@@ -88,28 +76,28 @@ export default function DashboardPage() {
 
       <div className={styles.metrics}>
         <article className={`${styles.metric} panel`}>
-          <p className={styles.metricLabel}>SLA resposta</p>
-          <strong>{formatRate(sla?.response.complianceRate ?? null)}</strong>
+          <p className={styles.metricLabel}>SLA de resposta</p>
+          <strong>{formatPercent(sla?.response.complianceRate ?? null)}</strong>
           <p className="muted">
-            {sla?.response.met ?? 0} ok, {sla?.response.breached ?? 0} violados,{" "}
+            {sla?.response.met ?? 0} cumpridos, {sla?.response.breached ?? 0} violados,{" "}
             {sla?.response.pending ?? 0} pendentes
           </p>
         </article>
 
         <article className={`${styles.metric} panel`}>
-          <p className={styles.metricLabel}>SLA resolução</p>
-          <strong>{formatRate(sla?.resolution.complianceRate ?? null)}</strong>
+          <p className={styles.metricLabel}>SLA de resolução</p>
+          <strong>{formatPercent(sla?.resolution.complianceRate ?? null)}</strong>
           <p className="muted">
-            {sla?.resolution.met ?? 0} ok, {sla?.resolution.breached ?? 0} violados,{" "}
+            {sla?.resolution.met ?? 0} cumpridos, {sla?.resolution.breached ?? 0} violados,{" "}
             {sla?.resolution.pending ?? 0} pendentes
           </p>
         </article>
 
         <article className={`${styles.metric} panel`}>
           <p className={styles.metricLabel}>Margem total</p>
-          <strong>R$ {profit?.totalMargin ?? "0.00"}</strong>
+          <strong>{formatMoneyBRL(profit?.totalMargin ?? 0)}</strong>
           <p className="muted">
-            Custo R$ {profit?.totalCost ?? "0.00"}, {profit?.totalHours ?? "0.00"} h
+            Custo {formatMoneyBRL(profit?.totalCost ?? 0)}, {formatHours(profit?.totalHours ?? 0)}
           </p>
         </article>
 
@@ -119,7 +107,7 @@ export default function DashboardPage() {
             {(profit?.deficitaryContracts ?? 0) + breachedTickets.length}
           </strong>
           <p className="muted">
-            {profit?.deficitaryContracts ?? 0} deficitários, {breachedTickets.length} SLA crítico
+            {profit?.deficitaryContracts ?? 0} deficitários, {breachedTickets.length} com SLA crítico
           </p>
         </article>
       </div>
@@ -150,10 +138,12 @@ export default function DashboardPage() {
                         <strong>{contract.contractCode}</strong>
                         <div className="muted">{contract.contractTitle}</div>
                       </td>
-                      <td>R$ {contract.contractValue}</td>
-                      <td>R$ {contract.totalCost}</td>
+                      <td>{formatMoneyBRL(contract.contractValue)}</td>
+                      <td>{formatMoneyBRL(contract.totalCost)}</td>
                       <td>
-                        <span className="badge badge-danger">R$ {contract.margin}</span>
+                        <span className="badge badge-danger">
+                          {formatMoneyBRL(contract.margin)}
+                        </span>
                       </td>
                     </tr>
                   ))}
@@ -185,26 +175,16 @@ export default function DashboardPage() {
                     <tr key={ticket.ticketId}>
                       <td>
                         <strong>{ticket.title}</strong>
-                        <div className="muted">{ticket.status}</div>
+                        <div className="muted">{labelTicketStatus(ticket.status)}</div>
                       </td>
                       <td>
-                        <span
-                          className={`badge ${
-                            ticket.response.status === "BREACHED" ? "badge-danger" : "badge-neutral"
-                          }`}
-                        >
-                          {ticket.response.status}
+                        <span className={slaCheckBadgeClass(ticket.response.status)}>
+                          {labelSlaCheck(ticket.response.status)}
                         </span>
                       </td>
                       <td>
-                        <span
-                          className={`badge ${
-                            ticket.resolution.status === "BREACHED"
-                              ? "badge-danger"
-                              : "badge-neutral"
-                          }`}
-                        >
-                          {ticket.resolution.status}
+                        <span className={slaCheckBadgeClass(ticket.resolution.status)}>
+                          {labelSlaCheck(ticket.resolution.status)}
                         </span>
                       </td>
                     </tr>

@@ -7,11 +7,17 @@ import { clearSession, getSession, type SessionUser } from "@/lib/client/auth-se
 import styles from "./app-shell.module.css";
 
 const NAV = [
-  { href: "/dashboard", label: "Painel" },
+  { href: "/dashboard", label: "Painel", gestorOnly: true },
   { href: "/clients", label: "Clientes", gestorOnly: true },
   { href: "/contracts", label: "Contratos", gestorOnly: true },
   { href: "/tickets", label: "Chamados" },
 ] as const;
+
+const GESTOR_ONLY_PATHS = ["/dashboard", "/clients", "/contracts"] as const;
+
+function homePathForRole(role: SessionUser["role"]): string {
+  return role === "GESTOR" ? "/dashboard" : "/tickets";
+}
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -34,11 +40,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!ready || !user) return;
 
+    if (
+      user.role !== "GESTOR" &&
+      GESTOR_ONLY_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))
+    ) {
+      router.replace("/tickets");
+      return;
+    }
+
     for (const item of NAV) {
       if ("gestorOnly" in item && item.gestorOnly && user.role !== "GESTOR") continue;
       router.prefetch(item.href);
     }
-  }, [ready, user, router]);
+  }, [ready, user, router, pathname]);
 
   function logout() {
     clearSession();
@@ -50,12 +64,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   const links = NAV.filter((item) => !("gestorOnly" in item && item.gestorOnly) || user.role === "GESTOR");
+  const homeHref = homePathForRole(user.role);
 
   return (
     <div className={styles.shell}>
       <aside className={styles.sidebar}>
         <div className={styles.brandBlock}>
-          <Link href="/dashboard" className={styles.brand} prefetch>
+          <Link href={homeHref} className={styles.brand} prefetch>
             Slanko
           </Link>
           <p className={styles.brandTag}>Suporte com visão de negócio</p>

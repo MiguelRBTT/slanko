@@ -25,11 +25,10 @@ describe("ClientsPage", () => {
         {
           id: "c1",
           name: "Acme",
+          document: null,
           email: "a@acme.com",
           phone: null,
           active: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
         },
       ],
     });
@@ -41,6 +40,8 @@ describe("ClientsPage", () => {
     });
     expect(screen.getByText("a@acme.com")).toBeTruthy();
     expect(screen.getByText("Ativo")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Editar" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Desativar" })).toBeTruthy();
   });
 
   it("creates a client and reloads the list", async () => {
@@ -52,11 +53,10 @@ describe("ClientsPage", () => {
         client: {
           id: "c2",
           name: "Nova",
+          document: null,
           email: null,
           phone: null,
           active: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
         },
       })
       .mockResolvedValueOnce({
@@ -64,11 +64,10 @@ describe("ClientsPage", () => {
           {
             id: "c2",
             name: "Nova",
+            document: null,
             email: null,
             phone: null,
             active: true,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
           },
         ],
       });
