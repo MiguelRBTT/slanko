@@ -237,10 +237,10 @@ Detalhamento: [docs/arquitetura-c4.md](docs/arquitetura-c4.md).
 ### Fluxo de negócio (resumo)
 
 1. Gestor cadastra clientes e contratos (valor e metas de SLA)
-2. Técnico/gestor registra chamados e aponta horas
+2. Gestor e técnico registram chamados e apontam o tempo de trabalho, em minutos, na tela de chamados
 3. O sistema calcula cumprimento de SLA e violações
 4. O sistema calcula custo operacional e margem por contrato
-5. Dashboard exibe indicadores e alertas
+5. O gestor vê indicadores e alertas no painel
 
 ---
 
@@ -312,7 +312,12 @@ Dicionário de dados, regras e esboço Prisma: [docs/modelagem.md](docs/modelage
    npm run db:studio
    ```
 
-**Usuários de teste (seed):** `gestor@slanko.local` e `tecnico@slanko.local` — senha `Slanko@123`.
+**Usuários de teste (seed):** senha `Slanko@123`.
+
+| E-mail | Perfil | O que vê na interface |
+|---|---|---|
+| `gestor@slanko.local` | Gestor | Painel, clientes, contratos e chamados |
+| `tecnico@slanko.local` | Técnico | Somente chamados |
 
 **Scripts úteis:** `npm run db:down` (para o MySQL), `npm run db:logs` (logs do container), `npm run db:reset` (apaga e recria tudo — cuidado).
 
@@ -322,15 +327,17 @@ Dicionário de dados, regras e esboço Prisma: [docs/modelagem.md](docs/modelage
 npm run dev
 ```
 
-Abra [http://localhost:3000](http://localhost:3000). A home redireciona para `/login`.
+Abra [http://localhost:3000](http://localhost:3000). A home redireciona para `/login`. Depois do login, o gestor entra em `/dashboard` e o técnico em `/tickets`.
 
 **Interface web:**
 
+O menu do técnico tem apenas **Chamados**. Painel, clientes e contratos são telas do gestor. Se o técnico abrir `/dashboard`, `/clients` ou `/contracts`, a aplicação devolve para `/tickets`.
+
 * `/login` — autenticação JWT
-* `/dashboard` — painel de SLA e rentabilidade (gestor)
-* `/clients` — clientes (gestor)
-* `/contracts` — contratos (gestor cria; técnico lista ativos)
-* `/tickets` — chamados (gestor e técnico)
+* `/dashboard` — painel de SLA e rentabilidade (somente gestor)
+* `/clients` — clientes (somente gestor)
+* `/contracts` — contratos (somente gestor)
+* `/tickets` — chamados. O gestor vê todos. O técnico vê só os que abriu ou que estão atribuídos a ele: abre chamado, aponta minutos, resolve, corrige dados e encerra. A atribuição de técnico a um chamado continua restrita ao gestor.
 
 **Autenticação (JWT):**
 

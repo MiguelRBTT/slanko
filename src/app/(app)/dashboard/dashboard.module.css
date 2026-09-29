@@ -21,7 +21,15 @@
 }
 
 .metric {
-  padding: 1.1rem 1.15rem;
+  padding: 1.1rem 1.15rem 1.15rem;
+  overflow: visible;
+}
+
+.metricHead,
+.sectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
 }
 
 .metricLabel {
@@ -30,23 +38,130 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  margin-bottom: 0.55rem;
 }
 
 .metric strong {
   display: block;
   font-size: 1.7rem;
   letter-spacing: -0.03em;
-  margin-bottom: 0.35rem;
+  margin-top: 0.55rem;
 }
 
-.grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.9rem;
+.tip {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
 }
 
-.grid > section {
+.tip:hover,
+.tip:focus-within {
+  z-index: 8;
+}
+
+.tipButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--ink-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0;
+  text-transform: none;
+  cursor: help;
+}
+
+.tipButton:hover,
+.tipButton:focus-visible {
+  border-color: var(--brand);
+  color: var(--brand-deep);
+  background: var(--brand-soft);
+  outline: none;
+}
+
+.tipBubble {
+  position: absolute;
+  z-index: 9;
+  top: calc(100% + 0.55rem);
+  left: 50%;
+  width: 15.5rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 10px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 500;
+  line-height: 1.45;
+  letter-spacing: 0;
+  text-transform: none;
+  text-align: left;
+  box-shadow: 0 10px 28px rgba(23, 23, 23, 0.22);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-50%) translateY(4px);
+  transition:
+    opacity 0.16s var(--ease),
+    transform 0.16s var(--ease),
+    visibility 0.16s;
+  pointer-events: none;
+}
+
+.tipBubble::after {
+  content: "";
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-bottom-color: var(--ink);
+}
+
+.tip:hover .tipBubble,
+.tip:focus-within .tipBubble {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+.tipStart .tipBubble {
+  left: 0;
+  transform: translateY(4px);
+}
+
+.tipStart .tipBubble::after {
+  left: 0.45rem;
+  transform: none;
+}
+
+.tipStart:hover .tipBubble,
+.tipStart:focus-within .tipBubble {
+  transform: translateY(0);
+}
+
+.tipEnd .tipBubble {
+  left: auto;
+  right: 0;
+  transform: translateY(4px);
+}
+
+.tipEnd .tipBubble::after {
+  left: auto;
+  right: 0.35rem;
+  transform: none;
+}
+
+.tipEnd:hover .tipBubble,
+.tipEnd:focus-within .tipBubble {
+  transform: translateY(0);
+}
+
+.page > section:global(.panel) {
   padding: 1rem 1.1rem 0.4rem;
 }
 
@@ -65,10 +180,6 @@
 @media (max-width: 1100px) {
   .metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .grid {
-    grid-template-columns: 1fr;
   }
 }
 

@@ -2,11 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { apiRequest, ApiClientError } from "@/lib/client/api";
-import {
-  formatMoneyBRL,
-  formatMoneyInputValue,
-  parseMoneyInput,
-} from "@/lib/client/format";
+import { formatMoneyBRL, maskMoneyInput, parseMoneyInput } from "@/lib/client/format";
 import {
   contractStatusBadgeClass,
   labelContractStatus,
@@ -32,7 +28,7 @@ export default function ContractsPage() {
   const [clientId, setClientId] = useState("");
   const [code, setCode] = useState("");
   const [title, setTitle] = useState("");
-  const [value, setValue] = useState("4.500,00");
+  const [value, setValue] = useState(formatMoneyBRL(4500));
   const [startDate, setStartDate] = useState("2026-01-01");
   const [status, setStatus] = useState("ACTIVE");
   const [responseMinutes, setResponseMinutes] = useState("60");
@@ -71,7 +67,7 @@ export default function ContractsPage() {
     setEditingId(null);
     setCode("");
     setTitle("");
-    setValue("4.500,00");
+    setValue(formatMoneyBRL(4500));
     setStartDate("2026-01-01");
     setStatus("ACTIVE");
     setResponseMinutes("60");
@@ -86,7 +82,7 @@ export default function ContractsPage() {
     setClientId(contract.clientId);
     setCode(contract.code);
     setTitle(contract.title);
-    setValue(formatMoneyInputValue(contract.value));
+    setValue(formatMoneyBRL(contract.value));
     setStartDate(contract.startDate);
     setStatus(contract.status);
     setResponseMinutes(String(contract.responseMinutes));
@@ -209,13 +205,13 @@ export default function ContractsPage() {
             <input id="title" value={title} onChange={(e) => setTitle(e.target.value)} required />
           </div>
           <div className="field">
-            <label htmlFor="value">Valor (R$)</label>
+            <label htmlFor="value">Valor</label>
             <input
               id="value"
-              inputMode="decimal"
-              placeholder="10.000,00"
+              inputMode="numeric"
+              placeholder="R$ 0,00"
               value={value}
-              onChange={(e) => setValue(e.target.value)}
+              onChange={(e) => setValue(maskMoneyInput(e.target.value))}
               required
             />
           </div>
