@@ -118,7 +118,7 @@ model TimeEntry {
   id        String   @id @default(uuid())
   ticketId  String   @map("ticket_id")
   userId    String   @map("user_id")
-  hours     Decimal  @db.Decimal(6, 2)
+  hours     Decimal  @db.Decimal(10, 4)
   note      String?
   workedAt  DateTime @map("worked_at")
   createdAt DateTime @default(now()) @map("created_at")

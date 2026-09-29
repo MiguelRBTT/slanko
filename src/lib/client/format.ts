@@ -13,9 +13,13 @@ export function formatMoneyBRL(value: number | string | null | undefined): strin
   });
 }
 
-/** Converte texto digitado em pt-BR (ex.: 10.000,50) para número. */
+/** Converte texto digitado em pt-BR (ex.: R$ 10.000,50) para número. */
 export function parseMoneyInput(raw: string): number {
-  const trimmed = raw.trim();
+  const trimmed = raw
+    .trim()
+    .replace(/\u00a0/g, " ")
+    .replace(/r\$\s*/i, "")
+    .trim();
 
   if (!trimmed) {
     return Number.NaN;
@@ -26,6 +30,17 @@ export function parseMoneyInput(raw: string): number {
     : trimmed;
 
   return Number(normalized);
+}
+
+/** Máscara de moeda: cada dígito entra pela direita, como centavos. */
+export function maskMoneyInput(raw: string): string {
+  const digits = raw.replace(/\D/g, "").slice(0, 14);
+
+  if (!digits) {
+    return "";
+  }
+
+  return formatMoneyBRL(Number(digits) / 100);
 }
 
 export function formatMoneyInputValue(value: number | string): string {
@@ -47,6 +62,48 @@ export function formatPercent(value: number | null | undefined, digits = 1): str
   }
 
   return `${value.toFixed(digits).replace(".", ",")}%`;
+}
+
+/** Máscara de minutos: só dígitos, exibidos como "45 min". */
+export function maskMinutesInput(raw: string): string {
+  const digits = raw.replace(/\D/g, "").replace(/^0+/, "").slice(0, 6);
+
+  if (!digits) {
+    return "";
+  }
+
+  return `${Number(digits).toLocaleString("pt-BR")} min`;
+}
+
+export function parseMinutesInput(raw: string): number {
+  const digits = raw.replace(/\D/g, "");
+
+  if (!digits) {
+    return Number.NaN;
+  }
+
+  return Number(digits);
+}
+
+/** Converte minutos inteiros para horas com 4 casas, para gravar no banco. */
+export function minutesToHours(minutes: number): number {
+  return Number((minutes / 60).toFixed(4));
+}
+
+export function hoursToMinutes(hours: number | string | null | undefined): number {
+  const value = typeof hours === "string" ? Number(hours) : (hours ?? 0);
+
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+
+  return Math.round(value * 60);
+}
+
+export function formatWorkedMinutes(hoursOrMinutes: number | string | null | undefined, alreadyMinutes = false): string {
+  const minutes = alreadyMinutes ? Math.round(Number(hoursOrMinutes ?? 0)) : hoursToMinutes(hoursOrMinutes);
+
+  return `${minutes.toLocaleString("pt-BR")} min`;
 }
 
 export function formatHours(value: number | string | null | undefined): string {
