@@ -307,7 +307,7 @@ export default function TicketsPage() {
         category: editCategory,
       };
 
-      if (selected.status !== "RESOLVED" && selected.status !== "CLOSED") {
+      if (selected.status !== "RESOLVED") {
         body.status = editStatus;
       }
 
