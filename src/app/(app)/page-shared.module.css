@@ -43,8 +43,94 @@
   align-items: center;
 }
 
+.compact {
+  padding: 0.45rem 0.75rem;
+  font-size: 0.82rem;
+}
+
+.selectedRow {
+  background: var(--brand-soft);
+}
+
+.dialog {
+  width: min(42rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  margin: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: visible;
+}
+
+.dialog::backdrop {
+  background: rgba(23, 23, 23, 0.48);
+}
+
+.dialogCard {
+  display: grid;
+  gap: 0.85rem;
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  padding: 1.2rem 1.25rem 1.3rem;
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 18px 48px rgba(23, 23, 23, 0.22);
+}
+
+.dialogCard :global(.empty-state) {
+  padding: 0.25rem 0 0.5rem;
+}
+
+.dialogCard .inlineForm {
+  grid-template-columns: 1fr 1fr;
+}
+
+.dialogCard .inlineForm .noteField,
+.dialogCard .inlineForm button {
+  grid-column: 1 / -1;
+}
+
+.sectionHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.entryList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.entryList li {
+  display: grid;
+  grid-template-columns: 7.5rem 7rem 1fr;
+  gap: 0.75rem;
+  align-items: baseline;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.inlineForm {
+  display: grid;
+  grid-template-columns: 10rem 11rem 1fr auto;
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.noteField {
+  min-width: 0;
+}
+
 @media (max-width: 760px) {
-  .formGrid {
+  .formGrid,
+  .inlineForm,
+  .dialogCard .inlineForm,
+  .entryList li {
     grid-template-columns: 1fr;
   }
 }
