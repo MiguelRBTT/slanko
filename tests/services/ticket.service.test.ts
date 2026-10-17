@@ -80,6 +80,7 @@ describe("TicketService", () => {
     findById: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
+    delete: vi.fn(),
   };
 
   const mockContracts: ContractRepository = {
@@ -439,5 +440,27 @@ describe("TicketService", () => {
     await expect(
       service.updateTicket("ticket-1", { status: "INVALID" as "OPEN" }, gestorAuth),
     ).rejects.toBeInstanceOf(BadRequestError);
+  });
+
+  it("deletes a ticket when the user has access", async () => {
+    vi.mocked(mockTickets.findById).mockResolvedValue(sampleTicket);
+    vi.mocked(mockTickets.delete).mockResolvedValue(undefined);
+
+    const service = new TicketService(mockTickets, mockContracts, mockUsers);
+    await service.deleteTicket("ticket-1", tecnicoAuth);
+
+    expect(mockTickets.delete).toHaveBeenCalledWith("ticket-1");
+  });
+
+  it("rejects delete when ticket is missing or forbidden", async () => {
+    const service = new TicketService(mockTickets, mockContracts, mockUsers);
+
+    vi.mocked(mockTickets.findById).mockResolvedValue(null);
+    await expect(service.deleteTicket("missing", gestorAuth)).rejects.toBeInstanceOf(NotFoundError);
+
+    vi.mocked(mockTickets.findById).mockResolvedValue(sampleTicket);
+    await expect(service.deleteTicket("ticket-1", otherTecnicoAuth)).rejects.toBeInstanceOf(
+      ForbiddenError,
+    );
   });
 });
