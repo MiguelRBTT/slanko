@@ -5,6 +5,7 @@ import {
   NotFoundError,
 } from "@/lib/errors/app-error";
 import { TicketService } from "@/services/ticket.service";
+import type { TicketAttachmentService } from "@/services/ticket-attachment.service";
 import type { ContractRepository } from "@/repositories/contract.repository";
 import type { TicketRepository } from "@/repositories/ticket.repository";
 import type { UserRepository } from "@/repositories/user.repository";
@@ -48,6 +49,8 @@ const sampleTicket = {
   contractId: "contract-1",
   openedById: "user-gestor",
   assignedToId: "user-tecnico",
+  assignedTo: { id: "user-tecnico", name: "Carlos Tecnico" },
+  observers: [] as Array<{ userId: string }>,
   title: "Servidor lento",
   description: "Usuarios reportam lentidao.",
   priority: "HIGH" as const,
@@ -80,6 +83,7 @@ describe("TicketService", () => {
     findById: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
+    replaceObservers: vi.fn(),
     delete: vi.fn(),
   };
 
@@ -99,6 +103,18 @@ describe("TicketService", () => {
     findByEmail: vi.fn(),
   };
 
+  const mockAttachments = {
+    listAttachments: vi.fn(),
+    createAttachment: vi.fn(),
+    deleteAttachment: vi.fn(),
+    getAttachmentFile: vi.fn(),
+    deleteAllForTicket: vi.fn(),
+  } as unknown as TicketAttachmentService;
+
+  function makeService() {
+    return new TicketService(mockTickets, mockContracts, mockUsers, mockAttachments);
+  }
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -106,7 +122,7 @@ describe("TicketService", () => {
   it("lists all tickets for gestor and scoped tickets for tecnico", async () => {
     vi.mocked(mockTickets.findMany).mockResolvedValue([sampleTicket]);
 
-    const service = new TicketService(mockTickets, mockContracts, mockUsers);
+    const service = makeService();
 
     await service.listTickets(gestorAuth, { status: "OPEN" });
     expect(mockTickets.findMany).toHaveBeenCalledWith({ status: "OPEN" });
@@ -121,7 +137,7 @@ describe("TicketService", () => {
   it("returns a ticket when the user has access", async () => {
     vi.mocked(mockTickets.findById).mockResolvedValue(sampleTicket);
 
-    const service = new TicketService(mockTickets, mockContracts, mockUsers);
+    const service = makeService();
     const ticket = await service.getTicketById("ticket-1", tecnicoAuth);
 
     expect(ticket.id).toBe("ticket-1");
@@ -129,11 +145,48 @@ describe("TicketService", () => {
 
   it("throws when ticket is missing or inaccessible", async () => {
     vi.mocked(mockTickets.findById).mockResolvedValue(null);
-    const service = new TicketService(mockTickets, mockContracts, mockUsers);
+    const service = makeService();
 
     await expect(service.getTicketById("missing", gestorAuth)).rejects.toBeInstanceOf(NotFoundError);
 
     vi.mocked(mockTickets.findById).mockResolvedValue(sampleTicket);
+    await expect(service.getTicketById("ticket-1", otherTecnicoAuth)).rejects.toBeInstanceOf(
+      ForbiddenError,
+    );
+  });
+
+  it("allows observers to access a ticket", async () => {
+    vi.mocked(mockTickets.findById).mockResolvedValue({
+      ...sampleTicket,
+      assignedToId: "user-tecnico",
+      observers: [{ userId: "user-other" }],
+    });
+
+    const service = makeService();
+    const ticket = await service.getTicketById("ticket-1", otherTecnicoAuth);
+
+    expect(ticket.observerIds).toEqual(["user-other"]);
+  });
+
+  it("keeps opener access only while the ticket has no assignee", async () => {
+    const service = makeService();
+
+    vi.mocked(mockTickets.findById).mockResolvedValue({
+      ...sampleTicket,
+      openedById: "user-other",
+      assignedToId: null,
+      assignedTo: null,
+    });
+    await expect(service.getTicketById("ticket-1", otherTecnicoAuth)).resolves.toMatchObject({
+      id: "ticket-1",
+    });
+
+    vi.mocked(mockTickets.findById).mockResolvedValue({
+      ...sampleTicket,
+      openedById: "user-other",
+      assignedToId: "user-tecnico",
+      assignedTo: { id: "user-tecnico", name: "Carlos Tecnico" },
+    });
     await expect(service.getTicketById("ticket-1", otherTecnicoAuth)).rejects.toBeInstanceOf(
       ForbiddenError,
     );
@@ -146,7 +199,7 @@ describe("TicketService", () => {
       assignedToId: null,
     });
 
-    const service = new TicketService(mockTickets, mockContracts, mockUsers);
+    const service = makeService();
     await service.createTicket(
       {
         contractId: "contract-1",
@@ -168,7 +221,7 @@ describe("TicketService", () => {
     vi.mocked(mockUsers.findById).mockResolvedValue(activeUser);
     vi.mocked(mockTickets.create).mockResolvedValue(sampleTicket);
 
-    const service = new TicketService(mockTickets, mockContracts, mockUsers);
+    const service = makeService();
     const ticket = await service.createTicket(
       {
         contractId: "contract-1",
@@ -184,8 +237,8 @@ describe("TicketService", () => {
     expect(ticket.title).toBe("Servidor lento");
   });
 
-  it("rejects invalid create payloads and assignments by tecnico", async () => {
-    const service = new TicketService(mockTickets, mockContracts, mockUsers);
+  it("rejects invalid create payloads and allows assignment by tecnico", async () => {
+    const service = makeService();
 
     vi.mocked(mockContracts.findById).mockResolvedValue(null);
     await expect(
@@ -202,6 +255,8 @@ describe("TicketService", () => {
     ).rejects.toBeInstanceOf(BadRequestError);
 
     vi.mocked(mockContracts.findById).mockResolvedValue(activeContract);
+    vi.mocked(mockUsers.findById).mockResolvedValue(activeUser);
+    vi.mocked(mockTickets.create).mockResolvedValue(sampleTicket);
     await expect(
       service.createTicket(
         {
@@ -214,7 +269,7 @@ describe("TicketService", () => {
         },
         tecnicoAuth,
       ),
-    ).rejects.toBeInstanceOf(ForbiddenError);
+    ).resolves.toMatchObject({ assignedToId: "user-tecnico" });
   });
 
   it("updates individual ticket fields and closes tickets", async () => {
@@ -230,7 +285,7 @@ describe("TicketService", () => {
       closedAt: new Date("2026-08-19T13:00:00.000Z"),
     });
 
-    const service = new TicketService(mockTickets, mockContracts, mockUsers);
+    const service = makeService();
     await service.updateTicket(
       "ticket-1",
       {
@@ -264,7 +319,7 @@ describe("TicketService", () => {
       firstResponseAt: new Date("2026-08-19T11:00:00.000Z"),
     });
 
-    const service = new TicketService(mockTickets, mockContracts, mockUsers);
+    const service = makeService();
     await service.updateTicket("ticket-1", { status: "IN_PROGRESS" }, gestorAuth);
 
     expect(mockTickets.update).toHaveBeenCalledWith(
@@ -284,7 +339,7 @@ describe("TicketService", () => {
       assignedToId: "user-tecnico",
     });
 
-    const service = new TicketService(mockTickets, mockContracts, mockUsers);
+    const service = makeService();
     await service.updateTicket("ticket-1", { assignedToId: "user-tecnico" }, gestorAuth);
 
     expect(mockTickets.update).toHaveBeenCalledWith(
@@ -304,7 +359,7 @@ describe("TicketService", () => {
       resolvedAt: new Date("2026-08-19T12:00:00.000Z"),
     });
 
-    const service = new TicketService(mockTickets, mockContracts, mockUsers);
+    const service = makeService();
     const ticket = await service.updateTicket(
       "ticket-1",
       {
@@ -326,7 +381,7 @@ describe("TicketService", () => {
   });
 
   it("handles update validation and permissions", async () => {
-    const service = new TicketService(mockTickets, mockContracts, mockUsers);
+    const service = makeService();
 
     vi.mocked(mockTickets.findById).mockResolvedValue(null);
     await expect(
@@ -339,9 +394,11 @@ describe("TicketService", () => {
     ).rejects.toBeInstanceOf(BadRequestError);
 
     vi.mocked(mockTickets.findById).mockResolvedValue(sampleTicket);
+    vi.mocked(mockUsers.findById).mockResolvedValue(activeUser);
+    vi.mocked(mockTickets.update).mockResolvedValue(sampleTicket);
     await expect(
       service.updateTicket("ticket-1", { assignedToId: "user-tecnico" }, tecnicoAuth),
-    ).rejects.toBeInstanceOf(ForbiddenError);
+    ).resolves.toMatchObject({ assignedToId: "user-tecnico" });
 
     await expect(
       service.updateTicket("ticket-1", { status: "RESOLVED" }, tecnicoAuth),
@@ -365,7 +422,7 @@ describe("TicketService", () => {
       closedAt: null,
     });
 
-    const service = new TicketService(mockTickets, mockContracts, mockUsers);
+    const service = makeService();
     await service.updateTicket("ticket-1", { status: "WAITING" }, gestorAuth);
 
     expect(mockTickets.update).toHaveBeenCalledWith(
@@ -390,7 +447,7 @@ describe("TicketService", () => {
       resolvedAt: null,
     });
 
-    const service = new TicketService(mockTickets, mockContracts, mockUsers);
+    const service = makeService();
     await service.updateTicket("ticket-1", { status: "IN_PROGRESS" }, gestorAuth);
 
     expect(mockTickets.update).toHaveBeenCalledWith(
@@ -410,7 +467,7 @@ describe("TicketService", () => {
       assignedToId: null,
     });
 
-    const service = new TicketService(mockTickets, mockContracts, mockUsers);
+    const service = makeService();
     await service.updateTicket("ticket-1", { assignedToId: null }, gestorAuth);
 
     expect(mockTickets.update).toHaveBeenCalledWith(
@@ -421,7 +478,7 @@ describe("TicketService", () => {
 
   it("rejects invalid priority and status values", async () => {
     vi.mocked(mockContracts.findById).mockResolvedValue(activeContract);
-    const service = new TicketService(mockTickets, mockContracts, mockUsers);
+    const service = makeService();
 
     await expect(
       service.createTicket(
@@ -445,15 +502,17 @@ describe("TicketService", () => {
   it("deletes a ticket when the user has access", async () => {
     vi.mocked(mockTickets.findById).mockResolvedValue(sampleTicket);
     vi.mocked(mockTickets.delete).mockResolvedValue(undefined);
+    vi.mocked(mockAttachments.deleteAllForTicket).mockResolvedValue(undefined);
 
-    const service = new TicketService(mockTickets, mockContracts, mockUsers);
+    const service = makeService();
     await service.deleteTicket("ticket-1", tecnicoAuth);
 
+    expect(mockAttachments.deleteAllForTicket).toHaveBeenCalledWith("ticket-1");
     expect(mockTickets.delete).toHaveBeenCalledWith("ticket-1");
   });
 
   it("rejects delete when ticket is missing or forbidden", async () => {
-    const service = new TicketService(mockTickets, mockContracts, mockUsers);
+    const service = makeService();
 
     vi.mocked(mockTickets.findById).mockResolvedValue(null);
     await expect(service.deleteTicket("missing", gestorAuth)).rejects.toBeInstanceOf(NotFoundError);

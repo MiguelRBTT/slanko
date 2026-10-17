@@ -26,6 +26,8 @@ const sampleTicket = {
   contractId: "contract-1",
   openedById: "user-gestor",
   assignedToId: "user-tecnico",
+  assignedToName: "Carlos Tecnico",
+  observerIds: [] as string[],
   title: "Servidor lento",
   description: "Usuarios reportam lentidao.",
   priority: "HIGH" as const,

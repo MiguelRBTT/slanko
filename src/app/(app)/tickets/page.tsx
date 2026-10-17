@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent } from "react";
 import { apiRequest, ApiClientError } from "@/lib/client/api";
+import { MAX_ATTACHMENTS_PER_TICKET } from "@/lib/attachments/rules";
 import {
   formatDateBR,
   formatWorkedMinutes,
@@ -25,13 +26,21 @@ import {
 import type { PublicContract } from "@/types/contract";
 import type { PublicTicket } from "@/types/ticket";
 import type { PublicTimeEntry } from "@/types/time-entry";
+import type { PublicUser } from "@/types/user";
 import { ClockIcon, CloseIcon, EditIcon, TrashIcon } from "../action-icons";
 import styles from "../page-shared.module.css";
 import { nextSortState, SortHeader, type SortDir } from "../sort-header";
+import {
+  AttachmentFileInput,
+  PendingFilesList,
+  TicketAttachmentGallery,
+  uploadPendingFiles,
+} from "./ticket-attachments";
 
 type TicketsPayload = { tickets: PublicTicket[] };
 type ContractsPayload = { contracts: PublicContract[] };
 type TimeEntriesPayload = { timeEntries: PublicTimeEntry[] };
+type UsersPayload = { users: PublicUser[] };
 type PanelMode = "hours" | "resolve" | "edit";
 type SortKey = "title" | "sla" | "time" | "priority" | "status";
 
@@ -100,6 +109,7 @@ function errorMessage(err: unknown, fallback: string): string {
 export default function TicketsPage() {
   const [tickets, setTickets] = useState<PublicTicket[]>([]);
   const [contracts, setContracts] = useState<PublicContract[]>([]);
+  const [technicians, setTechnicians] = useState<PublicUser[]>([]);
   const [entriesByTicket, setEntriesByTicket] = useState<Record<string, PublicTimeEntry[]>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [panel, setPanel] = useState<PanelMode | null>(null);
@@ -109,12 +119,17 @@ export default function TicketsPage() {
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("MEDIUM");
   const [category, setCategory] = useState("Suporte");
+  const [assignedToId, setAssignedToId] = useState("");
+  const [observerIds, setObserverIds] = useState<string[]>([]);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
 
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editPriority, setEditPriority] = useState("MEDIUM");
   const [editCategory, setEditCategory] = useState("Suporte");
   const [editStatus, setEditStatus] = useState("OPEN");
+  const [editAssignedToId, setEditAssignedToId] = useState("");
+  const [editObserverIds, setEditObserverIds] = useState<string[]>([]);
 
   const [logHours, setLogHours] = useState("");
   const [logDate, setLogDate] = useState(todayInputValue);
@@ -264,14 +279,16 @@ export default function TicketsPage() {
     setError(null);
 
     try {
-      const [ticketsResult, contractsResult] = await Promise.all([
+      const [ticketsResult, contractsResult, usersResult] = await Promise.all([
         apiRequest<TicketsPayload>("/api/tickets"),
         apiRequest<ContractsPayload>("/api/contracts"),
+        apiRequest<UsersPayload>("/api/users"),
       ]);
 
       const active = contractsResult.contracts.filter((contract) => contract.status === "ACTIVE");
       setTickets(ticketsResult.tickets);
       setContracts(contractsResult.contracts);
+      setTechnicians(usersResult.users.filter((user) => user.role === "TECNICO" && user.active));
       setContractId((current) => current || active[0]?.id || "");
       await loadEntries(ticketsResult.tickets.map((ticket) => ticket.id));
     } catch (err) {
@@ -285,6 +302,24 @@ export default function TicketsPage() {
     void load(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function toggleObserver(userId: string, checked: boolean, mode: "create" | "edit") {
+    if (mode === "create") {
+      setObserverIds((current) =>
+        checked ? [...current, userId] : current.filter((id) => id !== userId),
+      );
+      return;
+    }
+
+    setEditObserverIds((current) =>
+      checked ? [...current, userId] : current.filter((id) => id !== userId),
+    );
+  }
+
+  function userName(userId: string | null | undefined): string {
+    if (!userId) return "Sem responsável";
+    return technicians.find((user) => user.id === userId)?.name ?? "Técnico";
+  }
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 30_000);
@@ -312,6 +347,8 @@ export default function TicketsPage() {
     setEditPriority(ticket.priority);
     setEditCategory(ticket.category);
     setEditStatus(WORK_STATUSES.some((item) => item.value === ticket.status) ? ticket.status : "IN_PROGRESS");
+    setEditAssignedToId(ticket.assignedToId ?? "");
+    setEditObserverIds(ticket.observerIds ?? []);
     setSolution(ticket.solution ?? "");
     setLogHours("");
     setLogNote("");
@@ -362,6 +399,9 @@ export default function TicketsPage() {
     setDescription("");
     setPriority("MEDIUM");
     setCategory("Suporte");
+    setAssignedToId("");
+    setObserverIds([]);
+    setPendingFiles([]);
     setError(null);
   }
 
@@ -370,6 +410,9 @@ export default function TicketsPage() {
     setDescription("");
     setPriority("MEDIUM");
     setCategory("Suporte");
+    setAssignedToId("");
+    setObserverIds([]);
+    setPendingFiles([]);
     setShowCreateForm(true);
     setError(null);
   }
@@ -389,10 +432,23 @@ export default function TicketsPage() {
     setError(null);
 
     try {
-      await apiRequest("/api/tickets", {
+      const created = await apiRequest<{ ticket: PublicTicket }>("/api/tickets", {
         method: "POST",
-        body: { contractId, title, description, priority, category },
+        body: {
+          contractId,
+          title,
+          description,
+          priority,
+          category,
+          assignedToId: assignedToId || null,
+          observerIds: observerIds.filter((id) => id !== assignedToId),
+        },
       });
+
+      if (pendingFiles.length > 0) {
+        await uploadPendingFiles(created.ticket.id, pendingFiles);
+      }
+
       requestCloseCreate();
       await load();
     } catch (err) {
@@ -479,7 +535,7 @@ export default function TicketsPage() {
     setError(null);
 
     try {
-      const body: Record<string, string> = {
+      const body: Record<string, unknown> = {
         title: editTitle,
         description: editDescription,
         priority: editPriority,
@@ -489,6 +545,9 @@ export default function TicketsPage() {
       if (selected.status !== "RESOLVED") {
         body.status = editStatus;
       }
+
+      body.assignedToId = editAssignedToId || null;
+      body.observerIds = editObserverIds.filter((id) => id !== editAssignedToId);
 
       await apiRequest(`/api/tickets/${selected.id}`, { method: "PUT", body });
       requestClose();
@@ -688,6 +747,12 @@ export default function TicketsPage() {
                         <strong>{ticket.title}</strong>
                         <div className="muted">{ticket.category}</div>
                         <div className="muted">{contractName(ticket.contractId)}</div>
+                        <div className="muted">
+                          Resp.: {ticket.assignedToName ?? userName(ticket.assignedToId)}
+                          {ticket.observerIds.length > 0
+                            ? ` · ${ticket.observerIds.length} ${ticket.observerIds.length === 1 ? "observador" : "observadores"}`
+                            : ""}
+                        </div>
                       </td>
                       <td>
                         {deadline ? (
@@ -804,6 +869,17 @@ export default function TicketsPage() {
             <form onSubmit={onCreate}>
               <div className={styles.formGrid}>
                 <div className="field">
+                  <label htmlFor="assignedToId">Responsável</label>
+                  <select id="assignedToId" value={assignedToId} onChange={(e) => setAssignedToId(e.target.value)}>
+                    <option value="">Sem responsável</option>
+                    {technicians.map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="field">
                   <label htmlFor="contractId">Contrato</label>
                   <select id="contractId" value={contractId} onChange={(e) => setContractId(e.target.value)} required>
                     <option value="" disabled>
@@ -835,8 +911,44 @@ export default function TicketsPage() {
                   <input id="category" value={category} onChange={(e) => setCategory(e.target.value)} required />
                 </div>
                 <div className={`field ${styles.full}`}>
+                  <span className={styles.checkboxLegend}>Observadores</span>
+                  <div className={styles.checkboxList}>
+                    {technicians.length === 0 ? (
+                      <p className="muted">Nenhum técnico cadastrado.</p>
+                    ) : (
+                      technicians
+                        .filter((user) => user.id !== assignedToId)
+                        .map((user) => (
+                          <label key={user.id} className={styles.checkboxItem}>
+                            <input
+                              type="checkbox"
+                              checked={observerIds.includes(user.id)}
+                              onChange={(e) => toggleObserver(user.id, e.target.checked, "create")}
+                            />
+                            <span>{user.name}</span>
+                          </label>
+                        ))
+                    )}
+                  </div>
+                </div>
+                <div className={`field ${styles.full}`}>
                   <label htmlFor="description">O que o cliente precisa</label>
                   <textarea id="description" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} required />
+                </div>
+                <div className={styles.full}>
+                  <AttachmentFileInput
+                    id="createAttachments"
+                    disabled={saving}
+                    remainingSlots={MAX_ATTACHMENTS_PER_TICKET - pendingFiles.length}
+                    onAdd={(files) => setPendingFiles((current) => [...current, ...files])}
+                    onError={setError}
+                  />
+                  <PendingFilesList
+                    files={pendingFiles}
+                    onRemove={(index) =>
+                      setPendingFiles((current) => current.filter((_, i) => i !== index))
+                    }
+                  />
                 </div>
               </div>
               <div className={styles.formActions}>
@@ -922,6 +1034,8 @@ export default function TicketsPage() {
                   </button>
                 </form>
               ) : null}
+
+              <TicketAttachmentGallery ticketId={selected.id} canEdit={false} onError={setError} />
             </>
           ) : null}
 
@@ -957,12 +1071,28 @@ export default function TicketsPage() {
                   {saving ? "Salvando…" : "Marcar como resolvido"}
                 </button>
               </div>
+              <TicketAttachmentGallery ticketId={selected.id} canEdit={false} onError={setError} />
             </form>
           ) : null}
 
           {panel === "edit" ? (
             <form onSubmit={onEdit}>
               <div className={styles.formGrid}>
+                <div className="field">
+                  <label htmlFor="editAssignedToId">Responsável</label>
+                  <select
+                    id="editAssignedToId"
+                    value={editAssignedToId}
+                    onChange={(e) => setEditAssignedToId(e.target.value)}
+                  >
+                    <option value="">Sem responsável</option>
+                    {technicians.map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <div className="field">
                   <label htmlFor="editTitle">Título</label>
                   <input id="editTitle" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} required />
@@ -994,8 +1124,32 @@ export default function TicketsPage() {
                   </div>
                 ) : null}
                 <div className={`field ${styles.full}`}>
+                  <span className={styles.checkboxLegend}>Observadores</span>
+                  <div className={styles.checkboxList}>
+                    {technicians
+                      .filter((user) => user.id !== editAssignedToId)
+                      .map((user) => (
+                        <label key={user.id} className={styles.checkboxItem}>
+                          <input
+                            type="checkbox"
+                            checked={editObserverIds.includes(user.id)}
+                            onChange={(e) => toggleObserver(user.id, e.target.checked, "edit")}
+                          />
+                          <span>{user.name}</span>
+                        </label>
+                      ))}
+                  </div>
+                </div>
+                <div className={`field ${styles.full}`}>
                   <label htmlFor="editDescription">Descrição</label>
                   <textarea id="editDescription" rows={3} value={editDescription} onChange={(e) => setEditDescription(e.target.value)} required />
+                </div>
+                <div className={styles.full}>
+                  <TicketAttachmentGallery
+                    ticketId={selected.id}
+                    canEdit={selected.status !== "CLOSED"}
+                    onError={setError}
+                  />
                 </div>
               </div>
               <div className={styles.formActions}>

@@ -30,6 +30,18 @@ async function main() {
     },
   });
 
+  const tecnico2 = await prisma.user.upsert({
+    where: { email: "tecnico2@slanko.local" },
+    update: {},
+    create: {
+      name: "Diana Tecnica",
+      email: "tecnico2@slanko.local",
+      passwordHash,
+      role: "TECNICO",
+      hourlyCost: 80,
+    },
+  });
+
   const client = await prisma.client.upsert({
     where: { id: "00000000-0000-4000-8000-000000000001" },
     update: {},
@@ -59,7 +71,7 @@ async function main() {
     },
   });
 
-  await prisma.ticket.upsert({
+  const ticket = await prisma.ticket.upsert({
     where: { id: "00000000-0000-4000-8000-000000000101" },
     update: {},
     create: {
@@ -76,9 +88,24 @@ async function main() {
     },
   });
 
+  await prisma.ticketObserver.upsert({
+    where: {
+      ticketId_userId: {
+        ticketId: ticket.id,
+        userId: tecnico2.id,
+      },
+    },
+    update: {},
+    create: {
+      ticketId: ticket.id,
+      userId: tecnico2.id,
+    },
+  });
+
   console.log("Seed completed:");
   console.log("- gestor@slanko.local / Slanko@123");
-  console.log("- tecnico@slanko.local / Slanko@123");
+  console.log("- tecnico@slanko.local / Slanko@123 (responsavel do chamado demo)");
+  console.log("- tecnico2@slanko.local / Slanko@123 (observador do chamado demo)");
   console.log("- client:", client.name);
   console.log("- contract:", contract.code);
 }

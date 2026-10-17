@@ -17,6 +17,9 @@ coverage/
 coverage-frontend/
 .wiki-tmp/
 
+# Uploaded ticket attachments (local storage)
+uploads/
+
 # Logs and OS
 *.log
 .DS_Store
