@@ -4,9 +4,9 @@ import { TicketRepository, ticketRepository } from "@/repositories/ticket.reposi
 import { UserRepository, userRepository } from "@/repositories/user.repository";
 import {
   BadRequestError,
-  ForbiddenError,
   NotFoundError,
 } from "@/lib/errors/app-error";
+import { assertTicketAccess } from "@/lib/tickets/access";
 import {
   optionalNullableString,
   requireNonEmptyString,
@@ -19,6 +19,10 @@ import {
   type TicketListFilters,
   type UpdateTicketInput,
 } from "@/types/ticket";
+import {
+  TicketAttachmentService,
+  ticketAttachmentService,
+} from "@/services/ticket-attachment.service";
 
 const TICKET_PRIORITIES: TicketPriority[] = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
 const TICKET_STATUSES: TicketStatus[] = ["OPEN", "IN_PROGRESS", "WAITING", "RESOLVED", "CLOSED"];
@@ -90,11 +94,31 @@ function applySlaTimestamps(
   return timestamps;
 }
 
+function parseObserverIds(value: unknown): string[] | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (!Array.isArray(value)) {
+    throw new BadRequestError("observerIds must be an array");
+  }
+
+  const ids = value.map((item, index) => {
+    if (typeof item !== "string" || !item.trim()) {
+      throw new BadRequestError(`observerIds[${index}] is invalid`);
+    }
+    return item.trim();
+  });
+
+  return [...new Set(ids)];
+}
+
 export class TicketService {
   constructor(
     private readonly tickets: TicketRepository = ticketRepository,
     private readonly contracts: ContractRepository = contractRepository,
     private readonly users: UserRepository = userRepository,
+    private readonly attachments: TicketAttachmentService = ticketAttachmentService,
   ) {}
 
   async listTickets(auth: AuthContext, filters: TicketListFilters = {}): Promise<PublicTicket[]> {
@@ -116,7 +140,7 @@ export class TicketService {
       throw new NotFoundError("Ticket not found");
     }
 
-    this.assertTicketAccess(ticket, auth);
+    assertTicketAccess(ticket, auth);
 
     return toPublicTicket(ticket);
   }
@@ -125,13 +149,14 @@ export class TicketService {
     const contractId = requireNonEmptyString(input.contractId, "contractId");
     await this.ensureActiveContract(contractId);
 
-    if (input.assignedToId !== undefined && auth.role !== "GESTOR") {
-      throw new ForbiddenError("Only gestor can assign tickets");
-    }
-
     if (input.assignedToId) {
       await this.ensureActiveAssignee(input.assignedToId);
     }
+
+    const observerIds = await this.normalizeObserverIds(
+      parseObserverIds(input.observerIds) ?? [],
+      input.assignedToId ?? null,
+    );
 
     const now = new Date();
     const assignedToId = input.assignedToId ?? null;
@@ -147,6 +172,15 @@ export class TicketService {
       status: "OPEN",
       openedAt: now,
       ...(assignedToId ? { firstResponseAt: now } : {}),
+      ...(observerIds.length > 0
+        ? {
+            observers: {
+              create: observerIds.map((userId) => ({
+                user: { connect: { id: userId } },
+              })),
+            },
+          }
+        : {}),
     });
 
     return toPublicTicket(ticket);
@@ -163,12 +197,8 @@ export class TicketService {
       throw new NotFoundError("Ticket not found");
     }
 
-    this.assertTicketAccess(existing, auth);
+    assertTicketAccess(existing, auth);
     assertTicketMutable(existing);
-
-    if (input.assignedToId !== undefined && auth.role !== "GESTOR") {
-      throw new ForbiddenError("Only gestor can assign tickets");
-    }
 
     const nextStatus = input.status !== undefined ? parseTicketStatus(input.status) : existing.status;
     const nextAssignedToId =
@@ -209,6 +239,16 @@ export class TicketService {
       ...slaTimestamps,
     });
 
+    if (input.observerIds !== undefined) {
+      const observerIds = await this.normalizeObserverIds(
+        parseObserverIds(input.observerIds) ?? [],
+        nextAssignedToId,
+      );
+      await this.tickets.replaceObservers(id, observerIds);
+      const refreshed = await this.tickets.findById(id);
+      return toPublicTicket(refreshed ?? ticket);
+    }
+
     return toPublicTicket(ticket);
   }
 
@@ -219,20 +259,9 @@ export class TicketService {
       throw new NotFoundError("Ticket not found");
     }
 
-    this.assertTicketAccess(existing, auth);
+    assertTicketAccess(existing, auth);
+    await this.attachments.deleteAllForTicket(id);
     await this.tickets.delete(id);
-  }
-
-  private assertTicketAccess(ticket: Ticket, auth: AuthContext): void {
-    if (auth.role === "GESTOR") {
-      return;
-    }
-
-    if (ticket.assignedToId === auth.userId || ticket.openedById === auth.userId) {
-      return;
-    }
-
-    throw new ForbiddenError("Insufficient permissions");
   }
 
   private async ensureActiveContract(contractId: string): Promise<void> {
@@ -249,6 +278,22 @@ export class TicketService {
     if (!user || !user.active) {
       throw new BadRequestError("Assignee not found or inactive");
     }
+  }
+
+  private async normalizeObserverIds(
+    observerIds: string[],
+    assignedToId: string | null,
+  ): Promise<string[]> {
+    const unique = observerIds.filter((userId) => userId !== assignedToId);
+
+    for (const userId of unique) {
+      const user = await this.users.findById(userId);
+      if (!user || !user.active) {
+        throw new BadRequestError("Observer not found or inactive");
+      }
+    }
+
+    return unique;
   }
 }
 

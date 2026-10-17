@@ -1,6 +1,7 @@
 import { TicketRepository, ticketRepository } from "@/repositories/ticket.repository";
 import { TimeEntryRepository, timeEntryRepository } from "@/repositories/time-entry.repository";
-import { BadRequestError, ForbiddenError, NotFoundError } from "@/lib/errors/app-error";
+import { BadRequestError, NotFoundError } from "@/lib/errors/app-error";
+import { assertTicketAccess } from "@/lib/tickets/access";
 import {
   optionalNullableString,
   parseDateTime,
@@ -26,7 +27,7 @@ export class TimeEntryService {
       throw new NotFoundError("Ticket not found");
     }
 
-    this.assertTicketAccess(ticket, auth);
+    assertTicketAccess(ticket, auth);
 
     const rows = await this.timeEntries.findByTicketId(ticketId);
     return rows.map(toPublicTimeEntry);
@@ -43,7 +44,7 @@ export class TimeEntryService {
       throw new NotFoundError("Ticket not found");
     }
 
-    this.assertTicketAccess(ticket, auth);
+    assertTicketAccess(ticket, auth);
 
     if (ticket.status === "CLOSED") {
       throw new BadRequestError("Cannot log hours on a closed ticket");
@@ -58,21 +59,6 @@ export class TimeEntryService {
     });
 
     return toPublicTimeEntry(entry);
-  }
-
-  private assertTicketAccess(
-    ticket: { assignedToId: string | null; openedById: string },
-    auth: AuthContext,
-  ): void {
-    if (auth.role === "GESTOR") {
-      return;
-    }
-
-    if (ticket.assignedToId === auth.userId || ticket.openedById === auth.userId) {
-      return;
-    }
-
-    throw new ForbiddenError("Insufficient permissions");
   }
 }
 

@@ -14,12 +14,26 @@ describe("TicketRepository", () => {
     timeEntry: {
       deleteMany: vi.fn(),
     },
+    ticketObserver: {
+      deleteMany: vi.fn(),
+      createMany: vi.fn(),
+    },
+    ticketAttachment: {
+      deleteMany: vi.fn(),
+    },
     $transaction: vi.fn(async (callback: (tx: unknown) => Promise<unknown>) =>
       callback({
         timeEntry: mockDb.timeEntry,
         ticket: mockDb.ticket,
+        ticketObserver: mockDb.ticketObserver,
+        ticketAttachment: mockDb.ticketAttachment,
       }),
     ),
+  };
+
+  const accessInclude = {
+    assignedTo: { select: { id: true, name: true } },
+    observers: { select: { userId: true } },
   };
 
   beforeEach(() => {
@@ -46,11 +60,12 @@ describe("TicketRepository", () => {
         priority: "HIGH",
         openedById: "user-2",
       },
+      include: accessInclude,
       orderBy: [{ status: "asc" }, { openedAt: "desc" }],
     });
   });
 
-  it("findMany scopes tickets accessible to a user", async () => {
+  it("findMany scopes tickets accessible to a user including observers", async () => {
     mockDb.ticket.findMany.mockResolvedValue([]);
 
     const repository = new TicketRepository(mockDb as unknown as PrismaClient);
@@ -58,8 +73,15 @@ describe("TicketRepository", () => {
 
     expect(mockDb.ticket.findMany).toHaveBeenCalledWith({
       where: {
-        OR: [{ assignedToId: "user-1" }, { openedById: "user-1" }],
+        OR: [
+          { assignedToId: "user-1" },
+          {
+            AND: [{ openedById: "user-1" }, { assignedToId: null }],
+          },
+          { observers: { some: { userId: "user-1" } } },
+        ],
       },
+      include: accessInclude,
       orderBy: [{ status: "asc" }, { openedAt: "desc" }],
     });
   });
@@ -75,19 +97,42 @@ describe("TicketRepository", () => {
     await repository.update("ticket-1", { title: "Updated" });
 
     expect(mockDb.ticket.create).toHaveBeenCalled();
-    expect(mockDb.ticket.findUnique).toHaveBeenCalledWith({ where: { id: "ticket-1" } });
+    expect(mockDb.ticket.findUnique).toHaveBeenCalledWith({
+      where: { id: "ticket-1" },
+      include: accessInclude,
+    });
     expect(mockDb.ticket.update).toHaveBeenCalled();
   });
 
-  it("deletes time entries before removing the ticket", async () => {
+  it("replaces observers for a ticket", async () => {
+    mockDb.ticketObserver.deleteMany.mockResolvedValue({ count: 1 });
+    mockDb.ticketObserver.createMany.mockResolvedValue({ count: 2 });
+
+    const repository = new TicketRepository(mockDb as unknown as PrismaClient);
+    await repository.replaceObservers("ticket-1", ["user-a", "user-b"]);
+
+    expect(mockDb.ticketObserver.deleteMany).toHaveBeenCalledWith({ where: { ticketId: "ticket-1" } });
+    expect(mockDb.ticketObserver.createMany).toHaveBeenCalledWith({
+      data: [
+        { ticketId: "ticket-1", userId: "user-a" },
+        { ticketId: "ticket-1", userId: "user-b" },
+      ],
+    });
+  });
+
+  it("deletes attachments, time entries and observers before removing the ticket", async () => {
+    mockDb.ticketAttachment.deleteMany.mockResolvedValue({ count: 1 });
     mockDb.timeEntry.deleteMany.mockResolvedValue({ count: 2 });
+    mockDb.ticketObserver.deleteMany.mockResolvedValue({ count: 1 });
     mockDb.ticket.delete.mockResolvedValue({ id: "ticket-1" });
 
     const repository = new TicketRepository(mockDb as unknown as PrismaClient);
     await repository.delete("ticket-1");
 
     expect(mockDb.$transaction).toHaveBeenCalled();
+    expect(mockDb.ticketAttachment.deleteMany).toHaveBeenCalledWith({ where: { ticketId: "ticket-1" } });
     expect(mockDb.timeEntry.deleteMany).toHaveBeenCalledWith({ where: { ticketId: "ticket-1" } });
+    expect(mockDb.ticketObserver.deleteMany).toHaveBeenCalledWith({ where: { ticketId: "ticket-1" } });
     expect(mockDb.ticket.delete).toHaveBeenCalledWith({ where: { id: "ticket-1" } });
   });
 });
