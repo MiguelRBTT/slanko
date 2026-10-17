@@ -22,5 +22,31 @@ describe("toPublicTicket", () => {
 
     expect(ticket.openedAt).toBe("2026-08-19T10:00:00.000Z");
     expect(ticket.assignedToId).toBe("user-2");
+    expect(ticket.assignedToName).toBeNull();
+    expect(ticket.observerIds).toEqual([]);
+  });
+
+  it("maps assignee name and observers", () => {
+    const ticket = toPublicTicket({
+      id: "ticket-1",
+      contractId: "contract-1",
+      openedById: "user-1",
+      assignedToId: "user-2",
+      assignedTo: { id: "user-2", name: "Carlos" },
+      observers: [{ userId: "user-3" }],
+      title: "Servidor lento",
+      description: "Usuarios reportam lentidao.",
+      priority: "HIGH",
+      category: "Infraestrutura",
+      status: "OPEN",
+      openedAt: new Date("2026-08-19T10:00:00.000Z"),
+      firstResponseAt: null,
+      resolvedAt: null,
+      closedAt: null,
+      solution: null,
+    });
+
+    expect(ticket.assignedToName).toBe("Carlos");
+    expect(ticket.observerIds).toEqual(["user-3"]);
   });
 });

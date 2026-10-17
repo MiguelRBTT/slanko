@@ -34,6 +34,11 @@ enum TicketStatus {
   CLOSED
 }
 
+enum AttachmentKind {
+  IMAGE
+  VIDEO
+}
+
 model User {
   id           String   @id @default(uuid())
   name         String
@@ -45,9 +50,11 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  openedTickets   Ticket[]    @relation("TicketOpenedBy")
-  assignedTickets Ticket[]    @relation("TicketAssignedTo")
+  openedTickets   Ticket[]            @relation("TicketOpenedBy")
+  assignedTickets Ticket[]            @relation("TicketAssignedTo")
+  observedTickets TicketObserver[]
   timeEntries     TimeEntry[]
+  attachments     TicketAttachment[]
 
   @@map("users")
 }
@@ -106,12 +113,44 @@ model Ticket {
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
 
-  contract    Contract    @relation(fields: [contractId], references: [id])
-  openedBy    User        @relation("TicketOpenedBy", fields: [openedById], references: [id])
-  assignedTo  User?       @relation("TicketAssignedTo", fields: [assignedToId], references: [id])
-  timeEntries TimeEntry[]
+  contract     Contract           @relation(fields: [contractId], references: [id])
+  openedBy     User               @relation("TicketOpenedBy", fields: [openedById], references: [id])
+  assignedTo   User?              @relation("TicketAssignedTo", fields: [assignedToId], references: [id])
+  observers    TicketObserver[]
+  timeEntries  TimeEntry[]
+  attachments  TicketAttachment[]
 
   @@map("tickets")
+}
+
+model TicketAttachment {
+  id           String         @id @default(uuid())
+  ticketId     String         @map("ticket_id")
+  uploadedById String         @map("uploaded_by_id")
+  kind         AttachmentKind
+  fileName     String         @map("file_name")
+  mimeType     String         @map("mime_type")
+  sizeBytes    Int            @map("size_bytes")
+  storageKey   String         @map("storage_key")
+  createdAt    DateTime       @default(now()) @map("created_at")
+
+  ticket     Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  uploadedBy User   @relation(fields: [uploadedById], references: [id])
+
+  @@index([ticketId])
+  @@map("ticket_attachments")
+}
+
+model TicketObserver {
+  ticketId  String   @map("ticket_id")
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([ticketId, userId])
+  @@map("ticket_observers")
 }
 
 model TimeEntry {

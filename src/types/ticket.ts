@@ -5,6 +5,8 @@ export type PublicTicket = {
   contractId: string;
   openedById: string;
   assignedToId: string | null;
+  assignedToName: string | null;
+  observerIds: string[];
   title: string;
   description: string;
   priority: TicketPriority;
@@ -24,6 +26,7 @@ export type CreateTicketInput = {
   priority: TicketPriority;
   category: string;
   assignedToId?: string | null;
+  observerIds?: string[];
 };
 
 export type UpdateTicketInput = {
@@ -33,6 +36,7 @@ export type UpdateTicketInput = {
   category?: string;
   status?: TicketStatus;
   assignedToId?: string | null;
+  observerIds?: string[];
   solution?: string | null;
 };
 
@@ -52,6 +56,8 @@ export function toPublicTicket(ticket: {
   contractId: string;
   openedById: string;
   assignedToId: string | null;
+  assignedTo?: { id: string; name: string } | null;
+  observers?: Array<{ userId: string }>;
   title: string;
   description: string;
   priority: TicketPriority;
@@ -68,6 +74,8 @@ export function toPublicTicket(ticket: {
     contractId: ticket.contractId,
     openedById: ticket.openedById,
     assignedToId: ticket.assignedToId,
+    assignedToName: ticket.assignedTo?.name ?? null,
+    observerIds: (ticket.observers ?? []).map((observer) => observer.userId),
     title: ticket.title,
     description: ticket.description,
     priority: ticket.priority,

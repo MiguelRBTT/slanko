@@ -317,7 +317,8 @@ Dicionário de dados, regras e esboço Prisma: [docs/modelagem.md](docs/modelage
 | E-mail | Perfil | O que vê na interface |
 |---|---|---|
 | `gestor@slanko.local` | Gestor | Painel, clientes, contratos e chamados |
-| `tecnico@slanko.local` | Técnico | Somente chamados |
+| `tecnico@slanko.local` | Técnico | Somente chamados (responsável no seed) |
+| `tecnico2@slanko.local` | Técnico | Somente chamados (observador no seed) |
 
 **Scripts úteis:** `npm run db:down` (para o MySQL), `npm run db:logs` (logs do container), `npm run db:reset` (apaga e recria tudo — cuidado).
 
@@ -337,7 +338,7 @@ O menu do técnico tem apenas **Chamados**. Painel, clientes e contratos são te
 * `/dashboard` — painel de SLA e rentabilidade (somente gestor)
 * `/clients` — clientes (somente gestor)
 * `/contracts` — contratos (somente gestor)
-* `/tickets` — chamados. O gestor vê todos. O técnico vê só os que abriu ou que estão atribuídos a ele: abre chamado, aponta minutos, resolve, corrige dados e encerra. A atribuição de técnico a um chamado continua restrita ao gestor.
+* `/tickets` — chamados. O gestor vê todos. O técnico vê os em que é responsável ou observador, e também os que abriu enquanto estiverem sem responsável. Quem tem acesso ao chamado pode apontar minutos, resolver, corrigir dados, encerrar, definir responsável/observadores e anexar imagens/vídeos (imagem até 5 MB, vídeo até 50 MB, no máximo 10 anexos).
 
 **Autenticação (JWT):**
 
@@ -377,6 +378,10 @@ Endpoints:
 | `PUT /api/tickets/:id` | JWT | gestor ou técnico |
 | `GET /api/tickets/:id/time-entries` | JWT | gestor ou técnico |
 | `POST /api/tickets/:id/time-entries` | JWT | gestor ou técnico |
+| `GET /api/tickets/:id/attachments` | JWT | gestor ou técnico |
+| `POST /api/tickets/:id/attachments` | JWT | gestor ou técnico (multipart `file`) |
+| `DELETE /api/tickets/:id/attachments/:attachmentId` | JWT | gestor ou técnico |
+| `GET /api/tickets/:id/attachments/:attachmentId/file` | JWT | gestor ou técnico |
 | `GET /api/sla/summary` | JWT | gestor only |
 | `GET /api/sla/contracts/:id` | JWT | gestor only |
 | `GET /api/profitability/summary` | JWT | gestor only |
