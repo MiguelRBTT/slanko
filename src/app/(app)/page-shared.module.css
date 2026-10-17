@@ -50,6 +50,31 @@
   border-color: var(--brand);
 }
 
+.checkboxLegend {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.checkboxList {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 0.35rem;
+}
+
+.checkboxItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.checkboxItem input {
+  width: auto;
+}
+
 .formPanel,
 .listPanel {
   padding: 1.15rem 1.2rem;
@@ -254,6 +279,131 @@
 
 .noteField {
   min-width: 0;
+}
+
+.attachmentSection {
+  display: grid;
+  gap: 0.75rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--line);
+}
+
+.attachmentSection h3 {
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.attachmentGrid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 0.75rem;
+}
+
+.attachmentCard {
+  position: relative;
+  display: grid;
+  gap: 0.45rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem;
+  background: var(--surface);
+  min-width: 0;
+}
+
+.attachmentRemove {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.35rem;
+  z-index: 1;
+  width: 1.65rem;
+  height: 1.65rem;
+  background: color-mix(in srgb, var(--surface-raised) 92%, white);
+}
+
+.attachmentMedia,
+.attachmentPlaceholder {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: contain;
+  border-radius: 4px;
+  background: #eceff3;
+  pointer-events: none;
+}
+
+.attachmentPlaceholder {
+  display: grid;
+  place-items: center;
+  color: var(--ink-muted);
+  font-size: 0.8rem;
+}
+
+.attachmentOpenButton {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: zoom-in;
+  overflow: hidden;
+}
+
+.attachmentOpenButton:hover .attachmentOpenHint,
+.attachmentOpenButton:focus-visible .attachmentOpenHint {
+  opacity: 1;
+}
+
+.attachmentOpenButton:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.attachmentOpenHint {
+  position: absolute;
+  inset: auto 0.5rem 0.5rem auto;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  background: rgba(23, 23, 23, 0.72);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.attachmentMeta {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.attachmentMeta strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.82rem;
+}
+
+.pendingFiles {
+  list-style: none;
+  margin: 0.55rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.pendingFiles li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.88rem;
 }
 
 @media (max-width: 760px) {
