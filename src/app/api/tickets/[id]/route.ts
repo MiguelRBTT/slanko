@@ -9,6 +9,7 @@ type RouteContext = {
 
 // GET /api/tickets/:id - fetch ticket by id.
 // PUT /api/tickets/:id - update, assign or close a ticket.
+// DELETE /api/tickets/:id - remove ticket and its time entries.
 
 export async function GET(request: Request, context: RouteContext) {
   try {
@@ -30,6 +31,18 @@ export async function PUT(request: Request, context: RouteContext) {
     const ticket = await ticketService.updateTicket(id, body, auth);
 
     return jsonOk({ ticket });
+  } catch (error) {
+    return jsonError(error);
+  }
+}
+
+export async function DELETE(request: Request, context: RouteContext) {
+  try {
+    const auth = getAuthContextFromHeaders(request);
+    const { id } = await context.params;
+    await ticketService.deleteTicket(id, auth);
+
+    return jsonOk({ success: true });
   } catch (error) {
     return jsonError(error);
   }

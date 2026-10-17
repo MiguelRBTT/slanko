@@ -16,15 +16,24 @@ import {
   ticketPriorityBadgeClass,
   ticketStatusBadgeClass,
 } from "@/lib/client/labels";
+import { matchesSearch } from "@/lib/client/search";
+import {
+  formatSlaDeadlineLabel,
+  formatSlaDuration,
+  getActiveSlaDeadline,
+} from "@/lib/sla/deadline";
 import type { PublicContract } from "@/types/contract";
 import type { PublicTicket } from "@/types/ticket";
 import type { PublicTimeEntry } from "@/types/time-entry";
+import { ClockIcon, CloseIcon, EditIcon, TrashIcon } from "../action-icons";
 import styles from "../page-shared.module.css";
+import { nextSortState, SortHeader, type SortDir } from "../sort-header";
 
 type TicketsPayload = { tickets: PublicTicket[] };
 type ContractsPayload = { contracts: PublicContract[] };
 type TimeEntriesPayload = { timeEntries: PublicTimeEntry[] };
 type PanelMode = "hours" | "resolve" | "edit";
+type SortKey = "title" | "sla" | "time" | "priority" | "status";
 
 const PRIORITIES = [
   { value: "LOW", label: "Baixa" },
@@ -38,6 +47,37 @@ const WORK_STATUSES = [
   { value: "IN_PROGRESS", label: "Em andamento" },
   { value: "WAITING", label: "Aguardando" },
 ] as const;
+
+const PRIORITY_RANK: Record<string, number> = {
+  CRITICAL: 0,
+  HIGH: 1,
+  MEDIUM: 2,
+  LOW: 3,
+};
+
+const STATUS_RANK: Record<string, number> = {
+  OPEN: 0,
+  IN_PROGRESS: 1,
+  WAITING: 2,
+  RESOLVED: 3,
+  CLOSED: 4,
+};
+
+const SORT_DEFAULT_DIR: Record<SortKey, SortDir> = {
+  title: "asc",
+  sla: "asc",
+  time: "desc",
+  priority: "asc",
+  status: "asc",
+};
+
+const SORT_HINT: Record<SortKey, { asc: string; desc: string }> = {
+  title: { asc: "Ordenar A–Z", desc: "Ordenar Z–A" },
+  sla: { asc: "Ordenar estourado → normal", desc: "Ordenar normal → estourado" },
+  time: { asc: "Ordenar menor → maior tempo", desc: "Ordenar maior → menor tempo" },
+  priority: { asc: "Ordenar crítica → baixa", desc: "Ordenar baixa → crítica" },
+  status: { asc: "Ordenar aberto → encerrado", desc: "Ordenar encerrado → aberto" },
+};
 
 function todayInputValue(): string {
   const now = new Date();
@@ -88,16 +128,119 @@ export default function TicketsPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [now, setNow] = useState(() => new Date());
+  const [sortKey, setSortKey] = useState<SortKey>("priority");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [search, setSearch] = useState("");
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const createDialogRef = useRef<HTMLDialogElement>(null);
 
   const selected = tickets.find((ticket) => ticket.id === selectedId) ?? null;
   const selectedEntries = selected ? (entriesByTicket[selected.id] ?? []) : [];
   const selectedMinutes = sumMinutes(selectedEntries);
 
-  const contractName = useMemo(() => {
-    const map = new Map(contracts.map((contract) => [contract.id, `${contract.code} · ${contract.title}`]));
-    return (id: string) => map.get(id) ?? "Contrato";
+  const activeContracts = useMemo(
+    () => contracts.filter((contract) => contract.status === "ACTIVE"),
+    [contracts],
+  );
+
+  const contractById = useMemo(() => {
+    const map = new Map(contracts.map((contract) => [contract.id, contract]));
+    return map;
   }, [contracts]);
+
+  const openTicketsCount = useMemo(
+    () =>
+      tickets.filter(
+        (ticket) => ticket.status === "OPEN" || ticket.status === "IN_PROGRESS" || ticket.status === "WAITING",
+      ).length,
+    [tickets],
+  );
+
+  const slaRemainingMinutes = useMemo(() => {
+    return (ticket: PublicTicket): number | null => {
+      const contract = contractById.get(ticket.contractId);
+      if (!contract) return null;
+
+      const deadline = getActiveSlaDeadline({
+        openedAt: ticket.openedAt,
+        firstResponseAt: ticket.firstResponseAt,
+        resolvedAt: ticket.resolvedAt,
+        status: ticket.status,
+        responseMinutes: contract.responseMinutes,
+        resolutionMinutes: contract.resolutionMinutes,
+        now,
+      });
+
+      return deadline ? deadline.remainingMinutes : null;
+    };
+  }, [contractById, now]);
+
+  const contractName = useMemo(() => {
+    return (id: string) => {
+      const contract = contractById.get(id);
+      return contract ? `${contract.code} · ${contract.title}` : "Contrato";
+    };
+  }, [contractById]);
+
+  const listedTickets = useMemo(() => {
+    const rows = tickets.filter((ticket) => {
+      const contract = contractById.get(ticket.contractId);
+      return matchesSearch(
+        search,
+        ticket.title,
+        ticket.category,
+        ticket.description,
+        labelTicketPriority(ticket.priority),
+        labelTicketStatus(ticket.status),
+        contract?.code,
+        contract?.title,
+      );
+    });
+    const direction = sortDir === "asc" ? 1 : -1;
+
+    rows.sort((a, b) => {
+      let cmp = 0;
+
+      switch (sortKey) {
+        case "title":
+          cmp = a.title.localeCompare(b.title, "pt-BR", { sensitivity: "base" });
+          break;
+        case "sla": {
+          const remainingA = slaRemainingMinutes(a);
+          const remainingB = slaRemainingMinutes(b);
+          const valueA = remainingA ?? Number.POSITIVE_INFINITY;
+          const valueB = remainingB ?? Number.POSITIVE_INFINITY;
+          cmp = valueA - valueB;
+          break;
+        }
+        case "time":
+          cmp =
+            sumMinutes(entriesByTicket[a.id] ?? []) - sumMinutes(entriesByTicket[b.id] ?? []);
+          break;
+        case "priority":
+          cmp = (PRIORITY_RANK[a.priority] ?? 99) - (PRIORITY_RANK[b.priority] ?? 99);
+          break;
+        case "status":
+          cmp = (STATUS_RANK[a.status] ?? 99) - (STATUS_RANK[b.status] ?? 99);
+          break;
+        default:
+          cmp = 0;
+      }
+
+      if (cmp !== 0) return cmp * direction;
+      return new Date(b.openedAt).getTime() - new Date(a.openedAt).getTime();
+    });
+
+    return rows;
+  }, [tickets, search, sortKey, sortDir, slaRemainingMinutes, entriesByTicket, contractById]);
+
+  function toggleSort(key: SortKey) {
+    const next = nextSortState(sortKey, sortDir, key, SORT_DEFAULT_DIR[key]);
+    setSortKey(next.key);
+    setSortDir(next.dir);
+  }
 
   async function loadEntries(ticketIds: string[]) {
     const pairs = await Promise.all(
@@ -123,12 +266,13 @@ export default function TicketsPage() {
     try {
       const [ticketsResult, contractsResult] = await Promise.all([
         apiRequest<TicketsPayload>("/api/tickets"),
-        apiRequest<ContractsPayload>("/api/contracts?status=ACTIVE"),
+        apiRequest<ContractsPayload>("/api/contracts"),
       ]);
 
+      const active = contractsResult.contracts.filter((contract) => contract.status === "ACTIVE");
       setTickets(ticketsResult.tickets);
       setContracts(contractsResult.contracts);
-      setContractId((current) => current || contractsResult.contracts[0]?.id || "");
+      setContractId((current) => current || active[0]?.id || "");
       await loadEntries(ticketsResult.tickets.map((ticket) => ticket.id));
     } catch (err) {
       setError(errorMessage(err, "Falha ao carregar chamados"));
@@ -143,10 +287,21 @@ export default function TicketsPage() {
   }, []);
 
   useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog || !selected || !panel) return;
     if (!dialog.open) dialog.showModal();
   }, [selected, panel]);
+
+  useEffect(() => {
+    const dialog = createDialogRef.current;
+    if (!dialog || !showCreateForm) return;
+    if (!dialog.open) dialog.showModal();
+  }, [showCreateForm]);
 
   function openPanel(ticket: PublicTicket, mode: PanelMode) {
     setSelectedId(ticket.id);
@@ -201,6 +356,33 @@ export default function TicketsPage() {
     });
   }
 
+  function resetCreateForm() {
+    setShowCreateForm(false);
+    setTitle("");
+    setDescription("");
+    setPriority("MEDIUM");
+    setCategory("Suporte");
+    setError(null);
+  }
+
+  function openCreateForm() {
+    setTitle("");
+    setDescription("");
+    setPriority("MEDIUM");
+    setCategory("Suporte");
+    setShowCreateForm(true);
+    setError(null);
+  }
+
+  function requestCloseCreate() {
+    const dialog = createDialogRef.current;
+    if (dialog?.open) {
+      dialog.close();
+      return;
+    }
+    resetCreateForm();
+  }
+
   async function onCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaving(true);
@@ -211,10 +393,7 @@ export default function TicketsPage() {
         method: "POST",
         body: { contractId, title, description, priority, category },
       });
-      setTitle("");
-      setDescription("");
-      setPriority("MEDIUM");
-      setCategory("Suporte");
+      requestCloseCreate();
       await load();
     } catch (err) {
       setError(errorMessage(err, "Falha ao abrir chamado"));
@@ -351,84 +530,157 @@ export default function TicketsPage() {
     }
   }
 
+  async function deleteTicket(ticket: PublicTicket) {
+    const confirmed = window.confirm(
+      `Excluir o chamado "${ticket.title}"? Os apontamentos de tempo desse chamado também serão removidos.`,
+    );
+
+    if (!confirmed) return;
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      await apiRequest(`/api/tickets/${ticket.id}`, { method: "DELETE" });
+      if (selectedId === ticket.id) closePanel();
+      await load();
+    } catch (err) {
+      setError(errorMessage(err, "Falha ao excluir chamado"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <section className={styles.page}>
-      <header className={styles.header}>
+      <header className={styles.sectionHead}>
         <div>
           <h1>Chamados</h1>
+          <p className="muted">
+            {loading
+              ? "Carregando chamados…"
+              : openTicketsCount === 1
+                ? "1 chamado em andamento"
+                : `${openTicketsCount} chamados em andamento`}
+          </p>
         </div>
+        <button type="button" className="btn btn-primary" onClick={openCreateForm}>
+          Novo chamado
+        </button>
       </header>
 
-      {error && !panel ? <div className="error-banner">{error}</div> : null}
-
-      <form className={`${styles.formPanel} panel`} onSubmit={onCreate}>
-        <h2>Abrir chamado</h2>
-        <div className={styles.formGrid}>
-          <div className="field">
-            <label htmlFor="contractId">Contrato</label>
-            <select id="contractId" value={contractId} onChange={(e) => setContractId(e.target.value)} required>
-              <option value="" disabled>
-                Selecione
-              </option>
-              {contracts.map((contract) => (
-                <option key={contract.id} value={contract.id}>
-                  {contract.code}: {contract.title}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="field">
-            <label htmlFor="title">Título</label>
-            <input id="title" value={title} onChange={(e) => setTitle(e.target.value)} required />
-          </div>
-          <div className="field">
-            <label htmlFor="priority">Prioridade</label>
-            <select id="priority" value={priority} onChange={(e) => setPriority(e.target.value)}>
-              {PRIORITIES.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="field">
-            <label htmlFor="category">Categoria</label>
-            <input id="category" value={category} onChange={(e) => setCategory(e.target.value)} required />
-          </div>
-          <div className={`field ${styles.full}`}>
-            <label htmlFor="description">O que o cliente precisa</label>
-            <textarea id="description" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} required />
-          </div>
-        </div>
-        <div className={styles.formActions}>
-          <button className="btn btn-primary" type="submit" disabled={saving || !contractId}>
-            {saving ? "Salvando…" : "Abrir chamado"}
-          </button>
-        </div>
-      </form>
+      {error && !panel && !showCreateForm ? <div className="error-banner">{error}</div> : null}
 
       <section className={`${styles.listPanel} panel`}>
+        <div className={styles.listToolbar}>
+          <h2>Lista de chamados</h2>
+          <div className={styles.searchField}>
+            <label className="sr-only" htmlFor="ticket-search">
+              Buscar chamados
+            </label>
+            <input
+              id="ticket-search"
+              type="search"
+              placeholder="Buscar por título, categoria ou contrato…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+        </div>
         {loading ? (
           <p className="empty-state">Carregando…</p>
         ) : tickets.length === 0 ? (
-          <p className="empty-state">Nenhum chamado encontrado.</p>
+          <p className="empty-state">Nenhum chamado encontrado. Clique em Novo chamado para abrir o primeiro.</p>
+        ) : listedTickets.length === 0 ? (
+          <p className="empty-state">Nenhum chamado corresponde à busca.</p>
         ) : (
           <div className="table-wrap">
             <table className="data">
               <thead>
                 <tr>
-                  <th>Chamado</th>
-                  <th>Tempo apontado</th>
-                  <th>Prioridade</th>
-                  <th>Situação</th>
+                  <th>
+                    <SortHeader
+                      label="Chamado"
+                      active={sortKey === "title"}
+                      sortDir={sortDir}
+                      defaultDir={SORT_DEFAULT_DIR.title}
+                      hintAsc={SORT_HINT.title.asc}
+                      hintDesc={SORT_HINT.title.desc}
+                      alpha
+                      onToggle={() => toggleSort("title")}
+                    />
+                  </th>
+                  <th>
+                    <SortHeader
+                      label="SLA"
+                      active={sortKey === "sla"}
+                      sortDir={sortDir}
+                      defaultDir={SORT_DEFAULT_DIR.sla}
+                      hintAsc={SORT_HINT.sla.asc}
+                      hintDesc={SORT_HINT.sla.desc}
+                      onToggle={() => toggleSort("sla")}
+                    />
+                  </th>
+                  <th>
+                    <SortHeader
+                      label="Tempo apontado"
+                      active={sortKey === "time"}
+                      sortDir={sortDir}
+                      defaultDir={SORT_DEFAULT_DIR.time}
+                      hintAsc={SORT_HINT.time.asc}
+                      hintDesc={SORT_HINT.time.desc}
+                      onToggle={() => toggleSort("time")}
+                    />
+                  </th>
+                  <th>
+                    <SortHeader
+                      label="Prioridade"
+                      active={sortKey === "priority"}
+                      sortDir={sortDir}
+                      defaultDir={SORT_DEFAULT_DIR.priority}
+                      hintAsc={SORT_HINT.priority.asc}
+                      hintDesc={SORT_HINT.priority.desc}
+                      onToggle={() => toggleSort("priority")}
+                    />
+                  </th>
+                  <th>
+                    <SortHeader
+                      label="Situação"
+                      active={sortKey === "status"}
+                      sortDir={sortDir}
+                      defaultDir={SORT_DEFAULT_DIR.status}
+                      hintAsc={SORT_HINT.status.asc}
+                      hintDesc={SORT_HINT.status.desc}
+                      onToggle={() => toggleSort("status")}
+                    />
+                  </th>
                   <th>Ações</th>
                 </tr>
               </thead>
               <tbody>
-                {tickets.map((ticket) => {
+                {listedTickets.map((ticket) => {
                   const minutes = sumMinutes(entriesByTicket[ticket.id] ?? []);
                   const closed = ticket.status === "CLOSED";
                   const resolved = ticket.status === "RESOLVED" || closed;
+                  const contract = contractById.get(ticket.contractId);
+                  const deadline =
+                    contract
+                      ? getActiveSlaDeadline({
+                          openedAt: ticket.openedAt,
+                          firstResponseAt: ticket.firstResponseAt,
+                          resolvedAt: ticket.resolvedAt,
+                          status: ticket.status,
+                          responseMinutes: contract.responseMinutes,
+                          resolutionMinutes: contract.resolutionMinutes,
+                          now,
+                        })
+                      : null;
+                  const slaToneClass =
+                    deadline?.tone === "breached"
+                      ? styles.slaBreached
+                      : deadline?.tone === "warn"
+                        ? styles.slaWarn
+                        : styles.slaOk;
 
                   return (
                     <tr key={ticket.id} className={selectedId === ticket.id ? styles.selectedRow : undefined}>
@@ -436,6 +688,24 @@ export default function TicketsPage() {
                         <strong>{ticket.title}</strong>
                         <div className="muted">{ticket.category}</div>
                         <div className="muted">{contractName(ticket.contractId)}</div>
+                      </td>
+                      <td>
+                        {deadline ? (
+                          <span
+                            className={`${styles.slaClock} ${slaToneClass}`}
+                            title={formatSlaDeadlineLabel(deadline)}
+                            aria-label={formatSlaDeadlineLabel(deadline)}
+                          >
+                            <ClockIcon />
+                            <span>
+                              {deadline.remainingMinutes <= 0
+                                ? "Estourado"
+                                : formatSlaDuration(deadline.remainingMinutes)}
+                            </span>
+                          </span>
+                        ) : (
+                          <span className="muted">—</span>
+                        )}
                       </td>
                       <td>
                         <strong>{formatWorkedMinutes(minutes, true)}</strong>
@@ -469,9 +739,27 @@ export default function TicketsPage() {
                             </button>
                           ) : null}
                           {!closed ? (
-                            <button type="button" className={`btn btn-ghost ${styles.compact}`} onClick={() => openPanel(ticket, "edit")}>
-                              Corrigir informações
-                            </button>
+                            <>
+                              <button
+                                type="button"
+                                className={styles.iconBtn}
+                                onClick={() => openPanel(ticket, "edit")}
+                                title="Editar informações do chamado"
+                                aria-label="Editar informações do chamado"
+                              >
+                                <EditIcon />
+                              </button>
+                              <button
+                                type="button"
+                                className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
+                                onClick={() => void deleteTicket(ticket)}
+                                disabled={saving}
+                                title="Excluir chamado"
+                                aria-label="Excluir chamado"
+                              >
+                                <TrashIcon />
+                              </button>
+                            </>
                           ) : (
                             <span className="muted">Encerrado</span>
                           )}
@@ -485,6 +773,81 @@ export default function TicketsPage() {
           </div>
         )}
       </section>
+
+      {showCreateForm ? (
+        <dialog
+          ref={createDialogRef}
+          className={styles.dialog}
+          aria-labelledby="create-ticket-dialog-title"
+          onClose={resetCreateForm}
+          onMouseDown={(event: MouseEvent<HTMLDialogElement>) => {
+            if (event.target === event.currentTarget) requestCloseCreate();
+          }}
+        >
+          <div className={styles.dialogCard}>
+            <div className={styles.sectionHead}>
+              <h2 id="create-ticket-dialog-title">Novo chamado</h2>
+              <button
+                type="button"
+                className={styles.iconBtn}
+                onClick={requestCloseCreate}
+                disabled={saving}
+                title="Fechar"
+                aria-label="Fechar"
+              >
+                <CloseIcon />
+              </button>
+            </div>
+
+            {error ? <div className="error-banner">{error}</div> : null}
+
+            <form onSubmit={onCreate}>
+              <div className={styles.formGrid}>
+                <div className="field">
+                  <label htmlFor="contractId">Contrato</label>
+                  <select id="contractId" value={contractId} onChange={(e) => setContractId(e.target.value)} required>
+                    <option value="" disabled>
+                      Selecione
+                    </option>
+                    {activeContracts.map((contract) => (
+                      <option key={contract.id} value={contract.id}>
+                        {contract.code}: {contract.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="field">
+                  <label htmlFor="title">Título</label>
+                  <input id="title" value={title} onChange={(e) => setTitle(e.target.value)} required />
+                </div>
+                <div className="field">
+                  <label htmlFor="priority">Prioridade</label>
+                  <select id="priority" value={priority} onChange={(e) => setPriority(e.target.value)}>
+                    {PRIORITIES.map((item) => (
+                      <option key={item.value} value={item.value}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="field">
+                  <label htmlFor="category">Categoria</label>
+                  <input id="category" value={category} onChange={(e) => setCategory(e.target.value)} required />
+                </div>
+                <div className={`field ${styles.full}`}>
+                  <label htmlFor="description">O que o cliente precisa</label>
+                  <textarea id="description" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} required />
+                </div>
+              </div>
+              <div className={styles.formActions}>
+                <button className="btn btn-primary" type="submit" disabled={saving || !contractId}>
+                  {saving ? "Salvando…" : "Abrir chamado"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </dialog>
+      ) : null}
 
       {selected && panel ? (
         <dialog
@@ -500,12 +863,18 @@ export default function TicketsPage() {
           <div className={styles.sectionHead}>
             <div>
               <h2 id="ticket-dialog-title">
-                {panel === "hours" ? "Apontar tempo" : panel === "edit" ? "Corrigir informações" : "Resolver chamado"}
+                {panel === "hours" ? "Apontar tempo" : panel === "edit" ? "Editar chamado" : "Resolver chamado"}
               </h2>
               <p className="muted">{selected.title}</p>
             </div>
-            <button type="button" className={`btn btn-ghost ${styles.compact}`} onClick={requestClose}>
-              Fechar
+            <button
+              type="button"
+              className={styles.iconBtn}
+              onClick={requestClose}
+              title="Fechar"
+              aria-label="Fechar"
+            >
+              <CloseIcon />
             </button>
           </div>
 

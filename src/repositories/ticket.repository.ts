@@ -60,6 +60,13 @@ export class TicketRepository {
   update(id: string, data: Prisma.TicketUpdateInput) {
     return this.db.ticket.update({ where: { id }, data });
   }
+
+  delete(id: string) {
+    return this.db.$transaction(async (tx) => {
+      await tx.timeEntry.deleteMany({ where: { ticketId: id } });
+      await tx.ticket.delete({ where: { id } });
+    });
+  }
 }
 
 export const ticketRepository = new TicketRepository();

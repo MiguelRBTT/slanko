@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { GET, PUT } from "@/app/api/tickets/[id]/route";
+import { DELETE, GET, PUT } from "@/app/api/tickets/[id]/route";
 import { ticketService } from "@/services/ticket.service";
 import {
   USER_EMAIL_HEADER,
@@ -12,6 +12,7 @@ vi.mock("@/services/ticket.service", () => ({
   ticketService: {
     getTicketById: vi.fn(),
     updateTicket: vi.fn(),
+    deleteTicket: vi.fn(),
   },
 }));
 
@@ -114,5 +115,36 @@ describe("PUT /api/tickets/:id", () => {
     );
 
     expect(response.status).toBe(403);
+  });
+});
+
+describe("DELETE /api/tickets/:id", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("deletes a ticket", async () => {
+    vi.mocked(ticketService.deleteTicket).mockResolvedValue(undefined);
+
+    const response = await DELETE(
+      new Request("http://localhost", { method: "DELETE", headers: authHeaders }),
+      routeContext,
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.success).toBe(true);
+    expect(ticketService.deleteTicket).toHaveBeenCalledWith("ticket-1", expect.any(Object));
+  });
+
+  it("returns 404 when ticket is not found", async () => {
+    vi.mocked(ticketService.deleteTicket).mockRejectedValue(new NotFoundError("Ticket not found"));
+
+    const response = await DELETE(
+      new Request("http://localhost", { method: "DELETE", headers: authHeaders }),
+      routeContext,
+    );
+
+    expect(response.status).toBe(404);
   });
 });
