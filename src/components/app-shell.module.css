@@ -66,18 +66,27 @@
 }
 
 .userBox {
-  display: grid;
-  gap: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
   margin-top: auto;
-  padding: 0.9rem;
+  padding: 0.75rem 0.8rem;
   border-radius: var(--radius-sm);
   background: rgba(0, 0, 0, 0.18);
+}
+
+.userMeta {
+  min-width: 0;
+  flex: 1;
 }
 
 .userBox strong {
   display: block;
   font-size: 0.95rem;
   color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .userBox p {
@@ -86,16 +95,29 @@
   color: #ffedd5;
 }
 
-.userBox .btn-ghost {
-  background: #fff;
-  border-color: #fff;
-  color: var(--brand-deep);
+.logoutBtn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.15rem;
+  height: 2.15rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: #ffedd5;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
-.userBox .btn-ghost:hover:not(:disabled) {
-  background: #fff7ed;
-  border-color: #fff7ed;
-  color: var(--brand-deep);
+.logoutBtn:hover,
+.logoutBtn:focus-visible {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  outline: none;
 }
 
 .main {
@@ -131,8 +153,6 @@
 
   .userBox {
     margin-top: 0;
-    grid-template-columns: 1fr auto;
-    align-items: center;
   }
 
   .main {

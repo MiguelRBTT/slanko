@@ -235,15 +235,23 @@ export default function DashboardPage() {
 
       <section className="panel">
         <div className={styles.sectionHead}>
-          <div className={styles.sectionTitle}>
-            <h2>Chamados com prazo estourado</h2>
-            <InfoTip
-              align="start"
-              label="O que é prazo estourado"
-              text="Mostra chamados que passaram do prazo de resposta ou de resolução. O tempo ao lado é de calendário, entre abrir e responder ou resolver. Não é o tempo de trabalho apontado em minutos."
-            />
+          <div>
+            <div className={styles.sectionTitle}>
+              <h2>Chamados com prazo estourado</h2>
+              <InfoTip
+                align="start"
+                label="O que é prazo estourado"
+                text="Mostra chamados que passaram do prazo de resposta ou de resolução. O tempo ao lado é de calendário, entre abrir e responder ou resolver. Não é o tempo de trabalho apontado em minutos."
+              />
+            </div>
+            <p className={`muted ${styles.sectionCount}`}>
+              {breachedTickets.length === 0
+                ? "Nenhum chamado fora do prazo"
+                : breachedTickets.length === 1
+                  ? "1 chamado fora do prazo"
+                  : `${breachedTickets.length} chamados fora do prazo`}
+            </p>
           </div>
-          <span className="badge badge-warn">{breachedTickets.length}</span>
         </div>
         {breachedTickets.length === 0 ? (
           <p className="empty-state">Nenhum chamado estourou o prazo de resposta ou de resolução.</p>

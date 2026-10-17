@@ -9,7 +9,17 @@ describe("TicketRepository", () => {
       findUnique: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
+      delete: vi.fn(),
     },
+    timeEntry: {
+      deleteMany: vi.fn(),
+    },
+    $transaction: vi.fn(async (callback: (tx: unknown) => Promise<unknown>) =>
+      callback({
+        timeEntry: mockDb.timeEntry,
+        ticket: mockDb.ticket,
+      }),
+    ),
   };
 
   beforeEach(() => {
@@ -67,5 +77,17 @@ describe("TicketRepository", () => {
     expect(mockDb.ticket.create).toHaveBeenCalled();
     expect(mockDb.ticket.findUnique).toHaveBeenCalledWith({ where: { id: "ticket-1" } });
     expect(mockDb.ticket.update).toHaveBeenCalled();
+  });
+
+  it("deletes time entries before removing the ticket", async () => {
+    mockDb.timeEntry.deleteMany.mockResolvedValue({ count: 2 });
+    mockDb.ticket.delete.mockResolvedValue({ id: "ticket-1" });
+
+    const repository = new TicketRepository(mockDb as unknown as PrismaClient);
+    await repository.delete("ticket-1");
+
+    expect(mockDb.$transaction).toHaveBeenCalled();
+    expect(mockDb.timeEntry.deleteMany).toHaveBeenCalledWith({ where: { ticketId: "ticket-1" } });
+    expect(mockDb.ticket.delete).toHaveBeenCalledWith({ where: { id: "ticket-1" } });
   });
 });
