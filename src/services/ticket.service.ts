@@ -212,6 +212,17 @@ export class TicketService {
     return toPublicTicket(ticket);
   }
 
+  async deleteTicket(id: string, auth: AuthContext): Promise<void> {
+    const existing = await this.tickets.findById(id);
+
+    if (!existing) {
+      throw new NotFoundError("Ticket not found");
+    }
+
+    this.assertTicketAccess(existing, auth);
+    await this.tickets.delete(id);
+  }
+
   private assertTicketAccess(ticket: Ticket, auth: AuthContext): void {
     if (auth.role === "GESTOR") {
       return;
