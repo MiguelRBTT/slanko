@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { decimal } from "../helpers/fixtures";
 import { toPublicContract } from "@/types/contract";
 
 describe("toPublicContract", () => {
@@ -10,7 +11,7 @@ describe("toPublicContract", () => {
         code: "CTR-2026-001",
         title: "Suporte mensal",
         description: "Descricao",
-        value: { toString: () => "4500.00" },
+        value: decimal("4500.00"),
         startDate: new Date("2026-01-01T00:00:00.000Z"),
         endDate: new Date("2026-12-31T00:00:00.000Z"),
         status: "ACTIVE",
@@ -39,7 +40,7 @@ describe("toPublicContract", () => {
       code: "CTR-2026-002",
       title: "Suporte premium",
       description: null,
-      value: { toString: () => "6000" },
+      value: decimal("6000"),
       startDate: new Date("2026-09-01T00:00:00.000Z"),
       endDate: null,
       status: "DRAFT",

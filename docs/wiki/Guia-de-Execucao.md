@@ -4,7 +4,7 @@ Como subir o Slanko localmente (Windows ou Linux/macOS).
 
 ## Pré-requisitos
 
-* Node.js 18+ (LTS recomendado; CI usa 22)
+* Node.js 22.12+ (versão em `.nvmrc`, a mesma do CI)
 * [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 * Git
 
@@ -73,7 +73,11 @@ Scripts úteis:
 npm run dev
 ```
 
-Abra [http://localhost:3000](http://localhost:3000). A home redireciona para `/login`.
+Abra [https://localhost:3000](https://localhost:3000). A home redireciona para `/login`.
+
+Na primeira execução, o `next dev --experimental-https` cria uma autoridade certificadora local (mkcert) e o Windows pede confirmação para instalá-la. Aceite para o navegador confiar no certificado. Sem HTTPS: `npm run dev:http`.
+
+App em container (opcional): `npm run app:up` → http://localhost:3002.
 
 ### Telas
 
@@ -82,22 +86,25 @@ Abra [http://localhost:3000](http://localhost:3000). A home redireciona para `/l
 | `/login` | Autenticação JWT |
 | `/dashboard` | Painel SLA e rentabilidade (gestor) |
 | `/clients` | Clientes (gestor) |
-| `/contracts` | Contratos |
-| `/tickets` | Chamados |
+| `/contracts` | Contratos (gestor) |
+| `/tickets` | Chamados (com histórico) |
+| `/users` | Equipe e custo por hora (gestor) |
 
 ## 4. Testes
 
 ```bash
-npm test
-npm run test:coverage
+npm test                  # unitários (backend)
+npm run test:coverage     # backend ≥75% e frontend ≥25%
+npm run test:integration  # MySQL real, banco slanko_test
+npm run typecheck         # TypeScript do projeto inteiro, incluindo testes
 ```
 
-`test:coverage` exige 100% nos módulos de back-end listados em `vitest.config.ts` e gera `coverage/lcov.info` (usado pelo SonarCloud).
+`test:coverage` gera `coverage/lcov.info` (usado pelo SonarCloud). `test:integration` aplica as migrations no banco `slanko_test` e só roda em bancos cujo nome termina em `_test`.
 
 ## 5. Smoke da API
 
 ```bash
-curl -X POST http://localhost:3000/api/auth/login \
+curl -k -X POST https://localhost:3000/api/auth/login \
   -H "Content-Type: application/json" \
   -d "{\"email\":\"gestor@slanko.local\",\"password\":\"Slanko@123\"}"
 ```
@@ -105,7 +112,7 @@ curl -X POST http://localhost:3000/api/auth/login \
 Use o `token` retornado:
 
 ```bash
-curl http://localhost:3000/api/clients -H "Authorization: Bearer SEU_TOKEN"
+curl -k https://localhost:3000/api/clients -H "Authorization: Bearer SEU_TOKEN"
 ```
 
 Mais endpoints: [API](API).

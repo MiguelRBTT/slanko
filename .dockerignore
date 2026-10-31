@@ -1,0 +1,14 @@
+node_modules
+.next
+coverage
+coverage-frontend
+uploads
+certificates
+.env
+.env.*
+!.env.example
+.git
+.github
+.cursor
+*.log
+*.tsbuildinfo

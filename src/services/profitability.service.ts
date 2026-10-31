@@ -2,9 +2,12 @@ import {
   buildProfitabilityTotals,
   calculateContractProfitability,
   calculateEntryCost,
+  calculateProratedRevenue,
+  resolveRevenueWindow,
   toNumeric,
 } from "@/lib/profitability/calculations";
 import { NotFoundError } from "@/lib/errors/app-error";
+import { REPORTABLE_CONTRACT_STATUSES } from "@/lib/reports/contract-status-filter";
 import {
   ProfitabilityRepository,
   profitabilityRepository,
@@ -16,23 +19,42 @@ import type {
   PublicProfitabilitySummary,
 } from "@/types/profitability";
 
-type ContractWithEntries = Awaited<ReturnType<ProfitabilityRepository["findActiveContracts"]>>[number];
+type ContractWithEntries = Awaited<ReturnType<ProfitabilityRepository["findContracts"]>>[number];
 
-function toContractProfitability(contract: ContractWithEntries): PublicContractProfitability {
+function toDateOnly(value: Date): string {
+  return value.toISOString().slice(0, 10);
+}
+
+function toContractProfitability(
+  contract: ContractWithEntries,
+  filters: ProfitabilityFilters,
+  today: Date,
+): PublicContractProfitability {
   let totalHours = 0;
   let totalCost = 0;
 
   for (const ticket of contract.tickets) {
     for (const entry of ticket.timeEntries) {
       const hours = toNumeric(entry.hours);
-      const hourlyCost = toNumeric(entry.user.hourlyCost);
+      // Custo/hora gravado no apontamento: alterar o custo do colaborador não reescreve o passado.
+      const hourlyCost = toNumeric(entry.hourlyCost);
       totalHours += hours;
       totalCost += calculateEntryCost(hours, hourlyCost);
     }
   }
 
+  const monthlyValue = toNumeric(contract.value);
+  const window = resolveRevenueWindow({
+    contractStart: contract.startDate,
+    contractEnd: contract.endDate,
+    periodStart: filters.workedFrom,
+    periodEnd: filters.workedTo,
+    today,
+  });
+
   const metrics = calculateContractProfitability({
-    contractValue: toNumeric(contract.value),
+    contractValue: monthlyValue,
+    revenue: calculateProratedRevenue(monthlyValue, window),
     totalHours,
     totalCost,
   });
@@ -42,6 +64,9 @@ function toContractProfitability(contract: ContractWithEntries): PublicContractP
     contractCode: contract.code,
     contractTitle: contract.title,
     clientId: contract.clientId,
+    contractStatus: contract.status,
+    periodStart: window ? toDateOnly(window.start) : null,
+    periodEnd: window ? toDateOnly(window.end) : null,
     ...metrics,
   };
 }
@@ -52,7 +77,7 @@ function toEntryDetails(contract: ContractWithEntries) {
   for (const ticket of contract.tickets) {
     for (const entry of ticket.timeEntries) {
       const hours = toNumeric(entry.hours);
-      const hourlyCost = toNumeric(entry.user.hourlyCost);
+      const hourlyCost = toNumeric(entry.hourlyCost);
 
       entries.push({
         timeEntryId: entry.id,
@@ -71,11 +96,15 @@ function toEntryDetails(contract: ContractWithEntries) {
 }
 
 export class ProfitabilityService {
-  constructor(private readonly profitability: ProfitabilityRepository = profitabilityRepository) {}
+  constructor(
+    private readonly profitability: ProfitabilityRepository = profitabilityRepository,
+    private readonly clock: () => Date = () => new Date(),
+  ) {}
 
   async getSummary(filters: ProfitabilityFilters = {}): Promise<PublicProfitabilitySummary> {
-    const contracts = await this.profitability.findActiveContracts(filters);
-    const reports = contracts.map(toContractProfitability);
+    const contracts = await this.profitability.findContracts(filters);
+    const today = this.clock();
+    const reports = contracts.map((contract) => toContractProfitability(contract, filters, today));
     const totals = buildProfitabilityTotals(reports);
 
     return {
@@ -86,9 +115,13 @@ export class ProfitabilityService {
 
   async getContractReport(
     contractId: string,
-    filters: Omit<ProfitabilityFilters, "contractId"> = {},
+    filters: Omit<ProfitabilityFilters, "contractId" | "contractStatuses"> = {},
   ): Promise<PublicContractProfitabilityReport> {
-    const contracts = await this.profitability.findActiveContracts({ ...filters, contractId });
+    const contracts = await this.profitability.findContracts({
+      ...filters,
+      contractId,
+      contractStatuses: REPORTABLE_CONTRACT_STATUSES,
+    });
     const detailed = contracts[0];
 
     if (!detailed) {
@@ -96,7 +129,7 @@ export class ProfitabilityService {
     }
 
     return {
-      contract: toContractProfitability(detailed),
+      contract: toContractProfitability(detailed, filters, this.clock()),
       entries: toEntryDetails(detailed),
     };
   }

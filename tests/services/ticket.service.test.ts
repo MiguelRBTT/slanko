@@ -1,12 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { decimal } from "../helpers/fixtures";
 import {
   BadRequestError,
+  ConflictError,
   ForbiddenError,
   NotFoundError,
 } from "@/lib/errors/app-error";
 import { TicketService } from "@/services/ticket.service";
 import type { TicketAttachmentService } from "@/services/ticket-attachment.service";
 import type { ContractRepository } from "@/repositories/contract.repository";
+import type { TicketEventRepository } from "@/repositories/ticket-event.repository";
 import type { TicketRepository } from "@/repositories/ticket.repository";
 import type { UserRepository } from "@/repositories/user.repository";
 
@@ -34,9 +37,9 @@ const activeContract = {
   code: "CTR-001",
   title: "Suporte",
   description: null,
-  value: { toString: () => "1000" },
+  value: decimal("1000"),
   startDate: new Date("2026-01-01"),
-  endDate: null,
+  endDate: null as Date | null,
   status: "ACTIVE" as const,
   responseMinutes: 60,
   resolutionMinutes: 480,
@@ -57,6 +60,8 @@ const sampleTicket = {
   category: "Infraestrutura",
   status: "OPEN" as const,
   openedAt: new Date("2026-08-19T10:00:00.000Z"),
+  responseMinutes: 60,
+  resolutionMinutes: 480,
   firstResponseAt: null,
   resolvedAt: null,
   closedAt: null,
@@ -71,23 +76,24 @@ const activeUser = {
   email: "tecnico@slanko.local",
   passwordHash: "hash",
   role: "TECNICO" as const,
-  hourlyCost: { toString: () => "85.5" },
+  hourlyCost: decimal("85.5"),
   active: true,
   createdAt: new Date(),
   updatedAt: new Date(),
 };
 
 describe("TicketService", () => {
-  const mockTickets: TicketRepository = {
+  const mockTickets = {
     findMany: vi.fn(),
     findById: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
-    replaceObservers: vi.fn(),
+    countTimeEntries: vi.fn(),
+    sumLoggedHours: vi.fn(async () => new Map<string, string>()),
     delete: vi.fn(),
-  };
+  } as unknown as TicketRepository;
 
-  const mockContracts: ContractRepository = {
+  const mockContracts = {
     findMany: vi.fn(),
     findById: vi.fn(),
     findByCode: vi.fn(),
@@ -95,13 +101,13 @@ describe("TicketService", () => {
     update: vi.fn(),
     delete: vi.fn(),
     countTickets: vi.fn(),
-  };
+  } as unknown as ContractRepository;
 
-  const mockUsers: UserRepository = {
+  const mockUsers = {
     findAllActive: vi.fn(),
     findById: vi.fn(),
     findByEmail: vi.fn(),
-  };
+  } as unknown as UserRepository;
 
   const mockAttachments = {
     listAttachments: vi.fn(),
@@ -111,8 +117,12 @@ describe("TicketService", () => {
     deleteAllForTicket: vi.fn(),
   } as unknown as TicketAttachmentService;
 
+  const mockEvents = {
+    findByTicketId: vi.fn(),
+  } as unknown as TicketEventRepository;
+
   function makeService() {
-    return new TicketService(mockTickets, mockContracts, mockUsers, mockAttachments);
+    return new TicketService(mockTickets, mockContracts, mockUsers, mockAttachments, mockEvents);
   }
 
   beforeEach(() => {
@@ -501,6 +511,7 @@ describe("TicketService", () => {
 
   it("deletes a ticket when the user has access", async () => {
     vi.mocked(mockTickets.findById).mockResolvedValue(sampleTicket);
+    vi.mocked(mockTickets.countTimeEntries).mockResolvedValue(0);
     vi.mocked(mockTickets.delete).mockResolvedValue(undefined);
     vi.mocked(mockAttachments.deleteAllForTicket).mockResolvedValue(undefined);
 
@@ -521,5 +532,337 @@ describe("TicketService", () => {
     await expect(service.deleteTicket("ticket-1", otherTecnicoAuth)).rejects.toBeInstanceOf(
       ForbiddenError,
     );
+  });
+
+  it("refuses to delete tickets that are part of the SLA or profitability history", async () => {
+    const service = makeService();
+
+    vi.mocked(mockTickets.findById).mockResolvedValue({
+      ...sampleTicket,
+      status: "RESOLVED",
+      solution: "Corrigido",
+    });
+    await expect(service.deleteTicket("ticket-1", gestorAuth)).rejects.toBeInstanceOf(ConflictError);
+
+    vi.mocked(mockTickets.findById).mockResolvedValue(sampleTicket);
+    vi.mocked(mockTickets.countTimeEntries).mockResolvedValue(2);
+    await expect(service.deleteTicket("ticket-1", gestorAuth)).rejects.toBeInstanceOf(ConflictError);
+
+    expect(mockAttachments.deleteAllForTicket).not.toHaveBeenCalled();
+    expect(mockTickets.delete).not.toHaveBeenCalled();
+  });
+
+  it("records a CREATED event in the same write as the ticket", async () => {
+    vi.mocked(mockContracts.findById).mockResolvedValue(activeContract);
+    vi.mocked(mockUsers.findById).mockResolvedValue(activeUser);
+    vi.mocked(mockTickets.create).mockResolvedValue(sampleTicket);
+
+    const service = makeService();
+    await service.createTicket(
+      {
+        contractId: "contract-1",
+        title: "Servidor lento",
+        description: "Detalhes",
+        priority: "HIGH",
+        category: "Infra",
+        assignedToId: "user-tecnico",
+      },
+      gestorAuth,
+    );
+
+    expect(mockTickets.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        events: {
+          createMany: { data: [
+            {
+              type: "CREATED",
+              data: {
+                status: "OPEN",
+                priority: "HIGH",
+                assignedTo: { id: "user-tecnico", name: "Carlos Tecnico" },
+                observerIds: [],
+                responseMinutes: 60,
+                resolutionMinutes: 480,
+              },
+              actorId: "user-gestor",
+            },
+          ] },
+        },
+      }),
+    );
+  });
+
+  it("records status, assignee and field changes as history events", async () => {
+    vi.mocked(mockTickets.findById).mockResolvedValue({ ...sampleTicket, assignedToId: null, assignedTo: null });
+    vi.mocked(mockUsers.findById).mockResolvedValue(activeUser);
+    vi.mocked(mockTickets.update).mockResolvedValue(sampleTicket);
+
+    const service = makeService();
+    await service.updateTicket(
+      "ticket-1",
+      { status: "IN_PROGRESS", assignedToId: "user-tecnico", title: "Servidor muito lento" },
+      gestorAuth,
+    );
+
+    const [, data] = vi.mocked(mockTickets.update).mock.calls[0];
+    expect(data.events).toEqual({
+      createMany: { data: [
+        {
+          type: "STATUS_CHANGED",
+          data: { from: "OPEN", to: "IN_PROGRESS" },
+          actorId: "user-gestor",
+        },
+        {
+          type: "ASSIGNEE_CHANGED",
+          data: { from: null, to: { id: "user-tecnico", name: "Carlos Tecnico" } },
+          actorId: "user-gestor",
+        },
+        {
+          type: "UPDATED",
+          data: { fields: { title: { from: "Servidor lento", to: "Servidor muito lento" } } },
+          actorId: "user-gestor",
+        },
+      ] },
+    });
+  });
+
+  it("replaces observers in the same write and records the change", async () => {
+    vi.mocked(mockTickets.findById).mockResolvedValue({
+      ...sampleTicket,
+      observers: [{ userId: "user-old" }],
+    });
+    vi.mocked(mockUsers.findById).mockResolvedValue({ ...activeUser, id: "user-new" });
+    vi.mocked(mockTickets.update).mockResolvedValue(sampleTicket);
+
+    const service = makeService();
+    await service.updateTicket("ticket-1", { observerIds: ["user-new"] }, gestorAuth);
+
+    const [, data] = vi.mocked(mockTickets.update).mock.calls[0];
+    expect(data.observers).toEqual({
+      deleteMany: {},
+      create: [{ user: { connect: { id: "user-new" } } }],
+    });
+    expect(data.events).toEqual({
+      createMany: { data: [
+        {
+          type: "OBSERVERS_CHANGED",
+          data: { added: ["user-new"], removed: ["user-old"] },
+          actorId: "user-gestor",
+        },
+      ] },
+    });
+  });
+
+  it("does not write events when nothing changed", async () => {
+    vi.mocked(mockTickets.findById).mockResolvedValue(sampleTicket);
+    vi.mocked(mockTickets.update).mockResolvedValue(sampleTicket);
+
+    const service = makeService();
+    await service.updateTicket("ticket-1", { title: "Servidor lento" }, gestorAuth);
+
+    const [, data] = vi.mocked(mockTickets.update).mock.calls[0];
+    expect(data).not.toHaveProperty("events");
+    expect(data).not.toHaveProperty("observers");
+  });
+
+  it("rejects a non-string assignee", async () => {
+    vi.mocked(mockTickets.findById).mockResolvedValue(sampleTicket);
+
+    const service = makeService();
+    await expect(
+      service.updateTicket("ticket-1", { assignedToId: 42 as never }, gestorAuth),
+    ).rejects.toBeInstanceOf(BadRequestError);
+  });
+
+  it("lists the history of an accessible ticket", async () => {
+    vi.mocked(mockTickets.findById).mockResolvedValue(sampleTicket);
+    vi.mocked(mockEvents.findByTicketId).mockResolvedValue([
+      {
+        id: "event-1",
+        ticketId: "ticket-1",
+        actorId: "user-gestor",
+        actor: { name: "Ana Gestora" },
+        type: "CREATED",
+        data: { status: "OPEN" },
+        createdAt: new Date("2026-08-19T10:00:00.000Z"),
+      },
+    ] as never);
+
+    const service = makeService();
+    const events = await service.listEvents("ticket-1", tecnicoAuth);
+
+    expect(events).toEqual([
+      {
+        id: "event-1",
+        ticketId: "ticket-1",
+        type: "CREATED",
+        actorId: "user-gestor",
+        actorName: "Ana Gestora",
+        data: { status: "OPEN" },
+        createdAt: "2026-08-19T10:00:00.000Z",
+      },
+    ]);
+  });
+
+  it("protects the ticket history with the same access rule", async () => {
+    const service = makeService();
+
+    vi.mocked(mockTickets.findById).mockResolvedValue(null);
+    await expect(service.listEvents("missing", gestorAuth)).rejects.toBeInstanceOf(NotFoundError);
+
+    vi.mocked(mockTickets.findById).mockResolvedValue(sampleTicket);
+    await expect(service.listEvents("ticket-1", otherTecnicoAuth)).rejects.toBeInstanceOf(ForbiddenError);
+    expect(mockEvents.findByTicketId).not.toHaveBeenCalled();
+  });
+
+  it("does not count assignment alone as the first response", async () => {
+    vi.mocked(mockContracts.findById).mockResolvedValue(activeContract);
+    vi.mocked(mockUsers.findById).mockResolvedValue(activeUser);
+    vi.mocked(mockTickets.create).mockResolvedValue(sampleTicket);
+    vi.mocked(mockTickets.findById).mockResolvedValue({ ...sampleTicket, assignedToId: null, assignedTo: null });
+    vi.mocked(mockTickets.update).mockResolvedValue(sampleTicket);
+
+    const service = makeService();
+    await service.createTicket(
+      {
+        contractId: "contract-1",
+        title: "Servidor lento",
+        description: "Detalhes",
+        priority: "HIGH",
+        category: "Infra",
+        assignedToId: "user-tecnico",
+      },
+      gestorAuth,
+    );
+    expect(vi.mocked(mockTickets.create).mock.calls[0][0]).not.toHaveProperty("firstResponseAt");
+
+    await service.updateTicket("ticket-1", { assignedToId: "user-tecnico" }, gestorAuth);
+    expect(vi.mocked(mockTickets.update).mock.calls[0][1]).not.toHaveProperty("firstResponseAt");
+  });
+
+  it("closing directly also records the resolution time", async () => {
+    vi.mocked(mockTickets.findById).mockResolvedValue({
+      ...sampleTicket,
+      status: "IN_PROGRESS",
+      solution: "Feito",
+    });
+    vi.mocked(mockTickets.update).mockResolvedValue(sampleTicket);
+
+    const service = makeService();
+    await service.updateTicket("ticket-1", { status: "CLOSED" }, gestorAuth);
+
+    expect(mockTickets.update).toHaveBeenCalledWith(
+      "ticket-1",
+      expect.objectContaining({ closedAt: expect.any(Date), resolvedAt: expect.any(Date) }),
+    );
+  });
+
+  it("only opens tickets on contracts in effect today", async () => {
+    const service = makeService();
+    const create = (contract: typeof activeContract) => {
+      vi.mocked(mockContracts.findById).mockResolvedValue(contract);
+      return service.createTicket(
+        { contractId: "contract-1", title: "T", description: "D", priority: "LOW", category: "C" },
+        gestorAuth,
+      );
+    };
+
+    await expect(create({ ...activeContract, startDate: new Date("2999-01-01") })).rejects.toThrow(
+      "Contract is not in effect today",
+    );
+    await expect(
+      create({ ...activeContract, startDate: new Date("2020-01-01"), endDate: new Date("2020-12-31") }),
+    ).rejects.toThrow("Contract is not in effect today");
+    expect(mockTickets.create).not.toHaveBeenCalled();
+  });
+
+  it("lets a tecnico claim an unassigned ticket but not assign it to others", async () => {
+    vi.mocked(mockTickets.findById).mockResolvedValue({
+      ...sampleTicket,
+      openedById: "user-tecnico",
+      assignedToId: null,
+      assignedTo: null,
+    });
+    vi.mocked(mockUsers.findById).mockResolvedValue(activeUser);
+    vi.mocked(mockTickets.update).mockResolvedValue(sampleTicket);
+
+    const service = makeService();
+    await expect(
+      service.updateTicket("ticket-1", { assignedToId: "user-other" }, tecnicoAuth),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+
+    await service.updateTicket("ticket-1", { assignedToId: "user-tecnico" }, tecnicoAuth);
+    expect(mockTickets.update).toHaveBeenCalledWith(
+      "ticket-1",
+      expect.objectContaining({ assignedTo: { connect: { id: "user-tecnico" } } }),
+    );
+  });
+
+  it("does not let a tecnico reassign, unassign or change observers", async () => {
+    vi.mocked(mockTickets.findById).mockResolvedValue({
+      ...sampleTicket,
+      observers: [{ userId: "user-a" }],
+    });
+
+    const service = makeService();
+    await expect(
+      service.updateTicket("ticket-1", { assignedToId: null }, tecnicoAuth),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(
+      service.updateTicket("ticket-1", { assignedToId: "user-other" }, tecnicoAuth),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(
+      service.updateTicket("ticket-1", { observerIds: ["user-b"] }, tecnicoAuth),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+    expect(mockTickets.update).not.toHaveBeenCalled();
+
+    // Reenviar os mesmos observadores (sem mudança) é aceito.
+    vi.mocked(mockTickets.update).mockResolvedValue(sampleTicket);
+    await service.updateTicket("ticket-1", { observerIds: ["user-a"], title: "Novo" }, tecnicoAuth);
+    expect(mockTickets.update).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not let a tecnico assign others or set observers when opening a ticket", async () => {
+    vi.mocked(mockContracts.findById).mockResolvedValue(activeContract);
+    const service = makeService();
+    const base = { contractId: "contract-1", title: "T", description: "D", priority: "LOW" as const, category: "C" };
+
+    await expect(
+      service.createTicket({ ...base, assignedToId: "user-other" }, tecnicoAuth),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(
+      service.createTicket({ ...base, observerIds: ["user-a"] }, tecnicoAuth),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+    expect(mockTickets.create).not.toHaveBeenCalled();
+  });
+
+  it("freezes the contract SLA targets on the new ticket", async () => {
+    vi.mocked(mockContracts.findById).mockResolvedValue({
+      ...activeContract,
+      responseMinutes: 30,
+      resolutionMinutes: 240,
+    });
+    vi.mocked(mockTickets.create).mockResolvedValue(sampleTicket);
+
+    const service = makeService();
+    await service.createTicket(
+      { contractId: "contract-1", title: "T", description: "D", priority: "LOW", category: "C" },
+      gestorAuth,
+    );
+
+    expect(mockTickets.create).toHaveBeenCalledWith(
+      expect.objectContaining({ responseMinutes: 30, resolutionMinutes: 240 }),
+    );
+  });
+
+  it("adds the total logged hours to each listed ticket in a single query", async () => {
+    vi.mocked(mockTickets.findMany).mockResolvedValue([sampleTicket, { ...sampleTicket, id: "ticket-2" }]);
+    vi.mocked(mockTickets.sumLoggedHours).mockResolvedValue(new Map([["ticket-1", "1.5"]]));
+
+    const service = makeService();
+    const tickets = await service.listTickets(gestorAuth);
+
+    expect(mockTickets.sumLoggedHours).toHaveBeenCalledWith(["ticket-1", "ticket-2"]);
+    expect(tickets.map((ticket) => ticket.loggedHours)).toEqual(["1.5", "0"]);
   });
 });

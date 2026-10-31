@@ -1,4 +1,5 @@
 import { jsonError, jsonOk } from "@/lib/http/api-response";
+import { readJsonBody } from "@/lib/http/request-body";
 import { getAuthContextFromHeaders } from "@/lib/auth/request-context";
 import { ticketService } from "@/services/ticket.service";
 import type { UpdateTicketInput } from "@/types/ticket";
@@ -27,7 +28,7 @@ export async function PUT(request: Request, context: RouteContext) {
   try {
     const auth = getAuthContextFromHeaders(request);
     const { id } = await context.params;
-    const body = (await request.json()) as UpdateTicketInput;
+    const body = await readJsonBody<UpdateTicketInput>(request);
     const ticket = await ticketService.updateTicket(id, body, auth);
 
     return jsonOk({ ticket });

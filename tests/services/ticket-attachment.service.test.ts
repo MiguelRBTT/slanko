@@ -35,6 +35,9 @@ const otherAuth = {
   role: "TECNICO" as const,
 };
 
+const PNG_BYTES = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0x0d]);
+const MP4_BYTES = Buffer.concat([Buffer.from([0, 0, 0, 0x18]), Buffer.from("ftypmp42")]);
+
 const openTicket = {
   id: "ticket-1",
   openedById: "user-gestor",
@@ -93,7 +96,7 @@ describe("TicketAttachmentService", () => {
     const created = await service.createAttachment(
       "ticket-1",
       {
-        bytes: Buffer.from("png"),
+        bytes: PNG_BYTES,
         fileName: "print.png",
         mimeType: "image/png",
         sizeBytes: 2048,
@@ -128,7 +131,7 @@ describe("TicketAttachmentService", () => {
     const created = await service.createAttachment(
       "ticket-1",
       {
-        bytes: Buffer.alloc(10),
+        bytes: MP4_BYTES,
         fileName: "demo.mp4",
         mimeType: "video/mp4",
         sizeBytes: 10_000_000,
@@ -233,7 +236,7 @@ describe("TicketAttachmentService", () => {
     expect(readTicketAttachmentFile).toHaveBeenCalledWith("tickets/ticket-1/file.jpg");
 
     await service.deleteAttachment("ticket-1", "att-1", tecnicoAuth);
-    expect(mockAttachments.delete).toHaveBeenCalledWith("att-1");
+    expect(mockAttachments.delete).toHaveBeenCalledWith("att-1", "user-tecnico");
     expect(deleteTicketAttachmentFile).toHaveBeenCalledWith("tickets/ticket-1/file.jpg");
   });
 
@@ -256,5 +259,26 @@ describe("TicketAttachmentService", () => {
 
     expect(deleteTicketAttachmentFiles).toHaveBeenCalledWith(["tickets/ticket-1/file.jpg"]);
     expect(mockAttachments.deleteManyByTicketId).toHaveBeenCalledWith("ticket-1");
+  });
+
+  it("rejects a file whose content does not match the declared type", async () => {
+    vi.mocked(mockTickets.findById).mockResolvedValue(openTicket as never);
+    vi.mocked(mockAttachments.countByTicketId).mockResolvedValue(0);
+
+    const service = new TicketAttachmentService(mockAttachments, mockTickets);
+    await expect(
+      service.createAttachment(
+        "ticket-1",
+        {
+          // Um HTML renomeado para .png não pode virar anexo de imagem.
+          bytes: Buffer.from("<html><script>alert(1)</script></html>"),
+          fileName: "foto.png",
+          mimeType: "image/png",
+          sizeBytes: 38,
+        },
+        tecnicoAuth,
+      ),
+    ).rejects.toThrow("File content does not match its declared type");
+    expect(mockAttachments.create).not.toHaveBeenCalled();
   });
 });

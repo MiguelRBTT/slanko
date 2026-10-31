@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { gestorRequest } from "../helpers/auth-request";
 import { DELETE, GET, PUT } from "@/app/api/clients/[id]/route";
 import { clientService } from "@/services/client.service";
 import { NotFoundError } from "@/lib/errors/app-error";
@@ -30,7 +31,7 @@ describe("GET /api/clients/:id", () => {
   it("returns a client by id", async () => {
     vi.mocked(clientService.getClientById).mockResolvedValue(sampleClient);
 
-    const response = await GET(new Request("http://localhost"), routeContext);
+    const response = await GET(gestorRequest("http://localhost"), routeContext);
     const body = await response.json();
 
     expect(clientService.getClientById).toHaveBeenCalledWith("client-1", true);
@@ -41,7 +42,7 @@ describe("GET /api/clients/:id", () => {
   it("returns 404 when client is not found", async () => {
     vi.mocked(clientService.getClientById).mockRejectedValue(new NotFoundError("Client not found"));
 
-    const response = await GET(new Request("http://localhost"), routeContext);
+    const response = await GET(gestorRequest("http://localhost"), routeContext);
     const body = await response.json();
 
     expect(response.status).toBe(404);
@@ -58,7 +59,7 @@ describe("PUT /api/clients/:id", () => {
     vi.mocked(clientService.updateClient).mockResolvedValue({ ...sampleClient, name: "Updated" });
 
     const response = await PUT(
-      new Request("http://localhost", {
+      gestorRequest("http://localhost", {
         method: "PUT",
         body: JSON.stringify({ name: "Updated" }),
       }),
@@ -74,7 +75,7 @@ describe("PUT /api/clients/:id", () => {
     vi.mocked(clientService.updateClient).mockRejectedValue(new NotFoundError("Client not found"));
 
     const response = await PUT(
-      new Request("http://localhost", {
+      gestorRequest("http://localhost", {
         method: "PUT",
         body: JSON.stringify({ name: "Updated" }),
       }),
@@ -93,7 +94,7 @@ describe("DELETE /api/clients/:id", () => {
   it("deactivates a client", async () => {
     vi.mocked(clientService.deactivateClient).mockResolvedValue({ ...sampleClient, active: false });
 
-    const response = await DELETE(new Request("http://localhost"), routeContext);
+    const response = await DELETE(gestorRequest("http://localhost"), routeContext);
     const body = await response.json();
 
     expect(response.status).toBe(200);
@@ -105,7 +106,7 @@ describe("DELETE /api/clients/:id", () => {
       new NotFoundError("Client not found"),
     );
 
-    const response = await DELETE(new Request("http://localhost"), routeContext);
+    const response = await DELETE(gestorRequest("http://localhost"), routeContext);
 
     expect(response.status).toBe(404);
   });

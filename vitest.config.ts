@@ -1,4 +1,4 @@
-﻿import { defineConfig } from "vitest/config";
+import { defineConfig } from "vitest/config";
 import path from "path";
 import { backendCoverageInclude } from "./vitest.coverage";
 
@@ -7,7 +7,7 @@ export default defineConfig({
     environment: "node",
     globals: true,
     include: ["tests/**/*.test.ts"],
-    exclude: ["tests/frontend/**"],
+    exclude: ["tests/frontend/**", "tests/integration/**"],
     env: {
       JWT_SECRET: "test-secret-key-with-at-least-32-characters",
       JWT_EXPIRES_IN: "1h",

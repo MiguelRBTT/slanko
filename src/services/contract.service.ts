@@ -100,8 +100,11 @@ export class ContractService {
       throw new NotFoundError("Contract not found");
     }
 
-    if (input.clientId) {
-      await this.ensureActiveClient(input.clientId);
+    const clientId =
+      input.clientId !== undefined ? requireNonEmptyString(input.clientId, "clientId") : undefined;
+
+    if (clientId) {
+      await this.ensureActiveClient(clientId);
     }
 
     const startDate = input.startDate ? parseDateOnly(input.startDate, "startDate") : existing.startDate;
@@ -114,7 +117,7 @@ export class ContractService {
 
     try {
       const contract = await this.contracts.update(id, {
-        ...(input.clientId ? { client: { connect: { id: input.clientId } } } : {}),
+        ...(clientId ? { client: { connect: { id: clientId } } } : {}),
         ...(input.code !== undefined ? { code: requireNonEmptyString(input.code, "code") } : {}),
         ...(input.title !== undefined ? { title: requireNonEmptyString(input.title, "title") } : {}),
         ...(input.description !== undefined

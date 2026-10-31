@@ -83,18 +83,28 @@ export class TicketRepository {
     });
   }
 
-  async replaceObservers(ticketId: string, userIds: string[]) {
-    await this.db.$transaction(async (tx) => {
-      await tx.ticketObserver.deleteMany({ where: { ticketId } });
+  /** Soma das horas apontadas por chamado, numa única consulta agregada. */
+  async sumLoggedHours(ticketIds: string[]): Promise<Map<string, string>> {
+    if (ticketIds.length === 0) {
+      return new Map();
+    }
 
-      if (userIds.length === 0) {
-        return;
-      }
-
-      await tx.ticketObserver.createMany({
-        data: userIds.map((userId) => ({ ticketId, userId })),
-      });
+    const rows = await this.db.timeEntry.groupBy({
+      by: ["ticketId"],
+      where: { ticketId: { in: ticketIds } },
+      _sum: { hours: true },
     });
+
+    return new Map(rows.map((row) => [row.ticketId, row._sum.hours?.toString() ?? "0"]));
+  }
+
+  async countByStatus(): Promise<Record<string, number>> {
+    const rows = await this.db.ticket.groupBy({ by: ["status"], _count: { _all: true } });
+    return Object.fromEntries(rows.map((row) => [row.status, row._count._all]));
+  }
+
+  countTimeEntries(ticketId: string) {
+    return this.db.timeEntry.count({ where: { ticketId } });
   }
 
   delete(id: string) {

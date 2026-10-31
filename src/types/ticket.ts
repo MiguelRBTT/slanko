@@ -13,10 +13,15 @@ export type PublicTicket = {
   category: string;
   status: TicketStatus;
   openedAt: string;
+  /** Metas de SLA (minutos) congeladas na abertura do chamado. */
+  responseMinutes: number;
+  resolutionMinutes: number;
   firstResponseAt: string | null;
   resolvedAt: string | null;
   closedAt: string | null;
   solution: string | null;
+  /** Total de horas apontadas (só na listagem). */
+  loggedHours?: string;
 };
 
 export type CreateTicketInput = {
@@ -64,6 +69,8 @@ export function toPublicTicket(ticket: {
   category: string;
   status: TicketStatus;
   openedAt: Date;
+  responseMinutes: number;
+  resolutionMinutes: number;
   firstResponseAt: Date | null;
   resolvedAt: Date | null;
   closedAt: Date | null;
@@ -82,6 +89,8 @@ export function toPublicTicket(ticket: {
     category: ticket.category,
     status: ticket.status,
     openedAt: ticket.openedAt.toISOString(),
+    responseMinutes: ticket.responseMinutes,
+    resolutionMinutes: ticket.resolutionMinutes,
     firstResponseAt: toIsoDateTime(ticket.firstResponseAt),
     resolvedAt: toIsoDateTime(ticket.resolvedAt),
     closedAt: toIsoDateTime(ticket.closedAt),

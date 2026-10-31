@@ -1,4 +1,5 @@
-﻿import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { gestorRequest, tecnicoRequest } from "../helpers/auth-request";
 import { GET, POST } from "@/app/api/clients/route";
 import { clientService } from "@/services/client.service";
 import { BadRequestError } from "@/lib/errors/app-error";
@@ -27,7 +28,7 @@ describe("GET /api/clients", () => {
   it("returns active clients as JSON", async () => {
     vi.mocked(clientService.listClients).mockResolvedValue([sampleClient]);
 
-    const response = await GET(new Request("http://localhost/api/clients"));
+    const response = await GET(gestorRequest("http://localhost/api/clients"));
     const body = await response.json();
 
     expect(clientService.listClients).toHaveBeenCalledWith(false);
@@ -39,7 +40,7 @@ describe("GET /api/clients", () => {
     vi.mocked(clientService.listClients).mockResolvedValue([{ ...sampleClient, active: false }]);
 
     const response = await GET(
-      new Request("http://localhost/api/clients?includeInactive=true"),
+      gestorRequest("http://localhost/api/clients?includeInactive=true"),
     );
     const body = await response.json();
 
@@ -50,7 +51,7 @@ describe("GET /api/clients", () => {
   it("returns 500 when listing fails unexpectedly", async () => {
     vi.mocked(clientService.listClients).mockRejectedValue(new Error("database unavailable"));
 
-    const response = await GET(new Request("http://localhost/api/clients"));
+    const response = await GET(gestorRequest("http://localhost/api/clients"));
     const body = await response.json();
 
     expect(response.status).toBe(500);
@@ -67,7 +68,7 @@ describe("POST /api/clients", () => {
     vi.mocked(clientService.createClient).mockResolvedValue(sampleClient);
 
     const response = await POST(
-      new Request("http://localhost/api/clients", {
+      gestorRequest("http://localhost/api/clients", {
         method: "POST",
         body: JSON.stringify({ name: "Tech Solutions Ltda" }),
       }),
@@ -82,7 +83,7 @@ describe("POST /api/clients", () => {
     vi.mocked(clientService.createClient).mockRejectedValue(new BadRequestError("name is required"));
 
     const response = await POST(
-      new Request("http://localhost/api/clients", {
+      gestorRequest("http://localhost/api/clients", {
         method: "POST",
         body: JSON.stringify({ name: "" }),
       }),
@@ -91,5 +92,17 @@ describe("POST /api/clients", () => {
 
     expect(response.status).toBe(400);
     expect(body.error).toBe("name is required");
+  });
+
+  it("blocks tecnico from listing and creating clients", async () => {
+    const list = await GET(tecnicoRequest("http://localhost/api/clients"));
+    const create = await POST(
+      tecnicoRequest("http://localhost/api/clients", { method: "POST", body: JSON.stringify({ name: "X" }) }),
+    );
+
+    expect(list.status).toBe(403);
+    expect(create.status).toBe(403);
+    expect(clientService.listClients).not.toHaveBeenCalled();
+    expect(clientService.createClient).not.toHaveBeenCalled();
   });
 });

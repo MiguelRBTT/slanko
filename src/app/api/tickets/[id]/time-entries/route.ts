@@ -1,4 +1,5 @@
 import { jsonError, jsonOk } from "@/lib/http/api-response";
+import { readJsonBody } from "@/lib/http/request-body";
 import { getAuthContextFromHeaders } from "@/lib/auth/request-context";
 import { timeEntryService } from "@/services/time-entry.service";
 import type { CreateTimeEntryInput } from "@/types/time-entry";
@@ -26,7 +27,7 @@ export async function POST(request: Request, context: RouteContext) {
   try {
     const auth = getAuthContextFromHeaders(request);
     const { id } = await context.params;
-    const body = (await request.json()) as CreateTimeEntryInput;
+    const body = await readJsonBody<CreateTimeEntryInput>(request);
     const timeEntry = await timeEntryService.createTimeEntry(id, body, auth);
 
     return jsonOk({ timeEntry }, 201);

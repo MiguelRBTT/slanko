@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   prometheusContentType,
+  recordApiError,
   recordHealthCheck,
+  recordLoginAttempt,
   recordMetricsScrape,
   renderPrometheusMetrics,
 } from "@/lib/observability/metrics";
@@ -26,5 +28,15 @@ describe("observability metrics", () => {
     expect(body).toContain("slanko_health_checks_total");
     expect(body).toContain("slanko_metrics_scrapes_total");
     expect(body).toContain("slanko_process_");
+  });
+
+  it("counts API errors and login attempts", async () => {
+    recordApiError(404);
+    recordLoginAttempt("blocked");
+
+    const body = await renderPrometheusMetrics();
+
+    expect(body).toMatch(/slanko_api_errors_total\{status_code="404",app="slanko"\} \d+/);
+    expect(body).toMatch(/slanko_login_attempts_total\{result="blocked",app="slanko"\} \d+/);
   });
 });

@@ -16,12 +16,28 @@ function complianceRate(met: number, breached: number): number | null {
   return Number(((met / evaluated) * 100).toFixed(2));
 }
 
-export function evaluateResponseSla(input: {
+/**
+ * Avalia uma meta de SLA. Sem o evento (resposta/resolução), o chamado fica PENDING
+ * enquanto ainda está dentro do prazo; passado o prazo, já é uma violação (BREACHED),
+ * mesmo que o evento ainda não tenha acontecido.
+ */
+function evaluateSlaMetric(input: {
   openedAt: Date;
-  firstResponseAt: Date | null;
+  completedAt: Date | null;
   targetMinutes: number;
+  now: Date;
 }): SlaMetricEvaluation {
-  if (!input.firstResponseAt) {
+  if (!input.completedAt) {
+    const runningMinutes = Math.max(0, minutesBetween(input.openedAt, input.now));
+
+    if (runningMinutes > input.targetMinutes) {
+      return {
+        status: "BREACHED",
+        elapsedMinutes: runningMinutes,
+        targetMinutes: input.targetMinutes,
+      };
+    }
+
     return {
       status: "PENDING",
       elapsedMinutes: null,
@@ -29,7 +45,7 @@ export function evaluateResponseSla(input: {
     };
   }
 
-  const elapsedMinutes = minutesBetween(input.openedAt, input.firstResponseAt);
+  const elapsedMinutes = minutesBetween(input.openedAt, input.completedAt);
 
   return {
     status: elapsedMinutes <= input.targetMinutes ? "MET" : "BREACHED",
@@ -38,26 +54,32 @@ export function evaluateResponseSla(input: {
   };
 }
 
+export function evaluateResponseSla(input: {
+  openedAt: Date;
+  firstResponseAt: Date | null;
+  targetMinutes: number;
+  now?: Date;
+}): SlaMetricEvaluation {
+  return evaluateSlaMetric({
+    openedAt: input.openedAt,
+    completedAt: input.firstResponseAt,
+    targetMinutes: input.targetMinutes,
+    now: input.now ?? new Date(),
+  });
+}
+
 export function evaluateResolutionSla(input: {
   openedAt: Date;
   resolvedAt: Date | null;
   targetMinutes: number;
+  now?: Date;
 }): SlaMetricEvaluation {
-  if (!input.resolvedAt) {
-    return {
-      status: "PENDING",
-      elapsedMinutes: null,
-      targetMinutes: input.targetMinutes,
-    };
-  }
-
-  const elapsedMinutes = minutesBetween(input.openedAt, input.resolvedAt);
-
-  return {
-    status: elapsedMinutes <= input.targetMinutes ? "MET" : "BREACHED",
-    elapsedMinutes,
+  return evaluateSlaMetric({
+    openedAt: input.openedAt,
+    completedAt: input.resolvedAt,
     targetMinutes: input.targetMinutes,
-  };
+    now: input.now ?? new Date(),
+  });
 }
 
 export function buildSlaCounters(evaluations: { response: SlaMetricEvaluation; resolution: SlaMetricEvaluation }[]) {

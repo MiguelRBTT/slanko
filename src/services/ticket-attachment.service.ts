@@ -1,6 +1,7 @@
 import {
   assertAttachmentSize,
   assertCanAddAttachment,
+  assertFileSignature,
   resolveAttachmentKind,
   sanitizeOriginalFileName,
 } from "@/lib/attachments/rules";
@@ -59,6 +60,7 @@ export class TicketAttachmentService {
     const mimeType = file.mimeType.trim().toLowerCase();
     const kind = resolveAttachmentKind(mimeType);
     assertAttachmentSize(kind, file.sizeBytes);
+    assertFileSignature(mimeType, file.bytes);
     const fileName = sanitizeOriginalFileName(file.fileName);
 
     const storageKey = await saveTicketAttachmentFile({
@@ -97,7 +99,7 @@ export class TicketAttachmentService {
       throw new NotFoundError("Attachment not found");
     }
 
-    await this.attachments.delete(attachmentId);
+    await this.attachments.delete(attachmentId, auth.userId);
     await deleteTicketAttachmentFile(attachment.storageKey);
   }
 

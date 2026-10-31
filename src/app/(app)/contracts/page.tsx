@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent } from "react";
 import { apiRequest, ApiClientError } from "@/lib/client/api";
 import { formatMoneyBRL, maskMoneyInput, parseMoneyInput } from "@/lib/client/format";
 import {
@@ -77,7 +77,7 @@ export default function ContractsPage() {
     return map;
   }, [clients]);
 
-  const clientName = (id: string) => clientNameById.get(id) ?? "Cliente";
+  const clientName = useCallback((id: string) => clientNameById.get(id) ?? "Cliente", [clientNameById]);
 
   const listedContracts = useMemo(() => {
     const rows = contracts.filter((contract) =>
@@ -125,7 +125,7 @@ export default function ContractsPage() {
     });
 
     return rows;
-  }, [contracts, search, sortKey, sortDir, clientNameById]);
+  }, [contracts, search, sortKey, sortDir, clientNameById, clientName]);
 
   function toggleSort(key: SortKey) {
     const next = nextSortState(sortKey, sortDir, key, SORT_DEFAULT_DIR[key]);
@@ -379,7 +379,7 @@ export default function ContractsPage() {
                   </th>
                   <th>
                     <SortHeader
-                      label="Valor"
+                      label="Valor mensal"
                       active={sortKey === "value"}
                       sortDir={sortDir}
                       defaultDir={SORT_DEFAULT_DIR.value}
@@ -517,7 +517,7 @@ export default function ContractsPage() {
                   <input id="title" value={title} onChange={(e) => setTitle(e.target.value)} required />
                 </div>
                 <div className="field">
-                  <label htmlFor="value">Valor</label>
+                  <label htmlFor="value">Valor mensal</label>
                   <input
                     id="value"
                     inputMode="numeric"

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { gestorRequest } from "../helpers/auth-request";
 import { GET } from "@/app/api/sla/contracts/[id]/route";
 import { slaService } from "@/services/sla.service";
 import { NotFoundError } from "@/lib/errors/app-error";
@@ -35,7 +36,7 @@ describe("GET /api/sla/contracts/:id", () => {
     vi.mocked(slaService.getContractReport).mockResolvedValue(sampleReport);
 
     const response = await GET(
-      new Request("http://localhost/api/sla/contracts/contract-1?startDate=2026-08-01"),
+      gestorRequest("http://localhost/api/sla/contracts/contract-1?startDate=2026-08-01"),
       routeContext,
     );
     const body = await response.json();
@@ -50,7 +51,7 @@ describe("GET /api/sla/contracts/:id", () => {
   it("returns 404 when contract is not found", async () => {
     vi.mocked(slaService.getContractReport).mockRejectedValue(new NotFoundError("Contract not found"));
 
-    const response = await GET(new Request("http://localhost"), routeContext);
+    const response = await GET(gestorRequest("http://localhost"), routeContext);
 
     expect(response.status).toBe(404);
   });

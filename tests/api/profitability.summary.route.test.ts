@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { gestorRequest, tecnicoRequest } from "../helpers/auth-request";
 import { GET } from "@/app/api/profitability/summary/route";
 import { profitabilityService } from "@/services/profitability.service";
 
@@ -12,6 +13,7 @@ const sampleSummary = {
   totalContracts: 1,
   deficitaryContracts: 0,
   totalContractValue: "4500.00",
+  totalRevenue: "4500.00",
   totalHours: "2.00",
   totalCost: "171.00",
   totalMargin: "4329.00",
@@ -27,7 +29,7 @@ describe("GET /api/profitability/summary", () => {
     vi.mocked(profitabilityService.getSummary).mockResolvedValue(sampleSummary);
 
     const response = await GET(
-      new Request(
+      gestorRequest(
         "http://localhost/api/profitability/summary?clientId=client-1&contractId=contract-1&startDate=2026-08-01&endDate=2026-08-31",
       ),
     );
@@ -36,6 +38,7 @@ describe("GET /api/profitability/summary", () => {
     expect(profitabilityService.getSummary).toHaveBeenCalledWith({
       clientId: "client-1",
       contractId: "contract-1",
+      contractStatuses: ["ACTIVE"],
       workedFrom: new Date("2026-08-01T00:00:00.000Z"),
       workedTo: new Date("2026-08-31T23:59:59.999Z"),
     });
@@ -45,7 +48,7 @@ describe("GET /api/profitability/summary", () => {
 
   it("returns validation errors for invalid periods", async () => {
     const response = await GET(
-      new Request("http://localhost/api/profitability/summary?startDate=2026/08/01"),
+      gestorRequest("http://localhost/api/profitability/summary?startDate=2026/08/01"),
     );
     const body = await response.json();
 
@@ -58,10 +61,27 @@ describe("GET /api/profitability/summary", () => {
       new Error("database unavailable"),
     );
 
-    const response = await GET(new Request("http://localhost/api/profitability/summary"));
+    const response = await GET(gestorRequest("http://localhost/api/profitability/summary"));
     const body = await response.json();
 
     expect(response.status).toBe(500);
     expect(body.error).toBe("Internal server error");
+  });
+
+  it("passes the contract status filter to the service", async () => {
+    vi.mocked(profitabilityService.getSummary).mockResolvedValue(sampleSummary);
+
+    await GET(gestorRequest("http://localhost/api/profitability/summary?status=SUSPENDED"));
+
+    expect(profitabilityService.getSummary).toHaveBeenCalledWith(
+      expect.objectContaining({ contractStatuses: ["SUSPENDED"] }),
+    );
+  });
+
+  it("blocks tecnico even if the middleware is bypassed", async () => {
+    const response = await GET(tecnicoRequest("http://localhost/api/profitability/summary"));
+
+    expect(response.status).toBe(403);
+    expect(profitabilityService.getSummary).not.toHaveBeenCalled();
   });
 });

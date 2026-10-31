@@ -61,7 +61,7 @@ describe("ContractRepository", () => {
     mockDb.contract.delete.mockResolvedValue({ id: "contract-1" });
 
     const repository = new ContractRepository(mockDb as unknown as PrismaClient);
-    await repository.create({ code: "CTR-001" });
+    await repository.create({ code: "CTR-001" } as never);
     await repository.update("contract-1", { title: "Updated" });
     await repository.delete("contract-1");
 

@@ -2,15 +2,54 @@
 
 import { useEffect, useState } from "react";
 import { apiRequest, ApiClientError } from "@/lib/client/api";
-import { formatHours, formatMoneyBRL, formatPercent } from "@/lib/client/format";
-import { labelSlaCheck, labelTicketStatus, slaCheckBadgeClass } from "@/lib/client/labels";
+import { formatDateBR, formatHours, formatMoneyBRL, formatPercent } from "@/lib/client/format";
+import {
+  contractStatusBadgeClass,
+  labelContractStatus,
+  labelSlaCheck,
+  labelTicketStatus,
+  slaCheckBadgeClass,
+} from "@/lib/client/labels";
 import { getSession } from "@/lib/client/auth-session";
+import type { PublicClient } from "@/types/client";
+import type { PublicContract } from "@/types/contract";
 import type { PublicProfitabilitySummary } from "@/types/profitability";
+import type { SlaAlertReason } from "@/lib/sla/alerts";
 import type { PublicSlaSummary, SlaMetricEvaluation } from "@/types/sla";
 import styles from "./dashboard.module.css";
 
 type SlaPayload = { summary: PublicSlaSummary };
 type ProfitPayload = { summary: PublicProfitabilitySummary };
+type ContractScope = "ACTIVE" | "SUSPENDED" | "FINISHED" | "ALL";
+type Filters = {
+  scope: ContractScope;
+  clientId: string;
+  contractId: string;
+  startDate: string;
+  endDate: string;
+};
+
+const ALERT_REASON_LABEL: Record<SlaAlertReason, string> = {
+  LOW_RESPONSE_COMPLIANCE: "resposta abaixo de 80%",
+  LOW_RESOLUTION_COMPLIANCE: "resolução abaixo de 80%",
+  RECURRING_BREACHES: "3 ou mais chamados fora do prazo",
+};
+
+function filtersToQuery(filters: Filters): string {
+  const params = new URLSearchParams({ status: filters.scope });
+  if (filters.clientId) params.set("clientId", filters.clientId);
+  if (filters.contractId) params.set("contractId", filters.contractId);
+  if (filters.startDate) params.set("startDate", filters.startDate);
+  if (filters.endDate) params.set("endDate", filters.endDate);
+  return `?${params.toString()}`;
+}
+
+const CONTRACT_SCOPES: Array<{ value: ContractScope; label: string }> = [
+  { value: "ACTIVE", label: "Contratos ativos" },
+  { value: "SUSPENDED", label: "Contratos suspensos" },
+  { value: "FINISHED", label: "Contratos finalizados" },
+  { value: "ALL", label: "Todos (exceto rascunhos)" },
+];
 
 function formatDuration(minutes: number | null): string {
   if (minutes === null) {
@@ -35,7 +74,7 @@ function rateSentence(met: number, breached: number, pending: number, kind: "res
       : `Nenhum chamado para calcular a ${kind}.`;
   }
 
-  return `${met} dentro do prazo e ${breached} fora, de ${evaluated} já medidos. ${pending} ainda pendente(s) não entram na conta.`;
+  return `${met} dentro do prazo e ${breached} fora, de ${evaluated} já medidos. ${pending} ainda dentro do prazo e sem ${kind} não entram na conta.`;
 }
 
 function InfoTip({
@@ -61,6 +100,14 @@ function InfoTip({
   );
 }
 
+function revenuePeriodLabel(start: string | null, end: string | null): string {
+  if (!start || !end) {
+    return "vigência ainda não começou";
+  }
+
+  return `${formatDateBR(start)} a ${formatDateBR(end)}`;
+}
+
 function slaDetail(check: SlaMetricEvaluation): string {
   if (check.status === "PENDING") {
     return `Prazo de ${formatDuration(check.targetMinutes)}`;
@@ -75,6 +122,38 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isGestor, setIsGestor] = useState(false);
+  const [filters, setFilters] = useState<Filters>({
+    scope: "ACTIVE",
+    clientId: "",
+    contractId: "",
+    startDate: "",
+    endDate: "",
+  });
+  const [clients, setClients] = useState<PublicClient[]>([]);
+  const [contractOptions, setContractOptions] = useState<PublicContract[]>([]);
+
+  function updateFilter<K extends keyof Filters>(key: K, value: Filters[K]) {
+    setFilters((current) => ({
+      ...current,
+      [key]: value,
+      // Trocar de cliente limpa o contrato escolhido, que pode ser de outro cliente.
+      ...(key === "clientId" ? { contractId: "" } : {}),
+    }));
+  }
+
+  useEffect(() => {
+    if (getSession()?.user.role !== "GESTOR") return;
+
+    Promise.all([
+      apiRequest<{ clients: PublicClient[] }>("/api/clients"),
+      apiRequest<{ contracts: PublicContract[] }>("/api/contracts"),
+    ])
+      .then(([clientsResult, contractsResult]) => {
+        setClients(clientsResult.clients);
+        setContractOptions(contractsResult.contracts.filter((contract) => contract.status !== "DRAFT"));
+      })
+      .catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     const session = getSession();
@@ -88,9 +167,11 @@ export default function DashboardPage() {
       }
 
       try {
+        setError(null);
+        const query = filtersToQuery(filters);
         const [slaResult, profitResult] = await Promise.all([
-          apiRequest<SlaPayload>("/api/sla/summary"),
-          apiRequest<ProfitPayload>("/api/profitability/summary"),
+          apiRequest<SlaPayload>(`/api/sla/summary${query}`),
+          apiRequest<ProfitPayload>(`/api/profitability/summary${query}`),
         ]);
 
         setSla(slaResult.summary);
@@ -103,7 +184,7 @@ export default function DashboardPage() {
     }
 
     void load();
-  }, []);
+  }, [filters]);
 
   if (!isGestor) {
     return <div className={styles.loading}>Redirecionando para chamados…</div>;
@@ -119,6 +200,11 @@ export default function DashboardPage() {
     ) ?? [];
 
   const contracts = profit?.contracts ?? [];
+  const slaAlerts = (sla?.contracts ?? []).filter((contract) => contract.alert);
+  const visibleContractOptions = contractOptions.filter(
+    (contract) => !filters.clientId || contract.clientId === filters.clientId,
+  );
+  const hasPeriod = Boolean(filters.startDate || filters.endDate);
 
   return (
     <section className={styles.page}>
@@ -127,6 +213,67 @@ export default function DashboardPage() {
           <h1>Painel</h1>
         </div>
       </header>
+
+      <section className={`${styles.filters} panel`} aria-label="Filtros do painel">
+        <div className="field">
+          <label htmlFor="contract-scope">Situação</label>
+          <select
+            id="contract-scope"
+            value={filters.scope}
+            onChange={(e) => updateFilter("scope", e.target.value as ContractScope)}
+          >
+            {CONTRACT_SCOPES.map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="field">
+          <label htmlFor="filter-client">Cliente</label>
+          <select id="filter-client" value={filters.clientId} onChange={(e) => updateFilter("clientId", e.target.value)}>
+            <option value="">Todos</option>
+            {clients.map((client) => (
+              <option key={client.id} value={client.id}>
+                {client.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="field">
+          <label htmlFor="filter-contract">Contrato</label>
+          <select
+            id="filter-contract"
+            value={filters.contractId}
+            onChange={(e) => updateFilter("contractId", e.target.value)}
+          >
+            <option value="">Todos</option>
+            {visibleContractOptions.map((contract) => (
+              <option key={contract.id} value={contract.id}>
+                {contract.code}: {contract.title}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="field">
+          <label htmlFor="filter-start">De</label>
+          <input
+            id="filter-start"
+            type="date"
+            value={filters.startDate}
+            onChange={(e) => updateFilter("startDate", e.target.value)}
+          />
+        </div>
+        <div className="field">
+          <label htmlFor="filter-end">Até</label>
+          <input
+            id="filter-end"
+            type="date"
+            value={filters.endDate}
+            onChange={(e) => updateFilter("endDate", e.target.value)}
+          />
+        </div>
+      </section>
 
       {error ? <div className="error-banner">{error}</div> : null}
 
@@ -137,7 +284,7 @@ export default function DashboardPage() {
             <InfoTip
               align="start"
               label="O que é o prazo de resposta"
-              text={`Percentual dos chamados já respondidos que ficaram dentro do prazo do contrato. Conta o tempo de calendário entre a abertura e o início do atendimento, não os minutos de trabalho. ${rateSentence(sla?.response.met ?? 0, sla?.response.breached ?? 0, sla?.response.pending ?? 0, "resposta")}`}
+              text={`Percentual dos chamados respondidos dentro do prazo do contrato. Chamado sem resposta que já passou do prazo conta como fora do prazo. Conta o tempo de calendário entre a abertura e o início do atendimento, não os minutos de trabalho. ${rateSentence(sla?.response.met ?? 0, sla?.response.breached ?? 0, sla?.response.pending ?? 0, "resposta")}`}
             />
           </div>
           <strong>{formatPercent(sla?.response.complianceRate ?? null)}</strong>
@@ -148,7 +295,7 @@ export default function DashboardPage() {
             <p className={styles.metricLabel}>Prazo de resolução</p>
             <InfoTip
               label="O que é o prazo de resolução"
-              text={`Percentual dos chamados já resolvidos que ficaram dentro do prazo do contrato. Conta o tempo de calendário da abertura até marcar como resolvido. ${rateSentence(sla?.resolution.met ?? 0, sla?.resolution.breached ?? 0, sla?.resolution.pending ?? 0, "resolução")}`}
+              text={`Percentual dos chamados resolvidos dentro do prazo do contrato. Chamado ainda aberto que já passou do prazo conta como fora do prazo. Conta o tempo de calendário da abertura até marcar como resolvido. ${rateSentence(sla?.resolution.met ?? 0, sla?.resolution.breached ?? 0, sla?.resolution.pending ?? 0, "resolução")}`}
             />
           </div>
           <strong>{formatPercent(sla?.resolution.complianceRate ?? null)}</strong>
@@ -159,7 +306,7 @@ export default function DashboardPage() {
             <p className={styles.metricLabel}>Margem dos contratos</p>
             <InfoTip
               label="O que é a margem"
-              text={`Valor cobrado (${formatMoneyBRL(profit?.totalContractValue ?? 0)}) menos o custo das horas apontadas (${formatMoneyBRL(profit?.totalCost ?? 0)}, ${formatHours(profit?.totalHours ?? 0)}). O custo é horas vezes o custo por hora de quem trabalhou.`}
+              text={`Receita reconhecida de cada contrato até hoje (${formatMoneyBRL(profit?.totalRevenue ?? 0)}: valor mensal proporcional aos dias de vigência) menos o custo das horas apontadas (${formatMoneyBRL(profit?.totalCost ?? 0)}, ${formatHours(profit?.totalHours ?? 0)}). O custo de cada apontamento usa o custo por hora de quem trabalhou na data em que o tempo foi registrado.`}
             />
           </div>
           <strong>{formatMoneyBRL(profit?.totalMargin ?? 0)}</strong>
@@ -171,12 +318,67 @@ export default function DashboardPage() {
             <InfoTip
               align="end"
               label="O que são contratos no prejuízo"
-              text={`De ${profit?.totalContracts ?? 0} contrato(s) ativo(s), quantos já têm custo de horas maior que o valor cobrado. Há também ${breachedTickets.length} chamado(s) com prazo estourado.`}
+              text={`De ${profit?.totalContracts ?? 0} contrato(s) no filtro, quantos têm custo de horas maior que a receita reconhecida até hoje. Há também ${breachedTickets.length} chamado(s) com prazo estourado.`}
             />
           </div>
           <strong>{profit?.deficitaryContracts ?? 0}</strong>
         </article>
+
+        <article className={`${styles.metric} panel`}>
+          <div className={styles.metricHead}>
+            <p className={styles.metricLabel}>SLA crítico</p>
+            <InfoTip
+              align="end"
+              label="O que é SLA crítico"
+              text="Contratos com conformidade de resposta ou de resolução abaixo de 80%, ou com 3 ou mais chamados fora do prazo no período filtrado."
+            />
+          </div>
+          <strong>{slaAlerts.length}</strong>
+        </article>
       </div>
+
+      {slaAlerts.length > 0 ? (
+        <section className="panel">
+          <div className={styles.sectionHead}>
+            <div className={styles.sectionTitle}>
+              <h2>Contratos com SLA crítico</h2>
+            </div>
+          </div>
+          <div className="table-wrap">
+            <table className="data">
+              <thead>
+                <tr>
+                  <th>Contrato</th>
+                  <th>Resposta no prazo</th>
+                  <th>Resolução no prazo</th>
+                  <th>Chamados fora do prazo</th>
+                  <th>Motivo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {slaAlerts.map((alert) => (
+                  <tr key={alert.contractId}>
+                    <td>
+                      <strong>{alert.contractCode}</strong>
+                      <div className="muted">{alert.contractTitle}</div>
+                    </td>
+                    <td>{formatPercent(alert.responseComplianceRate)}</td>
+                    <td>{formatPercent(alert.resolutionComplianceRate)}</td>
+                    <td>
+                      {alert.breachedTickets} de {alert.totalTickets}
+                    </td>
+                    <td>
+                      <span className="badge badge-danger">
+                        {alert.alertReasons.map((reason) => ALERT_REASON_LABEL[reason]).join("; ")}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ) : null}
 
       <section className="panel">
         <div className={styles.sectionHead}>
@@ -185,19 +387,20 @@ export default function DashboardPage() {
             <InfoTip
               align="start"
               label="O que mostra cada contrato"
-              text="Valor é o que o cliente paga. Custo é só das horas apontadas nos chamados desse contrato. Margem é o valor menos esse custo."
+              text="Valor mensal é a mensalidade do contrato. Receita é esse valor proporcional aos dias de vigência até hoje. Custo é só das horas apontadas nos chamados desse contrato. Margem é a receita menos esse custo."
             />
           </div>
         </div>
         {contracts.length === 0 ? (
-          <p className="empty-state">Nenhum contrato ativo para calcular.</p>
+          <p className="empty-state">Nenhum contrato nessa situação para calcular.</p>
         ) : (
           <div className="table-wrap">
             <table className="data">
               <thead>
                 <tr>
                   <th>Contrato</th>
-                  <th>Valor cobrado</th>
+                  <th>Valor mensal</th>
+                  <th>{hasPeriod ? "Receita no período" : "Receita até hoje"}</th>
                   <th>Horas apontadas</th>
                   <th>Custo das horas</th>
                   <th>Margem</th>
@@ -209,8 +412,17 @@ export default function DashboardPage() {
                     <td>
                       <strong>{contract.contractCode}</strong>
                       <div className="muted">{contract.contractTitle}</div>
+                      {contract.contractStatus !== "ACTIVE" ? (
+                        <span className={contractStatusBadgeClass(contract.contractStatus)}>
+                          {labelContractStatus(contract.contractStatus)}
+                        </span>
+                      ) : null}
                     </td>
                     <td>{formatMoneyBRL(contract.contractValue)}</td>
+                    <td>
+                      {formatMoneyBRL(contract.revenue)}
+                      <div className="muted">{revenuePeriodLabel(contract.periodStart, contract.periodEnd)}</div>
+                    </td>
                     <td>{formatHours(contract.totalHours)}</td>
                     <td>{formatMoneyBRL(contract.totalCost)}</td>
                     <td>
@@ -219,10 +431,10 @@ export default function DashboardPage() {
                       </span>
                       <div className="muted">
                         {contract.marginRate === null
-                          ? "sem valor para comparar"
+                          ? "sem receita no período"
                           : contract.deficitary
-                            ? "custo passou do valor"
-                            : `${formatPercent(contract.marginRate)} do valor ainda sobra`}
+                            ? "custo passou da receita"
+                            : `${formatPercent(contract.marginRate)} da receita sobra`}
                       </div>
                     </td>
                   </tr>

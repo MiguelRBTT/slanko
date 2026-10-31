@@ -1,7 +1,10 @@
+import { slaAlertReasons } from "@/lib/sla/alerts";
 import { buildSlaCounters, evaluateResolutionSla, evaluateResponseSla } from "@/lib/sla/calculations";
 import { NotFoundError } from "@/lib/errors/app-error";
+import { REPORTABLE_CONTRACT_STATUSES } from "@/lib/reports/contract-status-filter";
 import { SlaRepository, slaRepository, type SlaTicketFilters } from "@/repositories/sla.repository";
 import type {
+  PublicContractSlaAlert,
   PublicContractSlaReport,
   PublicSlaSummary,
   PublicTicketSlaEvaluation,
@@ -9,7 +12,7 @@ import type {
 
 type TicketWithContract = Awaited<ReturnType<SlaRepository["findTickets"]>>[number];
 
-function toTicketEvaluation(ticket: TicketWithContract): PublicTicketSlaEvaluation {
+function toTicketEvaluation(ticket: TicketWithContract, now: Date): PublicTicketSlaEvaluation {
   return {
     ticketId: ticket.id,
     contractId: ticket.contractId,
@@ -19,39 +22,94 @@ function toTicketEvaluation(ticket: TicketWithContract): PublicTicketSlaEvaluati
     response: evaluateResponseSla({
       openedAt: ticket.openedAt,
       firstResponseAt: ticket.firstResponseAt,
-      targetMinutes: ticket.contract.responseMinutes,
+      // Metas congeladas no chamado (não as atuais do contrato).
+      targetMinutes: ticket.responseMinutes,
+      now,
     }),
     resolution: evaluateResolutionSla({
       openedAt: ticket.openedAt,
-      resolvedAt: ticket.resolvedAt,
-      targetMinutes: ticket.contract.resolutionMinutes,
+      // Chamado encerrado sem passar por "resolvido" conta como resolvido no encerramento.
+      resolvedAt: ticket.resolvedAt ?? ticket.closedAt,
+      targetMinutes: ticket.resolutionMinutes,
+      now,
     }),
   };
 }
 
+/** Agrupa as avaliações por contrato e aplica a regra de alerta do RF13. */
+function toContractAlerts(
+  tickets: TicketWithContract[],
+  evaluations: PublicTicketSlaEvaluation[],
+): PublicContractSlaAlert[] {
+  const groups = new Map<string, { contract: TicketWithContract["contract"]; items: PublicTicketSlaEvaluation[] }>();
+
+  tickets.forEach((ticket, index) => {
+    const group = groups.get(ticket.contractId) ?? { contract: ticket.contract, items: [] };
+    group.items.push(evaluations[index]);
+    groups.set(ticket.contractId, group);
+  });
+
+  return [...groups.values()].map(({ contract, items }) => {
+    const counters = buildSlaCounters(items);
+    const breachedTickets = items.filter(
+      (item) => item.response.status === "BREACHED" || item.resolution.status === "BREACHED",
+    ).length;
+    const alertReasons = slaAlertReasons({
+      responseComplianceRate: counters.response.complianceRate,
+      resolutionComplianceRate: counters.resolution.complianceRate,
+      breachedTickets,
+    });
+
+    return {
+      contractId: contract.id,
+      contractCode: contract.code,
+      contractTitle: contract.title,
+      totalTickets: counters.totalTickets,
+      breachedTickets,
+      responseComplianceRate: counters.response.complianceRate,
+      resolutionComplianceRate: counters.resolution.complianceRate,
+      alert: alertReasons.length > 0,
+      alertReasons,
+    };
+  });
+}
+
 export class SlaService {
-  constructor(private readonly sla: SlaRepository = slaRepository) {}
+  constructor(
+    private readonly sla: SlaRepository = slaRepository,
+    private readonly clock: () => Date = () => new Date(),
+  ) {}
 
   async getSummary(filters: SlaTicketFilters = {}): Promise<PublicSlaSummary> {
     const tickets = await this.sla.findTickets(filters);
-    const evaluations = tickets.map(toTicketEvaluation);
+    const now = this.clock();
+    const evaluations = tickets.map((ticket) => toTicketEvaluation(ticket, now));
     const counters = buildSlaCounters(evaluations);
 
     return {
       ...counters,
       tickets: evaluations,
+      contracts: toContractAlerts(tickets, evaluations),
     };
   }
 
-  async getContractReport(contractId: string, filters: Omit<SlaTicketFilters, "contractId"> = {}): Promise<PublicContractSlaReport> {
-    const contract = await this.sla.findActiveContract(contractId);
+  async getContractReport(
+    contractId: string,
+    filters: Omit<SlaTicketFilters, "contractId" | "contractStatuses"> = {},
+  ): Promise<PublicContractSlaReport> {
+    const contract = await this.sla.findReportableContract(contractId);
 
     if (!contract) {
       throw new NotFoundError("Contract not found");
     }
 
-    const tickets = await this.sla.findTickets({ ...filters, contractId });
-    const evaluations = tickets.map(toTicketEvaluation);
+    const tickets = await this.sla.findTickets({
+      ...filters,
+      contractId,
+      contractStatuses: REPORTABLE_CONTRACT_STATUSES,
+    });
+    const now = this.clock();
+    const evaluations = tickets.map((ticket) => toTicketEvaluation(ticket, now));
     const counters = buildSlaCounters(evaluations);
 
     return {

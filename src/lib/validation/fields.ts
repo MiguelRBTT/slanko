@@ -8,6 +8,20 @@ export function requireNonEmptyString(value: unknown, field: string): string {
   return value.trim();
 }
 
+// Partes do domínio sem ponto: o padrão não tem ambiguidade, então roda em tempo linear
+// (sem backtracking excessivo com entradas maliciosas).
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/;
+
+export function requireEmail(value: unknown, field = "email"): string {
+  const email = requireNonEmptyString(value, field).toLowerCase();
+
+  if (!EMAIL_PATTERN.test(email)) {
+    throw new BadRequestError(`${field} is invalid`);
+  }
+
+  return email;
+}
+
 export function optionalNullableString(value: unknown): string | null | undefined {
   if (value === undefined) {
     return undefined;

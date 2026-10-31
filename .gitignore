@@ -20,6 +20,12 @@ coverage-frontend/
 # Uploaded ticket attachments (local storage)
 uploads/
 
+# Local HTTPS certificates (next dev --experimental-https)
+certificates/
+
+# TypeScript incremental build info
+*.tsbuildinfo
+
 # Logs and OS
 *.log
 .DS_Store

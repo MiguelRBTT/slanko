@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { gestorRequest, tecnicoRequest } from "../helpers/auth-request";
 import { GET, POST } from "@/app/api/contracts/route";
 import { contractService } from "@/services/contract.service";
 import {
@@ -36,7 +37,7 @@ const sampleContract = {
   value: "4500.00",
   startDate: "2026-01-01",
   endDate: "2026-12-31",
-  status: "ACTIVE",
+  status: "ACTIVE" as const,
   responseMinutes: 60,
   resolutionMinutes: 480,
 };
@@ -49,7 +50,7 @@ describe("GET /api/contracts", () => {
   it("returns contracts without filters", async () => {
     vi.mocked(contractService.listContracts).mockResolvedValue([sampleContract]);
 
-    const response = await GET(new Request("http://localhost/api/contracts"));
+    const response = await GET(gestorRequest("http://localhost/api/contracts"));
     const body = await response.json();
 
     expect(contractService.listContracts).toHaveBeenCalledWith({
@@ -64,7 +65,7 @@ describe("GET /api/contracts", () => {
     vi.mocked(contractService.listContracts).mockResolvedValue([sampleContract]);
 
     const response = await GET(
-      new Request("http://localhost/api/contracts?clientId=client-1&status=ACTIVE"),
+      gestorRequest("http://localhost/api/contracts?clientId=client-1&status=ACTIVE"),
     );
     const body = await response.json();
 
@@ -78,7 +79,7 @@ describe("GET /api/contracts", () => {
 
   it("returns 400 for invalid status filter", async () => {
     const response = await GET(
-      new Request("http://localhost/api/contracts?status=INVALID"),
+      gestorRequest("http://localhost/api/contracts?status=INVALID"),
     );
     const body = await response.json();
 
@@ -96,7 +97,7 @@ describe("POST /api/contracts", () => {
     vi.mocked(contractService.createContract).mockResolvedValue(sampleContract);
 
     const response = await POST(
-      new Request("http://localhost/api/contracts", {
+      gestorRequest("http://localhost/api/contracts", {
         method: "POST",
         headers: gestorHeaders,
         body: JSON.stringify({
@@ -118,7 +119,7 @@ describe("POST /api/contracts", () => {
 
   it("blocks tecnico from creating contracts", async () => {
     const response = await POST(
-      new Request("http://localhost/api/contracts", {
+      gestorRequest("http://localhost/api/contracts", {
         method: "POST",
         headers: tecnicoHeaders,
         body: JSON.stringify({
@@ -142,7 +143,7 @@ describe("POST /api/contracts", () => {
     );
 
     const response = await POST(
-      new Request("http://localhost/api/contracts", {
+      gestorRequest("http://localhost/api/contracts", {
         method: "POST",
         headers: gestorHeaders,
         body: JSON.stringify({ code: "CTR-001" }),
@@ -152,5 +153,16 @@ describe("POST /api/contracts", () => {
 
     expect(response.status).toBe(400);
     expect(body.error).toBe("clientId is required");
+  });
+
+  it("hides the contract value from tecnico", async () => {
+    vi.mocked(contractService.listContracts).mockResolvedValue([sampleContract]);
+
+    const asTecnico = await (await GET(tecnicoRequest("http://localhost/api/contracts"))).json();
+    const asGestor = await (await GET(gestorRequest("http://localhost/api/contracts"))).json();
+
+    expect(asTecnico.contracts[0]).not.toHaveProperty("value");
+    expect(asTecnico.contracts[0].code).toBe(sampleContract.code);
+    expect(asGestor.contracts[0].value).toBe(sampleContract.value);
   });
 });

@@ -1,4 +1,5 @@
 import { jsonError, jsonOk } from "@/lib/http/api-response";
+import { assertGestor } from "@/lib/auth/require-gestor";
 import { parseProfitabilityPeriodFilters } from "@/lib/profitability/period-filters";
 import { profitabilityService } from "@/services/profitability.service";
 
@@ -10,6 +11,7 @@ type RouteContext = {
 
 export async function GET(request: Request, context: RouteContext) {
   try {
+    assertGestor(request);
     const { id } = await context.params;
     const { searchParams } = new URL(request.url);
 

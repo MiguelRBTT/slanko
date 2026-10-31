@@ -1,15 +1,29 @@
-﻿import { ClientRepository, clientRepository } from "@/repositories/client.repository";
-import { NotFoundError } from "@/lib/errors/app-error";
+import { ClientRepository, clientRepository } from "@/repositories/client.repository";
+import { BadRequestError, NotFoundError } from "@/lib/errors/app-error";
 import {
   optionalNullableString,
+  requireEmail,
   requireNonEmptyString,
 } from "@/lib/validation/fields";
+
+function optionalEmail(value: unknown): string | null | undefined {
+  const email = optionalNullableString(value);
+  return email ? requireEmail(email) : email;
+}
 import {
   toPublicClient,
   type CreateClientInput,
   type PublicClient,
   type UpdateClientInput,
 } from "@/types/client";
+
+function parseActiveFlag(value: unknown): boolean {
+  if (typeof value !== "boolean") {
+    throw new BadRequestError("active must be a boolean");
+  }
+
+  return value;
+}
 
 export class ClientService {
   constructor(private readonly clients: ClientRepository = clientRepository) {}
@@ -37,7 +51,7 @@ export class ClientService {
     const client = await this.clients.create({
       name: requireNonEmptyString(input.name, "name"),
       document: optionalNullableString(input.document) ?? null,
-      email: optionalNullableString(input.email) ?? null,
+      email: optionalEmail(input.email) ?? null,
       phone: optionalNullableString(input.phone) ?? null,
     });
 
@@ -53,12 +67,12 @@ export class ClientService {
         ? { document: optionalNullableString(input.document) as string | null }
         : {}),
       ...(input.email !== undefined
-        ? { email: optionalNullableString(input.email) as string | null }
+        ? { email: optionalEmail(input.email) as string | null }
         : {}),
       ...(input.phone !== undefined
         ? { phone: optionalNullableString(input.phone) as string | null }
         : {}),
-      ...(input.active !== undefined ? { active: input.active } : {}),
+      ...(input.active !== undefined ? { active: parseActiveFlag(input.active) } : {}),
     });
 
     return toPublicClient(client);

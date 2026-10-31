@@ -1,3 +1,5 @@
+import type { SlaAlertReason } from "@/lib/sla/alerts";
+
 export type SlaComplianceStatus = "PENDING" | "MET" | "BREACHED";
 
 export type SlaMetricEvaluation = {
@@ -16,6 +18,19 @@ export type PublicTicketSlaEvaluation = {
   resolution: SlaMetricEvaluation;
 };
 
+export type PublicContractSlaAlert = {
+  contractId: string;
+  contractCode: string;
+  contractTitle: string;
+  totalTickets: number;
+  breachedTickets: number;
+  responseComplianceRate: number | null;
+  resolutionComplianceRate: number | null;
+  /** RF13: conformidade < 80% ou 3+ chamados com violação no período. */
+  alert: boolean;
+  alertReasons: SlaAlertReason[];
+};
+
 export type PublicSlaSummary = {
   totalTickets: number;
   response: {
@@ -31,6 +46,7 @@ export type PublicSlaSummary = {
     complianceRate: number | null;
   };
   tickets: PublicTicketSlaEvaluation[];
+  contracts: PublicContractSlaAlert[];
 };
 
 export type PublicContractSlaReport = {
@@ -40,6 +56,6 @@ export type PublicContractSlaReport = {
   clientId: string;
   responseMinutes: number;
   resolutionMinutes: number;
-  summary: Omit<PublicSlaSummary, "tickets">;
+  summary: Omit<PublicSlaSummary, "tickets" | "contracts">;
   tickets: PublicTicketSlaEvaluation[];
 };

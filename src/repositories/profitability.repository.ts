@@ -1,4 +1,4 @@
-import type { Prisma, PrismaClient } from "@prisma/client";
+import type { ContractStatus, Prisma, PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 export type ProfitabilityFilters = {
@@ -6,14 +6,16 @@ export type ProfitabilityFilters = {
   clientId?: string;
   workedFrom?: Date;
   workedTo?: Date;
+  /** Situações de contrato incluídas (padrão: só ACTIVE). */
+  contractStatuses?: ContractStatus[];
 };
 
 export class ProfitabilityRepository {
   constructor(private readonly db: PrismaClient = prisma) {}
 
-  findActiveContracts(filters: ProfitabilityFilters = {}) {
+  findContracts(filters: ProfitabilityFilters = {}) {
     const where: Prisma.ContractWhereInput = {
-      status: "ACTIVE",
+      status: { in: filters.contractStatuses ?? ["ACTIVE"] },
     };
 
     if (filters.contractId) {
@@ -41,7 +43,7 @@ export class ProfitabilityRepository {
             timeEntries: {
               where: timeEntryWhere,
               include: {
-                user: true,
+                user: { select: { id: true, name: true } },
               },
               orderBy: { workedAt: "desc" },
             },

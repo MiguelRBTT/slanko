@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { gestorRequest, tecnicoRequest } from "../helpers/auth-request";
 import { GET } from "@/app/api/sla/summary/route";
 import { slaService } from "@/services/sla.service";
 
@@ -13,6 +14,7 @@ const sampleSummary = {
   response: { met: 1, breached: 0, pending: 0, complianceRate: 100 },
   resolution: { met: 1, breached: 0, pending: 0, complianceRate: 100 },
   tickets: [],
+  contracts: [],
 };
 
 describe("GET /api/sla/summary", () => {
@@ -24,7 +26,7 @@ describe("GET /api/sla/summary", () => {
     vi.mocked(slaService.getSummary).mockResolvedValue(sampleSummary);
 
     const response = await GET(
-      new Request(
+      gestorRequest(
         "http://localhost/api/sla/summary?clientId=client-1&contractId=contract-1&startDate=2026-08-01&endDate=2026-08-31",
       ),
     );
@@ -33,6 +35,7 @@ describe("GET /api/sla/summary", () => {
     expect(slaService.getSummary).toHaveBeenCalledWith({
       clientId: "client-1",
       contractId: "contract-1",
+      contractStatuses: ["ACTIVE"],
       openedFrom: new Date("2026-08-01T00:00:00.000Z"),
       openedTo: new Date("2026-08-31T23:59:59.999Z"),
     });
@@ -42,7 +45,7 @@ describe("GET /api/sla/summary", () => {
 
   it("returns validation errors for invalid periods", async () => {
     const response = await GET(
-      new Request("http://localhost/api/sla/summary?startDate=2026/08/01"),
+      gestorRequest("http://localhost/api/sla/summary?startDate=2026/08/01"),
     );
     const body = await response.json();
 
@@ -53,10 +56,36 @@ describe("GET /api/sla/summary", () => {
   it("returns 500 when summary generation fails unexpectedly", async () => {
     vi.mocked(slaService.getSummary).mockRejectedValue(new Error("database unavailable"));
 
-    const response = await GET(new Request("http://localhost/api/sla/summary"));
+    const response = await GET(gestorRequest("http://localhost/api/sla/summary"));
     const body = await response.json();
 
     expect(response.status).toBe(500);
     expect(body.error).toBe("Internal server error");
+  });
+
+  it("accepts the contract status filter and rejects invalid values", async () => {
+    vi.mocked(slaService.getSummary).mockResolvedValue(sampleSummary);
+
+    await GET(gestorRequest("http://localhost/api/sla/summary?status=ALL"));
+    expect(slaService.getSummary).toHaveBeenCalledWith({
+      clientId: undefined,
+      contractId: undefined,
+      contractStatuses: ["ACTIVE", "SUSPENDED", "FINISHED"],
+    });
+
+    await GET(gestorRequest("http://localhost/api/sla/summary?status=FINISHED"));
+    expect(slaService.getSummary).toHaveBeenLastCalledWith(
+      expect.objectContaining({ contractStatuses: ["FINISHED"] }),
+    );
+
+    const invalid = await GET(gestorRequest("http://localhost/api/sla/summary?status=DRAFT"));
+    expect(invalid.status).toBe(400);
+  });
+
+  it("blocks tecnico even if the middleware is bypassed", async () => {
+    const response = await GET(tecnicoRequest("http://localhost/api/sla/summary"));
+
+    expect(response.status).toBe(403);
+    expect(slaService.getSummary).not.toHaveBeenCalled();
   });
 });

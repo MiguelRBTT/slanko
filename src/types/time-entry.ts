@@ -13,6 +13,8 @@ export type CreateTimeEntryInput = {
   workedAt: string;
 };
 
+export type UpdateTimeEntryInput = Partial<CreateTimeEntryInput>;
+
 export function toPublicTimeEntry(entry: {
   id: string;
   ticketId: string;

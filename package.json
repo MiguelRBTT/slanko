@@ -2,9 +2,13 @@
   "name": "slanko",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
   "description": "Slanko - IT support contract management (TCC / Web Apps)",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --experimental-https",
+    "dev:http": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -13,6 +17,8 @@
     "test:coverage": "npm run test:coverage:backend && npm run test:coverage:frontend",
     "test:coverage:backend": "vitest run --coverage",
     "test:coverage:frontend": "vitest run --config vitest.frontend.config.ts --coverage",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "typecheck": "tsc --noEmit",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
     "db:logs": "docker compose logs -f slanko-db",
@@ -20,6 +26,8 @@
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "db:reset": "prisma migrate reset",
+    "app:up": "docker compose --profile app up -d --build",
+    "app:down": "docker compose --profile app stop slanko-app",
     "obs:up": "docker compose up -d slanko-prometheus slanko-grafana",
     "obs:down": "docker compose stop slanko-prometheus slanko-grafana",
     "postinstall": "prisma generate"

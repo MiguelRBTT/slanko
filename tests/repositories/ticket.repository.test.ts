@@ -5,6 +5,7 @@ import type { PrismaClient } from "@prisma/client";
 describe("TicketRepository", () => {
   const mockDb = {
     ticket: {
+      groupBy: vi.fn(),
       findMany: vi.fn(),
       findUnique: vi.fn(),
       create: vi.fn(),
@@ -13,6 +14,8 @@ describe("TicketRepository", () => {
     },
     timeEntry: {
       deleteMany: vi.fn(),
+      count: vi.fn(),
+      groupBy: vi.fn(),
     },
     ticketObserver: {
       deleteMany: vi.fn(),
@@ -92,7 +95,7 @@ describe("TicketRepository", () => {
     mockDb.ticket.findUnique.mockResolvedValue(null);
 
     const repository = new TicketRepository(mockDb as unknown as PrismaClient);
-    await repository.create({ title: "New ticket" });
+    await repository.create({ title: "New ticket" } as never);
     await repository.findById("ticket-1");
     await repository.update("ticket-1", { title: "Updated" });
 
@@ -104,20 +107,13 @@ describe("TicketRepository", () => {
     expect(mockDb.ticket.update).toHaveBeenCalled();
   });
 
-  it("replaces observers for a ticket", async () => {
-    mockDb.ticketObserver.deleteMany.mockResolvedValue({ count: 1 });
-    mockDb.ticketObserver.createMany.mockResolvedValue({ count: 2 });
+  it("counts time entries of a ticket", async () => {
+    mockDb.timeEntry.count.mockResolvedValue(3);
 
     const repository = new TicketRepository(mockDb as unknown as PrismaClient);
-    await repository.replaceObservers("ticket-1", ["user-a", "user-b"]);
+    await expect(repository.countTimeEntries("ticket-1")).resolves.toBe(3);
 
-    expect(mockDb.ticketObserver.deleteMany).toHaveBeenCalledWith({ where: { ticketId: "ticket-1" } });
-    expect(mockDb.ticketObserver.createMany).toHaveBeenCalledWith({
-      data: [
-        { ticketId: "ticket-1", userId: "user-a" },
-        { ticketId: "ticket-1", userId: "user-b" },
-      ],
-    });
+    expect(mockDb.timeEntry.count).toHaveBeenCalledWith({ where: { ticketId: "ticket-1" } });
   });
 
   it("deletes attachments, time entries and observers before removing the ticket", async () => {
@@ -134,5 +130,35 @@ describe("TicketRepository", () => {
     expect(mockDb.timeEntry.deleteMany).toHaveBeenCalledWith({ where: { ticketId: "ticket-1" } });
     expect(mockDb.ticketObserver.deleteMany).toHaveBeenCalledWith({ where: { ticketId: "ticket-1" } });
     expect(mockDb.ticket.delete).toHaveBeenCalledWith({ where: { id: "ticket-1" } });
+  });
+
+  it("sums logged hours per ticket with one grouped query", async () => {
+    mockDb.timeEntry.groupBy.mockResolvedValue([
+      { ticketId: "ticket-1", _sum: { hours: { toString: () => "2.5" } } },
+      { ticketId: "ticket-2", _sum: { hours: null } },
+    ]);
+
+    const repository = new TicketRepository(mockDb as unknown as PrismaClient);
+    const totals = await repository.sumLoggedHours(["ticket-1", "ticket-2"]);
+
+    expect(mockDb.timeEntry.groupBy).toHaveBeenCalledWith({
+      by: ["ticketId"],
+      where: { ticketId: { in: ["ticket-1", "ticket-2"] } },
+      _sum: { hours: true },
+    });
+    expect(totals.get("ticket-1")).toBe("2.5");
+    expect(totals.get("ticket-2")).toBe("0");
+    await expect(repository.sumLoggedHours([])).resolves.toEqual(new Map());
+  });
+
+  it("counts tickets by status", async () => {
+    mockDb.ticket.groupBy.mockResolvedValue([
+      { status: "OPEN", _count: { _all: 2 } },
+      { status: "CLOSED", _count: { _all: 5 } },
+    ]);
+
+    const repository = new TicketRepository(mockDb as unknown as PrismaClient);
+
+    await expect(repository.countByStatus()).resolves.toEqual({ OPEN: 2, CLOSED: 5 });
   });
 });

@@ -1,4 +1,5 @@
-﻿import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
+import { decimal } from "../helpers/fixtures";
 import { toPublicUser } from "@/types/user";
 
 // Unit tests for user DTO mapping helpers.
@@ -10,7 +11,7 @@ describe("toPublicUser", () => {
       name: "Carlos Tecnico",
       email: "tecnico@slanko.local",
       role: "TECNICO",
-      hourlyCost: { toString: () => "85.50" },
+      hourlyCost: decimal("85.50"),
       active: true,
     });
 

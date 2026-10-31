@@ -1,11 +1,14 @@
-import type { Prisma, PrismaClient } from "@prisma/client";
+import type { ContractStatus, Prisma, PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { REPORTABLE_CONTRACT_STATUSES } from "@/lib/reports/contract-status-filter";
 
 export type SlaTicketFilters = {
   contractId?: string;
   clientId?: string;
   openedFrom?: Date;
   openedTo?: Date;
+  /** Situações de contrato incluídas (padrão: só ACTIVE). */
+  contractStatuses?: ContractStatus[];
 };
 
 export class SlaRepository {
@@ -14,7 +17,7 @@ export class SlaRepository {
   findTickets(filters: SlaTicketFilters = {}) {
     const where: Prisma.TicketWhereInput = {
       contract: {
-        status: "ACTIVE",
+        status: { in: filters.contractStatuses ?? ["ACTIVE"] },
         ...(filters.clientId ? { clientId: filters.clientId } : {}),
       },
     };
@@ -39,9 +42,10 @@ export class SlaRepository {
     });
   }
 
-  findActiveContract(id: string) {
+  /** Contrato que pode ter relatório: qualquer situação, exceto rascunho. */
+  findReportableContract(id: string) {
     return this.db.contract.findFirst({
-      where: { id, status: "ACTIVE" },
+      where: { id, status: { in: REPORTABLE_CONTRACT_STATUSES } },
     });
   }
 }
