@@ -19,10 +19,10 @@ export type TicketSnapshot = {
 
 const AUDITED_FIELDS = ["title", "description", "priority", "category", "solution"] as const;
 
+/** Mesmo conjunto de ids, sem depender da ordem (os ids de observadores não se repetem). */
 function sameIds(a: string[], b: string[]): boolean {
-  if (a.length !== b.length) return false;
-  const sorted = [...b].sort();
-  return [...a].sort().every((id, index) => id === sorted[index]);
+  const ids = new Set(b);
+  return a.length === b.length && a.every((id) => ids.has(id));
 }
 
 function assigneeRef(id: string | null, name: string | null) {

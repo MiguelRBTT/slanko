@@ -9,6 +9,7 @@ import {
   parsePositiveInteger,
   parsePositiveNumber,
   requireNonEmptyString,
+  requireEmail,
 } from "@/lib/validation/fields";
 import { BadRequestError } from "@/lib/errors/app-error";
 
@@ -76,5 +77,24 @@ describe("validation fields", () => {
     expect(isUniqueConstraintError({ code: "P2002" })).toBe(true);
     expect(isUniqueConstraintError(new Error("other"))).toBe(false);
     expect(isUniqueConstraintError(null)).toBe(false);
+  });
+
+  it("accepts valid emails and normalizes them", () => {
+    expect(requireEmail(" Ana.Silva@Empresa.com.br ")).toBe("ana.silva@empresa.com.br");
+    expect(requireEmail("t@sub.dominio.io")).toBe("t@sub.dominio.io");
+  });
+
+  it("rejects malformed emails", () => {
+    for (const value of ["semarroba", "a@b", "a@.com", "a@b.", "a@b..com", "a b@c.com", "a@@b.com", 42]) {
+      expect(() => requireEmail(value)).toThrow(BadRequestError);
+    }
+  });
+
+  it("validates long malicious input quickly (no catastrophic backtracking)", () => {
+    const evil = `${"a".repeat(50_000)}@${"b.".repeat(25_000)}`;
+    const started = performance.now();
+
+    expect(() => requireEmail(evil)).toThrow(BadRequestError);
+    expect(performance.now() - started).toBeLessThan(500);
   });
 });

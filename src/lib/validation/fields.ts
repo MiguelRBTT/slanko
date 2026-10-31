@@ -8,7 +8,9 @@ export function requireNonEmptyString(value: unknown, field: string): string {
   return value.trim();
 }
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Partes do domínio sem ponto: o padrão não tem ambiguidade, então roda em tempo linear
+// (sem backtracking excessivo com entradas maliciosas).
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/;
 
 export function requireEmail(value: unknown, field = "email"): string {
   const email = requireNonEmptyString(value, field).toLowerCase();

@@ -67,4 +67,10 @@ describe("ticket history events", () => {
       buildUpdateEvents({ ...base, observerIds: ["a", "b"] }, { ...base, observerIds: ["b", "a"] }),
     ).toEqual([]);
   });
+
+  it("detects different observer sets with the same size", () => {
+    const events = buildUpdateEvents({ ...base, observerIds: ["a", "b"] }, { ...base, observerIds: ["a", "c"] });
+
+    expect(events).toEqual([{ type: "OBSERVERS_CHANGED", data: { added: ["c"], removed: ["b"] } }]);
+  });
 });
