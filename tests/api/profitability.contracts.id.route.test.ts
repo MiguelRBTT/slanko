@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { gestorRequest } from "../helpers/auth-request";
 import { GET } from "@/app/api/profitability/contracts/[id]/route";
 import { profitabilityService } from "@/services/profitability.service";
 import { NotFoundError } from "@/lib/errors/app-error";
@@ -17,7 +18,11 @@ const sampleReport = {
     contractCode: "CTR-001",
     contractTitle: "Suporte mensal",
     clientId: "client-1",
+    contractStatus: "ACTIVE" as const,
     contractValue: "4500.00",
+    revenue: "4500.00",
+    periodStart: "2026-08-01",
+    periodEnd: "2026-08-31",
     totalHours: "2.00",
     totalCost: "171.00",
     margin: "4329.00",
@@ -36,7 +41,7 @@ describe("GET /api/profitability/contracts/:id", () => {
     vi.mocked(profitabilityService.getContractReport).mockResolvedValue(sampleReport);
 
     const response = await GET(
-      new Request("http://localhost/api/profitability/contracts/contract-1?startDate=2026-08-01"),
+      gestorRequest("http://localhost/api/profitability/contracts/contract-1?startDate=2026-08-01"),
       routeContext,
     );
     const body = await response.json();
@@ -53,7 +58,7 @@ describe("GET /api/profitability/contracts/:id", () => {
       new NotFoundError("Contract not found"),
     );
 
-    const response = await GET(new Request("http://localhost"), routeContext);
+    const response = await GET(gestorRequest("http://localhost"), routeContext);
 
     expect(response.status).toBe(404);
   });

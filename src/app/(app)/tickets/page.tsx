@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent } from "react";
 import { apiRequest, ApiClientError } from "@/lib/client/api";
+import { getSession } from "@/lib/client/auth-session";
 import { MAX_ATTACHMENTS_PER_TICKET } from "@/lib/attachments/rules";
 import {
   formatDateBR,
@@ -23,10 +24,10 @@ import {
   formatSlaDuration,
   getActiveSlaDeadline,
 } from "@/lib/sla/deadline";
-import type { PublicContract } from "@/types/contract";
+import type { PublicContractSummary } from "@/types/contract";
 import type { PublicTicket } from "@/types/ticket";
 import type { PublicTimeEntry } from "@/types/time-entry";
-import type { PublicUser } from "@/types/user";
+import type { PublicUserSummary } from "@/types/user";
 import { ClockIcon, CloseIcon, EditIcon, TrashIcon } from "../action-icons";
 import styles from "../page-shared.module.css";
 import { nextSortState, SortHeader, type SortDir } from "../sort-header";
@@ -36,12 +37,13 @@ import {
   TicketAttachmentGallery,
   uploadPendingFiles,
 } from "./ticket-attachments";
+import { TicketHistory } from "./ticket-history";
 
 type TicketsPayload = { tickets: PublicTicket[] };
-type ContractsPayload = { contracts: PublicContract[] };
+type ContractsPayload = { contracts: PublicContractSummary[] };
 type TimeEntriesPayload = { timeEntries: PublicTimeEntry[] };
-type UsersPayload = { users: PublicUser[] };
-type PanelMode = "hours" | "resolve" | "edit";
+type UsersPayload = { users: PublicUserSummary[] };
+type PanelMode = "hours" | "resolve" | "edit" | "history";
 type SortKey = "title" | "sla" | "time" | "priority" | "status";
 
 const PRIORITIES = [
@@ -98,8 +100,10 @@ function dateInputToIso(value: string): string {
   return new Date(`${value}T12:00:00`).toISOString();
 }
 
-function sumMinutes(entries: PublicTimeEntry[]): number {
-  return entries.reduce((total, entry) => total + hoursToMinutes(entry.hours), 0);
+function isoToDateInput(iso: string): string {
+  const date = new Date(iso);
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 10);
 }
 
 function errorMessage(err: unknown, fallback: string): string {
@@ -108,8 +112,9 @@ function errorMessage(err: unknown, fallback: string): string {
 
 export default function TicketsPage() {
   const [tickets, setTickets] = useState<PublicTicket[]>([]);
-  const [contracts, setContracts] = useState<PublicContract[]>([]);
-  const [technicians, setTechnicians] = useState<PublicUser[]>([]);
+  const [contracts, setContracts] = useState<PublicContractSummary[]>([]);
+  const [technicians, setTechnicians] = useState<PublicUserSummary[]>([]);
+  const [currentUser, setCurrentUser] = useState<{ id: string; role: string } | null>(null);
   const [entriesByTicket, setEntriesByTicket] = useState<Record<string, PublicTimeEntry[]>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [panel, setPanel] = useState<PanelMode | null>(null);
@@ -134,6 +139,7 @@ export default function TicketsPage() {
   const [logHours, setLogHours] = useState("");
   const [logDate, setLogDate] = useState(todayInputValue);
   const [logNote, setLogNote] = useState("");
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
 
   const [solution, setSolution] = useState("");
   const [resolveHours, setResolveHours] = useState("");
@@ -151,9 +157,11 @@ export default function TicketsPage() {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const createDialogRef = useRef<HTMLDialogElement>(null);
 
+  const isGestor = currentUser?.role === "GESTOR";
   const selected = tickets.find((ticket) => ticket.id === selectedId) ?? null;
   const selectedEntries = selected ? (entriesByTicket[selected.id] ?? []) : [];
-  const selectedMinutes = sumMinutes(selectedEntries);
+  // Total vem agregado na listagem; os apontamentos só são buscados para o chamado aberto.
+  const selectedMinutes = selected ? hoursToMinutes(selected.loggedHours) : 0;
 
   const activeContracts = useMemo(
     () => contracts.filter((contract) => contract.status === "ACTIVE"),
@@ -175,22 +183,19 @@ export default function TicketsPage() {
 
   const slaRemainingMinutes = useMemo(() => {
     return (ticket: PublicTicket): number | null => {
-      const contract = contractById.get(ticket.contractId);
-      if (!contract) return null;
-
       const deadline = getActiveSlaDeadline({
         openedAt: ticket.openedAt,
         firstResponseAt: ticket.firstResponseAt,
         resolvedAt: ticket.resolvedAt,
         status: ticket.status,
-        responseMinutes: contract.responseMinutes,
-        resolutionMinutes: contract.resolutionMinutes,
+        responseMinutes: ticket.responseMinutes,
+        resolutionMinutes: ticket.resolutionMinutes,
         now,
       });
 
       return deadline ? deadline.remainingMinutes : null;
     };
-  }, [contractById, now]);
+  }, [now]);
 
   const contractName = useMemo(() => {
     return (id: string) => {
@@ -231,8 +236,7 @@ export default function TicketsPage() {
           break;
         }
         case "time":
-          cmp =
-            sumMinutes(entriesByTicket[a.id] ?? []) - sumMinutes(entriesByTicket[b.id] ?? []);
+          cmp = hoursToMinutes(a.loggedHours) - hoursToMinutes(b.loggedHours);
           break;
         case "priority":
           cmp = (PRIORITY_RANK[a.priority] ?? 99) - (PRIORITY_RANK[b.priority] ?? 99);
@@ -249,7 +253,7 @@ export default function TicketsPage() {
     });
 
     return rows;
-  }, [tickets, search, sortKey, sortDir, slaRemainingMinutes, entriesByTicket, contractById]);
+  }, [tickets, search, sortKey, sortDir, slaRemainingMinutes, contractById]);
 
   function toggleSort(key: SortKey) {
     const next = nextSortState(sortKey, sortDir, key, SORT_DEFAULT_DIR[key]);
@@ -257,19 +261,13 @@ export default function TicketsPage() {
     setSortDir(next.dir);
   }
 
-  async function loadEntries(ticketIds: string[]) {
-    const pairs = await Promise.all(
-      ticketIds.map(async (id) => {
-        try {
-          const result = await apiRequest<TimeEntriesPayload>(`/api/tickets/${id}/time-entries`);
-          return [id, result.timeEntries] as const;
-        } catch {
-          return [id, []] as const;
-        }
-      }),
-    );
-
-    setEntriesByTicket(Object.fromEntries(pairs));
+  async function loadEntries(ticketId: string) {
+    try {
+      const result = await apiRequest<TimeEntriesPayload>(`/api/tickets/${ticketId}/time-entries`);
+      setEntriesByTicket((current) => ({ ...current, [ticketId]: result.timeEntries }));
+    } catch (err) {
+      setError(errorMessage(err, "Falha ao carregar apontamentos"));
+    }
   }
 
   async function load(initial = false) {
@@ -290,7 +288,9 @@ export default function TicketsPage() {
       setContracts(contractsResult.contracts);
       setTechnicians(usersResult.users.filter((user) => user.role === "TECNICO" && user.active));
       setContractId((current) => current || active[0]?.id || "");
-      await loadEntries(ticketsResult.tickets.map((ticket) => ticket.id));
+      if (selectedId) {
+        await loadEntries(selectedId);
+      }
     } catch (err) {
       setError(errorMessage(err, "Falha ao carregar chamados"));
     } finally {
@@ -299,6 +299,8 @@ export default function TicketsPage() {
   }
 
   useEffect(() => {
+    const sessionUser = getSession()?.user;
+    setCurrentUser(sessionUser ? { id: sessionUser.id, role: sessionUser.role } : null);
     void load(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -340,6 +342,7 @@ export default function TicketsPage() {
 
   function openPanel(ticket: PublicTicket, mode: PanelMode) {
     setSelectedId(ticket.id);
+    void loadEntries(ticket.id);
     setPanel(mode);
     setError(null);
     setEditTitle(ticket.title);
@@ -353,6 +356,7 @@ export default function TicketsPage() {
     setLogHours("");
     setLogNote("");
     setLogDate(todayInputValue());
+    setEditingEntryId(null);
     setResolveHours("");
     setResolveNote("");
     setResolveDate(todayInputValue());
@@ -441,7 +445,7 @@ export default function TicketsPage() {
           priority,
           category,
           assignedToId: assignedToId || null,
-          observerIds: observerIds.filter((id) => id !== assignedToId),
+          observerIds: isGestor ? observerIds.filter((id) => id !== assignedToId) : [],
         },
       });
 
@@ -458,6 +462,48 @@ export default function TicketsPage() {
     }
   }
 
+  function canChangeEntry(entry: PublicTimeEntry): boolean {
+    return Boolean(currentUser) && (isGestor || entry.userId === currentUser?.id);
+  }
+
+  function startEditEntry(entry: PublicTimeEntry) {
+    setEditingEntryId(entry.id);
+    setLogHours(maskMinutesInput(String(hoursToMinutes(entry.hours))));
+    setLogDate(isoToDateInput(entry.workedAt));
+    setLogNote(entry.note ?? "");
+    setError(null);
+  }
+
+  function cancelEditEntry() {
+    setEditingEntryId(null);
+    setLogHours("");
+    setLogNote("");
+    setLogDate(todayInputValue());
+  }
+
+  async function deleteEntry(entry: PublicTimeEntry) {
+    if (!selected) return;
+
+    const confirmed = window.confirm(
+      `Excluir o apontamento de ${formatWorkedMinutes(entry.hours)}? A exclusão fica registrada no histórico do chamado.`,
+    );
+
+    if (!confirmed) return;
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      await apiRequest(`/api/tickets/${selected.id}/time-entries/${entry.id}`, { method: "DELETE" });
+      if (editingEntryId === entry.id) cancelEditEntry();
+      await load();
+    } catch (err) {
+      setError(errorMessage(err, "Falha ao excluir apontamento"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function onLogHours(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selected) return;
@@ -466,6 +512,27 @@ export default function TicketsPage() {
     setError(null);
 
     try {
+      if (editingEntryId) {
+        const minutes = parseMinutesInput(logHours);
+
+        if (!Number.isInteger(minutes) || minutes <= 0) {
+          throw new ApiClientError("Informe o tempo gasto em minutos, por exemplo 45.", 400);
+        }
+
+        await apiRequest(`/api/tickets/${selected.id}/time-entries/${editingEntryId}`, {
+          method: "PUT",
+          body: {
+            hours: minutesToHours(minutes),
+            note: logNote.trim() || null,
+            workedAt: dateInputToIso(logDate),
+          },
+        });
+
+        cancelEditEntry();
+        await load();
+        return;
+      }
+
       await logTime(selected.id, logHours, logDate, logNote);
 
       if (selected.status === "OPEN") {
@@ -546,8 +613,12 @@ export default function TicketsPage() {
         body.status = editStatus;
       }
 
-      body.assignedToId = editAssignedToId || null;
-      body.observerIds = editObserverIds.filter((id) => id !== editAssignedToId);
+      if (isGestor) {
+        body.assignedToId = editAssignedToId || null;
+        body.observerIds = editObserverIds.filter((id) => id !== editAssignedToId);
+      } else if (!selected.assignedToId && currentUser && editAssignedToId === currentUser.id) {
+        body.assignedToId = currentUser.id;
+      }
 
       await apiRequest(`/api/tickets/${selected.id}`, { method: "PUT", body });
       requestClose();
@@ -591,7 +662,7 @@ export default function TicketsPage() {
 
   async function deleteTicket(ticket: PublicTicket) {
     const confirmed = window.confirm(
-      `Excluir o chamado "${ticket.title}"? Os apontamentos de tempo desse chamado também serão removidos.`,
+      `Excluir o chamado "${ticket.title}"? Use só para chamados abertos por engano: a exclusão não pode ser desfeita.`,
     );
 
     if (!confirmed) return;
@@ -718,22 +789,18 @@ export default function TicketsPage() {
               </thead>
               <tbody>
                 {listedTickets.map((ticket) => {
-                  const minutes = sumMinutes(entriesByTicket[ticket.id] ?? []);
+                  const minutes = hoursToMinutes(ticket.loggedHours);
                   const closed = ticket.status === "CLOSED";
                   const resolved = ticket.status === "RESOLVED" || closed;
-                  const contract = contractById.get(ticket.contractId);
-                  const deadline =
-                    contract
-                      ? getActiveSlaDeadline({
-                          openedAt: ticket.openedAt,
-                          firstResponseAt: ticket.firstResponseAt,
-                          resolvedAt: ticket.resolvedAt,
-                          status: ticket.status,
-                          responseMinutes: contract.responseMinutes,
-                          resolutionMinutes: contract.resolutionMinutes,
-                          now,
-                        })
-                      : null;
+                  const deadline = getActiveSlaDeadline({
+                    openedAt: ticket.openedAt,
+                    firstResponseAt: ticket.firstResponseAt,
+                    resolvedAt: ticket.resolvedAt,
+                    status: ticket.status,
+                    responseMinutes: ticket.responseMinutes,
+                    resolutionMinutes: ticket.resolutionMinutes,
+                    now,
+                  });
                   const slaToneClass =
                     deadline?.tone === "breached"
                       ? styles.slaBreached
@@ -803,6 +870,13 @@ export default function TicketsPage() {
                               Encerrar
                             </button>
                           ) : null}
+                          <button
+                            type="button"
+                            className={`btn btn-ghost ${styles.compact}`}
+                            onClick={() => openPanel(ticket, "history")}
+                          >
+                            Histórico
+                          </button>
                           {!closed ? (
                             <>
                               <button
@@ -814,16 +888,18 @@ export default function TicketsPage() {
                               >
                                 <EditIcon />
                               </button>
-                              <button
-                                type="button"
-                                className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
-                                onClick={() => void deleteTicket(ticket)}
-                                disabled={saving}
-                                title="Excluir chamado"
-                                aria-label="Excluir chamado"
-                              >
-                                <TrashIcon />
-                              </button>
+                              {!resolved && minutes === 0 ? (
+                                <button
+                                  type="button"
+                                  className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
+                                  onClick={() => void deleteTicket(ticket)}
+                                  disabled={saving}
+                                  title="Excluir chamado aberto por engano (sem tempo apontado)"
+                                  aria-label="Excluir chamado"
+                                >
+                                  <TrashIcon />
+                                </button>
+                              ) : null}
                             </>
                           ) : (
                             <span className="muted">Encerrado</span>
@@ -868,17 +944,28 @@ export default function TicketsPage() {
 
             <form onSubmit={onCreate}>
               <div className={styles.formGrid}>
-                <div className="field">
-                  <label htmlFor="assignedToId">Responsável</label>
-                  <select id="assignedToId" value={assignedToId} onChange={(e) => setAssignedToId(e.target.value)}>
-                    <option value="">Sem responsável</option>
-                    {technicians.map((user) => (
-                      <option key={user.id} value={user.id}>
-                        {user.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                {isGestor ? (
+                  <div className="field">
+                    <label htmlFor="assignedToId">Responsável</label>
+                    <select id="assignedToId" value={assignedToId} onChange={(e) => setAssignedToId(e.target.value)}>
+                      <option value="">Sem responsável</option>
+                      {technicians.map((user) => (
+                        <option key={user.id} value={user.id}>
+                          {user.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <label className={`field ${styles.checkboxItem}`}>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(currentUser) && assignedToId === currentUser?.id}
+                      onChange={(e) => setAssignedToId(e.target.checked && currentUser ? currentUser.id : "")}
+                    />
+                    <span>Assumir este chamado</span>
+                  </label>
+                )}
                 <div className="field">
                   <label htmlFor="contractId">Contrato</label>
                   <select id="contractId" value={contractId} onChange={(e) => setContractId(e.target.value)} required>
@@ -910,6 +997,7 @@ export default function TicketsPage() {
                   <label htmlFor="category">Categoria</label>
                   <input id="category" value={category} onChange={(e) => setCategory(e.target.value)} required />
                 </div>
+                {isGestor ? (
                 <div className={`field ${styles.full}`}>
                   <span className={styles.checkboxLegend}>Observadores</span>
                   <div className={styles.checkboxList}>
@@ -931,6 +1019,7 @@ export default function TicketsPage() {
                     )}
                   </div>
                 </div>
+                ) : null}
                 <div className={`field ${styles.full}`}>
                   <label htmlFor="description">O que o cliente precisa</label>
                   <textarea id="description" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} required />
@@ -975,7 +1064,13 @@ export default function TicketsPage() {
           <div className={styles.sectionHead}>
             <div>
               <h2 id="ticket-dialog-title">
-                {panel === "hours" ? "Apontar tempo" : panel === "edit" ? "Editar chamado" : "Resolver chamado"}
+                {panel === "hours"
+                  ? "Apontar tempo"
+                  : panel === "edit"
+                    ? "Editar chamado"
+                    : panel === "history"
+                      ? "Histórico do chamado"
+                      : "Resolver chamado"}
               </h2>
               <p className="muted">{selected.title}</p>
             </div>
@@ -999,10 +1094,34 @@ export default function TicketsPage() {
               ) : (
                 <ul className={styles.entryList}>
                   {selectedEntries.map((entry) => (
-                    <li key={entry.id}>
+                    <li key={entry.id} className={editingEntryId === entry.id ? styles.selectedRow : undefined}>
                       <strong>{formatWorkedMinutes(entry.hours)}</strong>
                       <span>{formatDateBR(entry.workedAt)}</span>
                       <span className="muted">{entry.note?.trim() || "Sem observação"}</span>
+                      {selected.status !== "CLOSED" && canChangeEntry(entry) ? (
+                        <span className={styles.actions}>
+                          <button
+                            type="button"
+                            className={styles.iconBtn}
+                            onClick={() => startEditEntry(entry)}
+                            disabled={saving}
+                            title="Corrigir apontamento"
+                            aria-label="Corrigir apontamento"
+                          >
+                            <EditIcon />
+                          </button>
+                          <button
+                            type="button"
+                            className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
+                            onClick={() => void deleteEntry(entry)}
+                            disabled={saving}
+                            title="Excluir apontamento"
+                            aria-label="Excluir apontamento"
+                          >
+                            <TrashIcon />
+                          </button>
+                        </span>
+                      ) : null}
                     </li>
                   ))}
                 </ul>
@@ -1030,8 +1149,13 @@ export default function TicketsPage() {
                     <input id="logNote" value={logNote} onChange={(e) => setLogNote(e.target.value)} placeholder="Opcional" />
                   </div>
                   <button className="btn btn-primary" type="submit" disabled={saving}>
-                    {saving ? "Salvando…" : "Registrar minutos"}
+                    {saving ? "Salvando…" : editingEntryId ? "Salvar correção" : "Registrar minutos"}
                   </button>
+                  {editingEntryId ? (
+                    <button className="btn btn-ghost" type="button" onClick={cancelEditEntry} disabled={saving}>
+                      Cancelar
+                    </button>
+                  ) : null}
                 </form>
               ) : null}
 
@@ -1075,24 +1199,67 @@ export default function TicketsPage() {
             </form>
           ) : null}
 
+          {panel === "history" ? (
+            <>
+              <dl className={styles.ticketSummary}>
+                <div>
+                  <dt>Situação</dt>
+                  <dd>{labelTicketStatus(selected.status)}</dd>
+                </div>
+                <div>
+                  <dt>Aberto em</dt>
+                  <dd>{formatDateBR(selected.openedAt)}</dd>
+                </div>
+                <div>
+                  <dt>Tempo apontado</dt>
+                  <dd>{formatWorkedMinutes(selectedMinutes, true)}</dd>
+                </div>
+                {selected.solution ? (
+                  <div className={styles.full}>
+                    <dt>Solução</dt>
+                    <dd>{selected.solution}</dd>
+                  </div>
+                ) : null}
+              </dl>
+              <TicketHistory ticketId={selected.id} userName={userName} />
+              <TicketAttachmentGallery ticketId={selected.id} canEdit={false} onError={setError} />
+            </>
+          ) : null}
+
           {panel === "edit" ? (
             <form onSubmit={onEdit}>
               <div className={styles.formGrid}>
-                <div className="field">
-                  <label htmlFor="editAssignedToId">Responsável</label>
-                  <select
-                    id="editAssignedToId"
-                    value={editAssignedToId}
-                    onChange={(e) => setEditAssignedToId(e.target.value)}
-                  >
-                    <option value="">Sem responsável</option>
-                    {technicians.map((user) => (
-                      <option key={user.id} value={user.id}>
-                        {user.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                {isGestor ? (
+                  <div className="field">
+                    <label htmlFor="editAssignedToId">Responsável</label>
+                    <select
+                      id="editAssignedToId"
+                      value={editAssignedToId}
+                      onChange={(e) => setEditAssignedToId(e.target.value)}
+                    >
+                      <option value="">Sem responsável</option>
+                      {technicians.map((user) => (
+                        <option key={user.id} value={user.id}>
+                          {user.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : selected.assignedToId ? (
+                  <div className="field">
+                    <span className={styles.checkboxLegend}>Responsável</span>
+                    <p>{selected.assignedToName ?? userName(selected.assignedToId)}</p>
+                  </div>
+                ) : (
+                  <label className={`field ${styles.checkboxItem}`}>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(currentUser) && editAssignedToId === currentUser?.id}
+                      onChange={(e) => setEditAssignedToId(e.target.checked && currentUser ? currentUser.id : "")}
+                    />
+                    <span>Assumir este chamado</span>
+                  </label>
+                )}
                 <div className="field">
                   <label htmlFor="editTitle">Título</label>
                   <input id="editTitle" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} required />
@@ -1123,6 +1290,7 @@ export default function TicketsPage() {
                     </select>
                   </div>
                 ) : null}
+                {isGestor ? (
                 <div className={`field ${styles.full}`}>
                   <span className={styles.checkboxLegend}>Observadores</span>
                   <div className={styles.checkboxList}>
@@ -1140,6 +1308,7 @@ export default function TicketsPage() {
                       ))}
                   </div>
                 </div>
+                ) : null}
                 <div className={`field ${styles.full}`}>
                   <label htmlFor="editDescription">Descrição</label>
                   <textarea id="editDescription" rows={3} value={editDescription} onChange={(e) => setEditDescription(e.target.value)} required />

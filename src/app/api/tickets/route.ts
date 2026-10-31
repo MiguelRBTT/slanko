@@ -1,5 +1,6 @@
 import type { TicketPriority, TicketStatus } from "@prisma/client";
 import { jsonError, jsonOk } from "@/lib/http/api-response";
+import { readJsonBody } from "@/lib/http/request-body";
 import { BadRequestError } from "@/lib/errors/app-error";
 import { getAuthContextFromHeaders } from "@/lib/auth/request-context";
 import { ticketService } from "@/services/ticket.service";
@@ -60,7 +61,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const auth = getAuthContextFromHeaders(request);
-    const body = (await request.json()) as CreateTicketInput;
+    const body = await readJsonBody<CreateTicketInput>(request);
     const ticket = await ticketService.createTicket(body, auth);
 
     return jsonOk({ ticket }, 201);

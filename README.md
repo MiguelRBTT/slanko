@@ -177,9 +177,16 @@ Detalhamento e critérios de aceite: [docs/RFC.md](docs/RFC.md).
 
 ### Segurança
 
-* Autenticação JWT e autorização por perfil (gestor / técnico)
-* Criptografia de senhas
-* Validação de entradas e proteção contra XSS/CSRF
+* Autenticação JWT (Bearer) e autorização por perfil (gestor / técnico), checada no middleware e de novo em cada rota de gestor
+* A cada requisição o middleware confere no banco se o usuário segue ativo e qual é o perfil atual: desativar alguém corta o acesso na hora, sem esperar o token expirar
+* Cabeçalhos `x-user-*` enviados pelo cliente são descartados; só o middleware define a identidade
+* Senhas com bcrypt; login limitado a 5 falhas por email a cada 15 min (HTTP 429 com `Retry-After`). O IP só entra na chave atrás de um proxy confiável (`TRUST_PROXY=true`), porque `X-Forwarded-For` pode ser forjado
+* `/api/metrics` exige `Authorization: Bearer <METRICS_TOKEN>` (expõe indicadores financeiros); o Prometheus local já envia o token de desenvolvimento
+* CSP com nonce por requisição (só os scripts do próprio Next.js executam), `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy` e HSTS em produção
+* CSRF: não se aplica ao modelo atual, porque o token vai no cabeçalho `Authorization` (não em cookie) e o navegador não o envia sozinho em requisições de outros sites
+* Validação de entradas em todas as rotas (JSON malformado e tipos errados viram 400, não 500); anexos conferidos pelos bytes iniciais do arquivo, não só pelo tipo declarado
+* Técnico não recebe custo/hora de colegas nem valor de contratos
+* HTTPS no desenvolvimento local (`npm run dev`)
 * Segredos apenas em variáveis de ambiente
 
 ---
@@ -250,8 +257,9 @@ Detalhamento: [docs/arquitetura-c4.md](docs/arquitetura-c4.md).
 
 Entidades: **User**, **Client**, **Contract**, **Ticket**, **TimeEntry**.
 
-* SLA: metas no contrato (`response_minutes`, `resolution_minutes`)
-* Rentabilidade: `TimeEntry.hours × User.hourly_cost` comparado a `Contract.value`
+* SLA: metas no contrato (`response_minutes`, `resolution_minutes`). O relógio começa na abertura; a 1ª resposta é o início do atendimento (sair de "Aberto" ou o 1º apontamento), não a atribuição. Chamado sem resposta/resolução com prazo vencido já conta como violação
+* Rentabilidade: `TimeEntry.hours × TimeEntry.hourly_cost` (custo/hora congelado no apontamento) comparado à receita do período (`Contract.value` é **mensal**, proporcional aos dias de vigência)
+* Histórico: cada alteração do chamado gera um `TicketEvent` (RF07)
 
 Dicionário de dados, regras e esboço Prisma: [docs/modelagem.md](docs/modelagem.md).
 
@@ -266,7 +274,7 @@ Dicionário de dados, regras e esboço Prisma: [docs/modelagem.md](docs/modelage
 | Back-end (Next.js API + services) | Concluído (clientes, contratos, chamados, horas, SLA e rentabilidade) |
 | Front-end (UI / dashboard) | Concluído (login, painel SLA/rentabilidade, clientes, contratos e chamados) |
 | Testes (TDD 75% / 25%) | Concluído (Vitest: ≥75% backend + ≥25% frontend no CI) |
-| CI/CD (GitHub Actions) | Em andamento (lint, test:coverage, build, SonarCloud) |
+| CI/CD (GitHub Actions) | CI concluído (lint, typecheck, test:coverage, build, SonarCloud e integração com MySQL); deploy não automatizado (apresentação local) |
 | SonarCloud | Concluído (scan no CI + Quality Gate; secret `SONAR_TOKEN`) |
 | Observabilidade | Concluído (Prometheus + Grafana + `/api/metrics`) |
 | Wiki do GitHub | Concluído (páginas em `docs/wiki/` + Wiki no GitHub) |
@@ -277,7 +285,7 @@ Dicionário de dados, regras e esboço Prisma: [docs/modelagem.md](docs/modelage
 
 ### Pré-requisitos
 
-* Node.js 18+ (LTS recomendado)
+* Node.js 22.12+ (versão em `.nvmrc`; o Vite 7 usado pelos testes não roda no 22.11 ou anterior)
 * [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Windows)
 * Git
 
@@ -316,7 +324,7 @@ Dicionário de dados, regras e esboço Prisma: [docs/modelagem.md](docs/modelage
 
 | E-mail | Perfil | O que vê na interface |
 |---|---|---|
-| `gestor@slanko.local` | Gestor | Painel, clientes, contratos e chamados |
+| `gestor@slanko.local` | Gestor | Painel, clientes, contratos, chamados e equipe |
 | `tecnico@slanko.local` | Técnico | Somente chamados (responsável no seed) |
 | `tecnico2@slanko.local` | Técnico | Somente chamados (observador no seed) |
 
@@ -328,29 +336,34 @@ Dicionário de dados, regras e esboço Prisma: [docs/modelagem.md](docs/modelage
 npm run dev
 ```
 
-Abra [http://localhost:3000](http://localhost:3000). A home redireciona para `/login`. Depois do login, o gestor entra em `/dashboard` e o técnico em `/tickets`.
+Abra [https://localhost:3000](https://localhost:3000). A home redireciona para `/login`. Depois do login, o gestor entra em `/dashboard` e o técnico em `/tickets`.
+
+**HTTPS local:** `npm run dev` usa `next dev --experimental-https`. Na primeira execução, o Next.js baixa o [mkcert](https://github.com/FiloSottile/mkcert), cria uma autoridade certificadora local e pede para instalá-la no Windows. Aceite a confirmação: é ela que faz o navegador confiar no certificado de `localhost`. Os certificados ficam em `certificates/` (fora do git). Para rodar sem HTTPS: `npm run dev:http` (http://localhost:3000).
+
+**App em container (opcional):** `npm run app:up` faz o build da imagem `slanko-app` (Dockerfile) e sobe em http://localhost:3002, aplicando as migrations pendentes antes de iniciar. Usa o `JWT_SECRET` do `.env`. `npm run app:down` para.
 
 **Interface web:**
 
-O menu do técnico tem apenas **Chamados**. Painel, clientes e contratos são telas do gestor. Se o técnico abrir `/dashboard`, `/clients` ou `/contracts`, a aplicação devolve para `/tickets`.
+O menu do técnico tem apenas **Chamados**. Painel, clientes, contratos e equipe são telas do gestor. Se o técnico abrir `/dashboard`, `/clients`, `/contracts` ou `/users`, a aplicação devolve para `/tickets`.
 
 * `/login` — autenticação JWT
 * `/dashboard` — painel de SLA e rentabilidade (somente gestor)
 * `/clients` — clientes (somente gestor)
-* `/contracts` — contratos (somente gestor)
-* `/tickets` — chamados. O gestor vê todos. O técnico vê os em que é responsável ou observador, e também os que abriu enquanto estiverem sem responsável. Quem tem acesso ao chamado pode apontar minutos, resolver, corrigir dados, encerrar, definir responsável/observadores e anexar imagens/vídeos (imagem até 5 MB, vídeo até 50 MB, no máximo 10 anexos).
+* `/contracts` — contratos (somente gestor). O valor informado é a mensalidade do contrato
+* `/users` — equipe (somente gestor): cadastro de pessoas, perfil, custo por hora, desativação e redefinição de senha
+* `/tickets` — chamados. O gestor vê todos. O técnico vê os em que é responsável ou observador, e também os que abriu enquanto estiverem sem responsável. Quem tem acesso ao chamado pode apontar minutos, resolver, corrigir dados, encerrar e anexar imagens/vídeos. Só o gestor define responsável e observadores; o técnico pode assumir um chamado sem responsável. Quem apontou (ou o gestor) corrige ou exclui o próprio apontamento enquanto o chamado não está encerrado, e a correção fica no histórico. Anexos: imagem até 5 MB, vídeo até 50 MB, no máximo 10 por chamado. Todo chamado, inclusive encerrado, tem o botão **Histórico** com as alterações registradas. Só é possível excluir chamados abertos por engano (sem tempo apontado e ainda não resolvidos).
 
 **Autenticação (JWT):**
 
 ```bash
 # Login
-curl -X POST http://localhost:3000/api/auth/login \
+curl -k -X POST https://localhost:3000/api/auth/login \
   -H "Content-Type: application/json" \
   -d "{\"email\":\"gestor@slanko.local\",\"password\":\"Slanko@123\"}"
 
 # Rotas protegidas (use o token retornado)
-curl http://localhost:3000/api/users -H "Authorization: Bearer SEU_TOKEN"
-curl http://localhost:3000/api/clients -H "Authorization: Bearer SEU_TOKEN"
+curl -k https://localhost:3000/api/users -H "Authorization: Bearer SEU_TOKEN"
+curl -k https://localhost:3000/api/clients -H "Authorization: Bearer SEU_TOKEN"
 ```
 
 Endpoints:
@@ -359,9 +372,11 @@ Endpoints:
 |------|------|--------|
 | `GET /api/health` | Pública | — |
 | `GET /api/metrics` | Pública | — (Prometheus) |
-| `POST /api/auth/login` | Pública | — |
-| `GET /api/users` | JWT | gestor ou técnico |
+| `POST /api/auth/login` | Pública | — (429 após 5 falhas em 15 min) |
+| `GET /api/users` | JWT | gestor ou técnico (`includeInactive=true`: gestor) |
+| `POST /api/users` | JWT | gestor only |
 | `GET /api/users/:id` | JWT | gestor ou técnico |
+| `PUT /api/users/:id` | JWT | gestor only |
 | `GET /api/clients` | JWT | gestor only |
 | `POST /api/clients` | JWT | gestor only |
 | `GET /api/clients/:id` | JWT | gestor only |
@@ -376,8 +391,12 @@ Endpoints:
 | `POST /api/tickets` | JWT | gestor ou técnico |
 | `GET /api/tickets/:id` | JWT | gestor ou técnico |
 | `PUT /api/tickets/:id` | JWT | gestor ou técnico |
+| `DELETE /api/tickets/:id` | JWT | gestor ou técnico (só sem tempo apontado e não resolvido) |
+| `GET /api/tickets/:id/events` | JWT | gestor ou técnico |
 | `GET /api/tickets/:id/time-entries` | JWT | gestor ou técnico |
 | `POST /api/tickets/:id/time-entries` | JWT | gestor ou técnico |
+| `PUT /api/tickets/:id/time-entries/:entryId` | JWT | autor do apontamento ou gestor |
+| `DELETE /api/tickets/:id/time-entries/:entryId` | JWT | autor do apontamento ou gestor |
 | `GET /api/tickets/:id/attachments` | JWT | gestor ou técnico |
 | `POST /api/tickets/:id/attachments` | JWT | gestor ou técnico (multipart `file`) |
 | `DELETE /api/tickets/:id/attachments/:attachmentId` | JWT | gestor ou técnico |
@@ -387,7 +406,7 @@ Endpoints:
 | `GET /api/profitability/summary` | JWT | gestor only |
 | `GET /api/profitability/contracts/:id` | JWT | gestor only |
 
-Filtros úteis: `GET /api/sla/summary` aceita `clientId`, `contractId`, `startDate` e `endDate` (YYYY-MM-DD). O relatório por contrato aceita `startDate` e `endDate`. Os endpoints de rentabilidade usam os mesmos filtros de período sobre `workedAt` das horas apontadas.
+Filtros úteis: `GET /api/sla/summary` aceita `clientId`, `contractId`, `startDate`, `endDate` (YYYY-MM-DD) e `status` (`ACTIVE` padrão, `SUSPENDED`, `FINISHED` ou `ALL`; rascunhos nunca entram). O painel tem o mesmo filtro de situação. O relatório por contrato aceita `startDate` e `endDate`. Os endpoints de rentabilidade usam os mesmos filtros de período: o custo considera o `workedAt` das horas apontadas e a receita é o valor mensal proporcional aos dias de vigência dentro do período (limitado a hoje).
 
 ### Testes
 
@@ -397,6 +416,8 @@ npm run test:watch
 npm run test:coverage
 npm run test:coverage:backend
 npm run test:coverage:frontend
+npm run test:integration
+npm run typecheck
 ```
 
 `test:coverage` (RNF04) roda as duas metas:
@@ -406,16 +427,25 @@ npm run test:coverage:frontend
 
 Escopos em `vitest.coverage.ts`. Testes de UI em `tests/frontend/` (jsdom + Testing Library).
 
+**Integração (MySQL real):** `npm run test:integration` roda `tests/integration/` sem mocks (services → repositories → Prisma → MySQL): histórico atômico, custo/hora congelado, SLA, receita proporcional e revogação de acesso. Usa o banco `slanko_test` no MySQL do Docker (`TEST_DATABASE_URL` sobrescreve) e aplica as migrations antes. Por segurança, só roda em bancos cujo nome termina em `_test`, então o banco de desenvolvimento nunca é tocado.
+
+**Typecheck:** `npm run typecheck` checa o projeto inteiro, inclusive os testes (o `next build` só checa `src/`).
+
 ### CI (GitHub Actions)
 
 O workflow `.github/workflows/ci.yml` roda em todo push/PR para `main`:
 
+Job `build-and-test` (Node da versão em `.nvmrc`):
+
 1. `npm ci`
 2. `npx prisma validate`
 3. `npm run lint`
-4. `npm run test:coverage` (backend ≥75% + frontend ≥25%; LCOV backend em `coverage/lcov.info`)
-5. `npm run build`
-6. SonarCloud Scan (quando o secret `SONAR_TOKEN` estiver configurado)
+4. `npm run typecheck` (inclui os testes)
+5. `npm run test:coverage` (backend ≥75% + frontend ≥25%; LCOV backend em `coverage/lcov.info`)
+6. `npm run build`
+7. SonarCloud Scan (quando o secret `SONAR_TOKEN` estiver configurado)
+
+Job `integration`: sobe um MySQL 8.4 como serviço e roda `npm run test:integration`.
 
 ### SonarCloud (RNF06)
 
@@ -456,8 +486,8 @@ Stack local com **Prometheus** + **Grafana** e endpoint Prometheus na app.
 
 | Serviço | URL |
 |---|---|
-| Métricas | http://localhost:3000/api/metrics |
-| Health | http://localhost:3000/api/health |
+| Métricas | https://localhost:3000/api/metrics |
+| Health | https://localhost:3000/api/health |
 | Prometheus | http://localhost:9090 |
 | Grafana | http://localhost:3001 (user `admin` / senha `slanko`) |
 
@@ -469,11 +499,19 @@ docker compose up -d
 npm run obs:up
 ```
 
-Gere tráfego de saúde (`curl http://localhost:3000/api/health`) para atualizar gauges. Dashboard provisionado: **Slanko Overview** (pasta Slanko no Grafana).
+A cada coleta (15 s) o Prometheus chama `/api/metrics` (com o `METRICS_TOKEN` do `.env`; veja `.env.example`), que atualiza a saúde (app e MySQL) e as métricas de negócio antes de responder:
+
+* `slanko_tickets{status}`: chamados por situação
+* `slanko_sla_breached_tickets{metric}`: chamados com SLA de resposta/resolução violado
+* `slanko_sla_critical_contracts`: contratos em alerta de SLA (RF13)
+* `slanko_active_contracts`, `slanko_deficitary_contracts` e `slanko_contracts_margin_brl`
+* `slanko_api_errors_total{status_code}` e `slanko_login_attempts_total{result}` (inclui bloqueios por força bruta)
+
+O Prometheus coleta do `npm run dev` em HTTPS (job `slanko-app`) e do container `slanko-app` (job `slanko-app-container`). Dashboard provisionado: **Slanko Overview** (pasta Slanko no Grafana).
 
 Arquivos: `docker/prometheus/`, `docker/grafana/provisioning/`, `src/lib/observability/metrics.ts`. Detalhes: [docs/wiki/Observabilidade.md](docs/wiki/Observabilidade.md).
 
-Próximas evoluções previstas: MySQL service para testes de integração no CI.
+Limitações conhecidas: as métricas HTTP por rota (latência) não são coletadas, porque o Next.js não oferece um hook por requisição sem envolver cada rota; o contador de erros cobre as respostas de erro.
 
 ---
 

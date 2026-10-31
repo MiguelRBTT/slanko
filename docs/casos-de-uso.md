@@ -54,7 +54,7 @@ O gestor define tempos de resposta e resolução por contrato.
 Gestor ou técnico abre chamado com prioridade, categoria e vínculo a cliente/contrato.
 
 ### UC06 - Atribuir chamado
-O gestor define o técnico responsável pelo atendimento.
+O gestor define o técnico responsável pelo atendimento e os observadores. O técnico pode apenas assumir para si um chamado ainda sem responsável.
 
 ### UC07 - Registrar horas
 Gestor ou técnico registra o tempo trabalhado no chamado (base do custo operacional). Isso cobre o caso em que o próprio gestor atua no atendimento.

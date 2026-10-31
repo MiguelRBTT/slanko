@@ -1,4 +1,4 @@
-﻿import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BadRequestError, NotFoundError } from "@/lib/errors/app-error";
 import { ClientService } from "@/services/client.service";
 import type { ClientRepository } from "@/repositories/client.repository";
@@ -15,13 +15,13 @@ const sampleClient = {
 };
 
 describe("ClientService", () => {
-  const mockRepository: ClientRepository = {
+  const mockRepository = {
     findMany: vi.fn(),
     findAllActive: vi.fn(),
     findById: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
-  };
+  } as unknown as ClientRepository;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -188,5 +188,20 @@ describe("ClientService", () => {
     const client = await service.deactivateClient("client-1");
 
     expect(client.active).toBe(false);
+  });
+
+  it("validates email format and the active flag", async () => {
+    const service = new ClientService(mockRepository);
+
+    await expect(service.createClient({ name: "Acme", email: "sem-arroba" })).rejects.toBeInstanceOf(
+      BadRequestError,
+    );
+
+    vi.mocked(mockRepository.findById).mockResolvedValue(sampleClient as never);
+    await expect(
+      service.updateClient("client-1", { active: "false" as unknown as boolean }),
+    ).rejects.toBeInstanceOf(BadRequestError);
+    expect(mockRepository.create).not.toHaveBeenCalled();
+    expect(mockRepository.update).not.toHaveBeenCalled();
   });
 });

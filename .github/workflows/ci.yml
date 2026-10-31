@@ -27,7 +27,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Install dependencies
@@ -38,6 +38,10 @@ jobs:
 
       - name: Lint
         run: npm run lint
+
+      # Typecheck do projeto inteiro, incluindo os testes (o build do Next só checa src/).
+      - name: Typecheck
+        run: npm run typecheck
 
       - name: Run tests with coverage
         run: npm run test:coverage
@@ -53,3 +57,41 @@ jobs:
         with:
           args: >
             -Dsonar.qualitygate.wait=true
+
+  integration:
+    # Testes de integração contra um MySQL real (mesma versão do docker-compose).
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: slanko_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -uroot -proot"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    env:
+      TEST_DATABASE_URL: mysql://root:root@127.0.0.1:3306/slanko_test
+      DATABASE_URL: mysql://root:root@127.0.0.1:3306/slanko_test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run integration tests (MySQL)
+        run: npm run test:integration

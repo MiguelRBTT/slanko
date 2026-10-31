@@ -23,7 +23,7 @@ describe("SlaRepository", () => {
     await repository.findTickets();
 
     expect(mockDb.ticket.findMany).toHaveBeenCalledWith({
-      where: { contract: { status: "ACTIVE" } },
+      where: { contract: { status: { in: ["ACTIVE"] } } },
       include: { contract: true },
       orderBy: { openedAt: "desc" },
     });
@@ -43,7 +43,7 @@ describe("SlaRepository", () => {
     expect(mockDb.ticket.findMany).toHaveBeenCalledWith({
       where: {
         contractId: "contract-1",
-        contract: { status: "ACTIVE", clientId: "client-1" },
+        contract: { status: { in: ["ACTIVE"] }, clientId: "client-1" },
         openedAt: {
           gte: new Date("2026-08-01T00:00:00.000Z"),
           lte: new Date("2026-08-31T23:59:59.999Z"),
@@ -63,7 +63,7 @@ describe("SlaRepository", () => {
 
     expect(mockDb.ticket.findMany).toHaveBeenNthCalledWith(1, {
       where: {
-        contract: { status: "ACTIVE" },
+        contract: { status: { in: ["ACTIVE"] } },
         openedAt: { gte: new Date("2026-08-01T00:00:00.000Z") },
       },
       include: { contract: true },
@@ -71,7 +71,7 @@ describe("SlaRepository", () => {
     });
     expect(mockDb.ticket.findMany).toHaveBeenNthCalledWith(2, {
       where: {
-        contract: { status: "ACTIVE" },
+        contract: { status: { in: ["ACTIVE"] } },
         openedAt: { lte: new Date("2026-08-31T23:59:59.999Z") },
       },
       include: { contract: true },
@@ -79,14 +79,27 @@ describe("SlaRepository", () => {
     });
   });
 
-  it("findActiveContract queries active contracts by id", async () => {
+  it("findReportableContract accepts any contract except drafts", async () => {
     mockDb.contract.findFirst.mockResolvedValue(null);
 
     const repository = new SlaRepository(mockDb as unknown as PrismaClient);
-    await repository.findActiveContract("contract-1");
+    await repository.findReportableContract("contract-1");
 
     expect(mockDb.contract.findFirst).toHaveBeenCalledWith({
-      where: { id: "contract-1", status: "ACTIVE" },
+      where: { id: "contract-1", status: { in: ["ACTIVE", "SUSPENDED", "FINISHED"] } },
     });
+  });
+
+  it("findTickets includes the requested contract statuses", async () => {
+    mockDb.ticket.findMany.mockResolvedValue([]);
+
+    const repository = new SlaRepository(mockDb as unknown as PrismaClient);
+    await repository.findTickets({ contractStatuses: ["SUSPENDED", "FINISHED"] });
+
+    expect(mockDb.ticket.findMany).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        where: { contract: { status: { in: ["SUSPENDED", "FINISHED"] } } },
+      }),
+    );
   });
 });

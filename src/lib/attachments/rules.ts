@@ -81,3 +81,28 @@ export function assertCanAddAttachment(currentCount: number): void {
     );
   }
 }
+
+/** Assinatura (primeiros bytes) de cada formato aceito: o tipo informado pelo navegador não basta. */
+const SIGNATURES: Record<string, (bytes: Uint8Array) => boolean> = {
+  "image/jpeg": (b) => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff,
+  "image/png": (b) => [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a].every((byte, i) => b[i] === byte),
+  "image/gif": (b) => ascii(b, 0, 6) === "GIF87a" || ascii(b, 0, 6) === "GIF89a",
+  "image/webp": (b) => ascii(b, 0, 4) === "RIFF" && ascii(b, 8, 12) === "WEBP",
+  "video/mp4": (b) => ascii(b, 4, 8) === "ftyp",
+  "video/webm": (b) => b[0] === 0x1a && b[1] === 0x45 && b[2] === 0xdf && b[3] === 0xa3,
+};
+
+function ascii(bytes: Uint8Array, start: number, end: number): string {
+  return String.fromCharCode(...bytes.subarray(start, end));
+}
+
+export function assertFileSignature(mimeType: string, bytes: Uint8Array): void {
+  const matches = SIGNATURES[mimeType.trim().toLowerCase()];
+
+  if (!matches || bytes.length < 12 || !matches(bytes)) {
+    throw new BadRequestError("File content does not match its declared type");
+  }
+}
+
+/** Limite do corpo multipart: maior arquivo aceito + folga para os cabeçalhos do formulário. */
+export const MAX_UPLOAD_REQUEST_BYTES = VIDEO_MAX_BYTES + 1024 * 1024;

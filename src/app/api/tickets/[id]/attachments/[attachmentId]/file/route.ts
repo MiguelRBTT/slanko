@@ -16,7 +16,8 @@ export async function GET(request: Request, context: RouteContext) {
     const { id, attachmentId } = await context.params;
     const file = await ticketAttachmentService.getAttachmentFile(id, attachmentId, auth);
 
-    const asciiName = file.fileName.replace(/[^\x20-\x7E]/g, "_");
+    // Só ASCII imprimível, sem aspas/barra invertida (não quebra o header Content-Disposition).
+    const asciiName = file.fileName.replace(/[^\x20-\x7E]|["\\]/g, "_");
 
     return new Response(new Uint8Array(file.bytes), {
       status: 200,
@@ -25,6 +26,7 @@ export async function GET(request: Request, context: RouteContext) {
         "Content-Length": String(file.bytes.length),
         "Content-Disposition": `inline; filename="${asciiName}"`,
         "Cache-Control": "private, max-age=60",
+        "X-Content-Type-Options": "nosniff",
       },
     });
   } catch (error) {

@@ -1,4 +1,6 @@
-﻿import { jsonError, jsonOk } from "@/lib/http/api-response";
+import { jsonError, jsonOk } from "@/lib/http/api-response";
+import { readJsonBody } from "@/lib/http/request-body";
+import { assertGestor } from "@/lib/auth/require-gestor";
 import { clientService } from "@/services/client.service";
 import type { CreateClientInput } from "@/types/client";
 
@@ -7,6 +9,7 @@ import type { CreateClientInput } from "@/types/client";
 
 export async function GET(request: Request) {
   try {
+    assertGestor(request);
     const { searchParams } = new URL(request.url);
     const includeInactive = searchParams.get("includeInactive") === "true";
     const clients = await clientService.listClients(includeInactive);
@@ -19,7 +22,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as CreateClientInput;
+    assertGestor(request);
+    const body = await readJsonBody<CreateClientInput>(request);
     const client = await clientService.createClient(body);
 
     return jsonOk({ client }, 201);

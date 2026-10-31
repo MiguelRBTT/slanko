@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { decimal } from "../helpers/fixtures";
 import { UnauthorizedError } from "@/lib/errors/app-error";
 import { AuthService } from "@/services/auth.service";
 import type { UserRepository } from "@/repositories/user.repository";
@@ -20,18 +21,18 @@ const sampleUser = {
   email: "gestor@slanko.local",
   passwordHash: "hashed-secret",
   role: "GESTOR" as const,
-  hourlyCost: { toString: () => "0.00" },
+  hourlyCost: decimal("0.00"),
   active: true,
   createdAt: new Date(),
   updatedAt: new Date(),
 };
 
 describe("AuthService", () => {
-  const mockRepository: UserRepository = {
+  const mockRepository = {
     findAllActive: vi.fn(),
     findById: vi.fn(),
     findByEmail: vi.fn(),
-  };
+  } as unknown as UserRepository;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -95,6 +96,17 @@ describe("AuthService", () => {
 
     await expect(
       service.login({ email: "gestor@slanko.local", password: "Slanko@123" }),
+    ).rejects.toBeInstanceOf(UnauthorizedError);
+  });
+
+  it("rejects non-string credentials without crashing", async () => {
+    const service = new AuthService(mockRepository);
+
+    await expect(
+      service.login({ email: 123 as unknown as string, password: "x" }),
+    ).rejects.toBeInstanceOf(UnauthorizedError);
+    await expect(
+      service.login({ email: "a@b.com", password: null as unknown as string }),
     ).rejects.toBeInstanceOf(UnauthorizedError);
   });
 });

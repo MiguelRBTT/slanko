@@ -8,13 +8,15 @@ Persistência em **MySQL** via **Prisma**.
 * **Client** — clientes atendidos
 * **Contract** — contrato com valor, vigência, status e metas de SLA (resposta/resolução em minutos)
 * **Ticket** — chamado vinculado a contrato, prioridade, status, atribuição
-* **TimeEntry** — horas trabalhadas (`hours`, `hourlyRate`, `workedAt`) para custo e margem
+* **TimeEntry** — horas trabalhadas (`hours`, `hourlyCost` congelado no apontamento, `workedAt`) para custo e margem
+* **TicketEvent** — histórico auditável de cada alteração do chamado
 
 ## Regras relevantes
 
 * Soft delete / desativação onde aplicável (ex.: cliente)
 * SLA calcula cumprimento de resposta e resolução por chamado
-* Rentabilidade: custo = soma(horas × custo/hora); margem = valor do contrato − custo
+* Rentabilidade: custo = soma(horas × custo/hora do apontamento); receita = valor mensal proporcional aos dias de vigência no período; margem = receita − custo
+* SLA: chamado sem resposta/resolução com prazo vencido já conta como violação
 
 ## Onde ver o detalhe
 

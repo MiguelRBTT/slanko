@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import bcrypt from "bcryptjs";
-import { verifyPassword } from "@/lib/auth/password";
+import { hashPassword, verifyPassword } from "@/lib/auth/password";
 
 describe("verifyPassword", () => {
   it("returns true for matching passwords", async () => {
@@ -13,5 +13,12 @@ describe("verifyPassword", () => {
     const hash = await bcrypt.hash("Slanko@123", 10);
 
     await expect(verifyPassword("wrong-password", hash)).resolves.toBe(false);
+  });
+
+  it("hashes passwords so they can be verified later", async () => {
+    const hash = await hashPassword("Slanko@123");
+
+    expect(hash).not.toBe("Slanko@123");
+    await expect(verifyPassword("Slanko@123", hash)).resolves.toBe(true);
   });
 });

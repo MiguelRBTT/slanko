@@ -1,6 +1,7 @@
 import { jsonError, jsonOk } from "@/lib/http/api-response";
 import { getAuthContextFromHeaders } from "@/lib/auth/request-context";
-import { BadRequestError } from "@/lib/errors/app-error";
+import { AppError, BadRequestError } from "@/lib/errors/app-error";
+import { MAX_UPLOAD_REQUEST_BYTES } from "@/lib/attachments/rules";
 import { ticketAttachmentService } from "@/services/ticket-attachment.service";
 
 type RouteContext = {
@@ -28,6 +29,13 @@ export async function POST(request: Request, context: RouteContext) {
   try {
     const auth = getAuthContextFromHeaders(request);
     const { id } = await context.params;
+
+    // Recusa uploads grandes antes de ler o corpo inteiro para a memória.
+    const declaredLength = Number(request.headers.get("content-length") ?? 0);
+    if (declaredLength > MAX_UPLOAD_REQUEST_BYTES) {
+      throw new AppError("Upload exceeds the 50 MB limit", 413);
+    }
+
     const formData = await request.formData();
     const file = formData.get("file");
 

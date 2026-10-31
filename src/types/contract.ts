@@ -14,6 +14,24 @@ export type PublicContract = {
   resolutionMinutes: number;
 };
 
+/** Visão de contrato para o técnico: sem o valor financeiro. */
+export type PublicContractSummary = Omit<PublicContract, "value">;
+
+export function toContractSummary(contract: PublicContract): PublicContractSummary {
+  return {
+    id: contract.id,
+    clientId: contract.clientId,
+    code: contract.code,
+    title: contract.title,
+    description: contract.description,
+    startDate: contract.startDate,
+    endDate: contract.endDate,
+    status: contract.status,
+    responseMinutes: contract.responseMinutes,
+    resolutionMinutes: contract.resolutionMinutes,
+  };
+}
+
 export type CreateContractInput = {
   clientId: string;
   code: string;

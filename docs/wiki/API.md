@@ -12,9 +12,11 @@ Authorization: Bearer <jwt>
 |---|---|---|
 | `GET /api/health` | Pública | — |
 | `GET /api/metrics` | Pública | — (Prometheus) |
-| `POST /api/auth/login` | Pública | — |
-| `GET /api/users` | JWT | gestor ou técnico |
+| `POST /api/auth/login` | Pública | — (429 após 5 falhas em 15 min) |
+| `GET /api/users` | JWT | gestor ou técnico (`includeInactive=true`: gestor) |
+| `POST /api/users` | JWT | gestor |
 | `GET /api/users/:id` | JWT | gestor ou técnico |
+| `PUT /api/users/:id` | JWT | gestor (dados, custo/hora, situação, nova senha) |
 | `GET /api/clients` | JWT | gestor |
 | `POST /api/clients` | JWT | gestor |
 | `GET /api/clients/:id` | JWT | gestor |
@@ -29,8 +31,16 @@ Authorization: Bearer <jwt>
 | `POST /api/tickets` | JWT | gestor ou técnico |
 | `GET /api/tickets/:id` | JWT | gestor ou técnico |
 | `PUT /api/tickets/:id` | JWT | gestor ou técnico |
+| `DELETE /api/tickets/:id` | JWT | gestor ou técnico (só sem tempo apontado e não resolvido) |
+| `GET /api/tickets/:id/events` | JWT | gestor ou técnico (histórico) |
 | `GET /api/tickets/:id/time-entries` | JWT | gestor ou técnico |
 | `POST /api/tickets/:id/time-entries` | JWT | gestor ou técnico |
+| `PUT /api/tickets/:id/time-entries/:entryId` | JWT | autor do apontamento ou gestor |
+| `DELETE /api/tickets/:id/time-entries/:entryId` | JWT | autor do apontamento ou gestor |
+| `GET /api/tickets/:id/attachments` | JWT | gestor ou técnico |
+| `POST /api/tickets/:id/attachments` | JWT | gestor ou técnico (multipart `file`) |
+| `DELETE /api/tickets/:id/attachments/:attachmentId` | JWT | gestor ou técnico |
+| `GET /api/tickets/:id/attachments/:attachmentId/file` | JWT | gestor ou técnico |
 | `GET /api/sla/summary` | JWT | gestor |
 | `GET /api/sla/contracts/:id` | JWT | gestor |
 | `GET /api/profitability/summary` | JWT | gestor |
@@ -39,8 +49,10 @@ Authorization: Bearer <jwt>
 ## Filtros
 
 * `GET /api/sla/summary` e rentabilidade: `clientId`, `contractId`, `startDate`, `endDate` (`YYYY-MM-DD`)
-* Relatórios por contrato: `startDate`, `endDate`
-* Rentabilidade filtra pelo `workedAt` das horas apontadas
+* Resumos de SLA e rentabilidade: `status=ACTIVE|SUSPENDED|FINISHED|ALL` (padrão `ACTIVE`; rascunhos nunca entram)
+* Relatórios por contrato: `startDate`, `endDate` (qualquer contrato, exceto rascunho)
+* Técnico não recebe `hourlyCost` de outros usuários nem `value` de contratos
+* Rentabilidade filtra o custo pelo `workedAt` das horas apontadas e calcula a receita proporcional do mesmo período (valor mensal × dias de vigência)
 
 ## Login (exemplo)
 

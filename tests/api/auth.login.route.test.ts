@@ -62,4 +62,34 @@ describe("POST /api/auth/login", () => {
     expect(response.status).toBe(401);
     expect(body.error).toBe("Invalid email or password");
   });
+
+  it("returns 400 for malformed JSON", async () => {
+    const response = await POST(
+      new Request("http://localhost/api/auth/login", { method: "POST", body: "{oops" }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(authService.login).not.toHaveBeenCalled();
+  });
+
+  it("blocks brute force with 429 and Retry-After after repeated failures", async () => {
+    vi.mocked(authService.login).mockRejectedValue(new UnauthorizedError("Invalid email or password"));
+    const attempt = () =>
+      POST(
+        new Request("http://localhost/api/auth/login", {
+          method: "POST",
+          headers: { "x-forwarded-for": "203.0.113.7" },
+          body: JSON.stringify({ email: "alvo@slanko.local", password: "errada" }),
+        }),
+      );
+
+    for (let i = 0; i < 5; i += 1) {
+      expect((await attempt()).status).toBe(401);
+    }
+
+    const blocked = await attempt();
+    expect(blocked.status).toBe(429);
+    expect(Number(blocked.headers.get("Retry-After"))).toBeGreaterThan(0);
+    expect(authService.login).toHaveBeenCalledTimes(5);
+  });
 });

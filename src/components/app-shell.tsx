@@ -11,9 +11,10 @@ const NAV = [
   { href: "/clients", label: "Clientes", gestorOnly: true },
   { href: "/contracts", label: "Contratos", gestorOnly: true },
   { href: "/tickets", label: "Chamados" },
+  { href: "/users", label: "Equipe", gestorOnly: true },
 ] as const;
 
-const GESTOR_ONLY_PATHS = ["/dashboard", "/clients", "/contracts"] as const;
+const GESTOR_ONLY_PATHS = ["/dashboard", "/clients", "/contracts", "/users"] as const;
 
 function homePathForRole(role: SessionUser["role"]): string {
   return role === "GESTOR" ? "/dashboard" : "/tickets";

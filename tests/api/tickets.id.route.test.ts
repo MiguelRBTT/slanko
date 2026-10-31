@@ -37,6 +37,8 @@ const sampleTicket = {
   category: "Infraestrutura",
   status: "OPEN" as const,
   openedAt: "2026-08-19T10:00:00.000Z",
+  responseMinutes: 60,
+  resolutionMinutes: 480,
   firstResponseAt: null,
   resolvedAt: null,
   closedAt: null,

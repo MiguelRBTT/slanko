@@ -4,14 +4,19 @@
 
 Workflow: [`.github/workflows/ci.yml`](https://github.com/MiguelRBTT/slanko/blob/main/.github/workflows/ci.yml)
 
-Dispara em push/PR para `main`:
+Dispara em push/PR para `main`. Node na versão do `.nvmrc`.
+
+Job `build-and-test`:
 
 1. `npm ci`
 2. `npx prisma validate`
 3. `npm run lint`
-4. `npm run test:coverage` (gera LCOV)
-5. `npm run build`
-6. **SonarCloud Scan** (se existir o secret `SONAR_TOKEN`)
+4. `npm run typecheck` (projeto inteiro, incluindo testes)
+5. `npm run test:coverage` (gera LCOV)
+6. `npm run build`
+7. **SonarCloud Scan** (se existir o secret `SONAR_TOKEN`)
+
+Job `integration`: MySQL 8.4 como serviço + `npm run test:integration` (sem mocks).
 
 ## SonarCloud (RNF06)
 

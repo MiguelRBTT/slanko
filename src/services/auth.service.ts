@@ -9,6 +9,10 @@ export class AuthService {
   constructor(private readonly users: UserRepository = userRepository) {}
 
   async login(input: LoginInput): Promise<LoginResult> {
+    if (typeof input.email !== "string" || typeof input.password !== "string") {
+      throw new UnauthorizedError("Invalid email or password");
+    }
+
     const email = input.email.trim().toLowerCase();
 
     if (!email || !input.password) {

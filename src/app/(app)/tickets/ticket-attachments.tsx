@@ -100,6 +100,8 @@ function AuthMedia({
       {kind === "VIDEO" ? (
         <video className={styles.attachmentMedia} src={src} muted preload="metadata" />
       ) : (
+        // next/image não otimiza blob: (o anexo é baixado com o token e exibido localmente).
+        // eslint-disable-next-line @next/next/no-img-element
         <img className={styles.attachmentMedia} src={src} alt={fileName} />
       )}
       <span className={styles.attachmentOpenHint}>Abrir</span>

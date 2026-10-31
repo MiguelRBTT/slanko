@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { decimal } from "../helpers/fixtures";
 import {
   BadRequestError,
   ConflictError,
@@ -25,7 +26,7 @@ const sampleContract = {
   code: "CTR-2026-001",
   title: "Suporte mensal",
   description: null,
-  value: { toString: () => "4500" },
+  value: decimal("4500"),
   startDate: new Date("2026-01-01T00:00:00.000Z"),
   endDate: new Date("2026-12-31T00:00:00.000Z"),
   status: "ACTIVE" as const,
@@ -36,7 +37,7 @@ const sampleContract = {
 };
 
 describe("ContractService", () => {
-  const mockContracts: ContractRepository = {
+  const mockContracts = {
     findMany: vi.fn(),
     findById: vi.fn(),
     findByCode: vi.fn(),
@@ -44,15 +45,15 @@ describe("ContractService", () => {
     update: vi.fn(),
     delete: vi.fn(),
     countTickets: vi.fn(),
-  };
+  } as unknown as ContractRepository;
 
-  const mockClients: ClientRepository = {
+  const mockClients = {
     findMany: vi.fn(),
     findAllActive: vi.fn(),
     findById: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
-  };
+  } as unknown as ClientRepository;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -175,7 +176,7 @@ describe("ContractService", () => {
         startDate: "2026-01-01",
         responseMinutes: 30,
         resolutionMinutes: 120,
-        status: "INVALID",
+        status: "INVALID" as never,
       }),
     ).rejects.toBeInstanceOf(BadRequestError);
 

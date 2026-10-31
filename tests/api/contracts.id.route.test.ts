@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { gestorRequest } from "../helpers/auth-request";
 import { DELETE, GET, PUT } from "@/app/api/contracts/[id]/route";
 import { contractService } from "@/services/contract.service";
 import {
@@ -33,7 +34,7 @@ const sampleContract = {
   value: "4500.00",
   startDate: "2026-01-01",
   endDate: "2026-12-31",
-  status: "ACTIVE",
+  status: "ACTIVE" as const,
   responseMinutes: 60,
   resolutionMinutes: 480,
 };
@@ -46,7 +47,7 @@ describe("GET /api/contracts/:id", () => {
   it("returns a contract by id", async () => {
     vi.mocked(contractService.getContractById).mockResolvedValue(sampleContract);
 
-    const response = await GET(new Request("http://localhost"), routeContext);
+    const response = await GET(gestorRequest("http://localhost"), routeContext);
     const body = await response.json();
 
     expect(response.status).toBe(200);
@@ -58,7 +59,7 @@ describe("GET /api/contracts/:id", () => {
       new NotFoundError("Contract not found"),
     );
 
-    const response = await GET(new Request("http://localhost"), routeContext);
+    const response = await GET(gestorRequest("http://localhost"), routeContext);
     const body = await response.json();
 
     expect(response.status).toBe(404);
@@ -78,7 +79,7 @@ describe("PUT /api/contracts/:id", () => {
     });
 
     const response = await PUT(
-      new Request("http://localhost", {
+      gestorRequest("http://localhost", {
         method: "PUT",
         headers: gestorHeaders,
         body: JSON.stringify({ title: "Updated" }),
@@ -97,7 +98,7 @@ describe("PUT /api/contracts/:id", () => {
     );
 
     const response = await PUT(
-      new Request("http://localhost", {
+      gestorRequest("http://localhost", {
         method: "PUT",
         headers: gestorHeaders,
         body: JSON.stringify({ title: "Updated" }),
@@ -118,7 +119,7 @@ describe("DELETE /api/contracts/:id", () => {
     vi.mocked(contractService.deleteContract).mockResolvedValue(undefined);
 
     const response = await DELETE(
-      new Request("http://localhost", { headers: gestorHeaders }),
+      gestorRequest("http://localhost", { headers: gestorHeaders }),
       routeContext,
     );
     const body = await response.json();
@@ -133,7 +134,7 @@ describe("DELETE /api/contracts/:id", () => {
     );
 
     const response = await DELETE(
-      new Request("http://localhost", { headers: gestorHeaders }),
+      gestorRequest("http://localhost", { headers: gestorHeaders }),
       routeContext,
     );
     const body = await response.json();

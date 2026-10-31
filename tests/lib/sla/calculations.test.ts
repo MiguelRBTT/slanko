@@ -16,7 +16,12 @@ describe("sla calculations", () => {
 
   it("evaluates response SLA as pending, met or breached", () => {
     expect(
-      evaluateResponseSla({ openedAt, firstResponseAt: null, targetMinutes: 60 }).status,
+      evaluateResponseSla({
+        openedAt,
+        firstResponseAt: null,
+        targetMinutes: 60,
+        now: new Date("2026-08-19T10:45:00.000Z"),
+      }).status,
     ).toBe("PENDING");
 
     expect(
@@ -38,7 +43,12 @@ describe("sla calculations", () => {
 
   it("evaluates resolution SLA as pending, met or breached", () => {
     expect(
-      evaluateResolutionSla({ openedAt, resolvedAt: null, targetMinutes: 480 }).status,
+      evaluateResolutionSla({
+        openedAt,
+        resolvedAt: null,
+        targetMinutes: 480,
+        now: new Date("2026-08-19T12:00:00.000Z"),
+      }).status,
     ).toBe("PENDING");
 
     expect(
@@ -56,6 +66,39 @@ describe("sla calculations", () => {
         targetMinutes: 480,
       }).status,
     ).toBe("BREACHED");
+  });
+
+  it("treats a missing response or resolution past the deadline as breached", () => {
+    const response = evaluateResponseSla({
+      openedAt,
+      firstResponseAt: null,
+      targetMinutes: 60,
+      now: new Date("2026-08-19T11:30:00.000Z"),
+    });
+
+    expect(response.status).toBe("BREACHED");
+    expect(response.elapsedMinutes).toBe(90);
+
+    const resolution = evaluateResolutionSla({
+      openedAt,
+      resolvedAt: null,
+      targetMinutes: 480,
+      now: new Date("2026-08-20T10:00:00.000Z"),
+    });
+
+    expect(resolution.status).toBe("BREACHED");
+    expect(resolution.elapsedMinutes).toBe(1440);
+  });
+
+  it("keeps the deadline minute itself within the SLA", () => {
+    expect(
+      evaluateResponseSla({
+        openedAt,
+        firstResponseAt: null,
+        targetMinutes: 60,
+        now: new Date("2026-08-19T11:00:00.000Z"),
+      }).status,
+    ).toBe("PENDING");
   });
 
   it("builds SLA counters and compliance rates", () => {

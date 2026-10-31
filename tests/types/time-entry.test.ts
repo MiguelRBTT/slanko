@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { decimal } from "../helpers/fixtures";
 import { toPublicTimeEntry } from "@/types/time-entry";
 
 describe("toPublicTimeEntry", () => {
@@ -7,7 +8,7 @@ describe("toPublicTimeEntry", () => {
       id: "entry-1",
       ticketId: "ticket-1",
       userId: "user-1",
-      hours: { toString: () => "2.50" },
+      hours: decimal("2.50"),
       note: "Diagnostico inicial",
       workedAt: new Date("2026-08-19T14:00:00.000Z"),
     });

@@ -39,6 +39,19 @@ enum AttachmentKind {
   VIDEO
 }
 
+enum TicketEventType {
+  CREATED
+  UPDATED
+  STATUS_CHANGED
+  ASSIGNEE_CHANGED
+  OBSERVERS_CHANGED
+  TIME_LOGGED
+  TIME_UPDATED
+  TIME_DELETED
+  ATTACHMENT_ADDED
+  ATTACHMENT_REMOVED
+}
+
 model User {
   id           String   @id @default(uuid())
   name         String
@@ -50,11 +63,12 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  openedTickets   Ticket[]            @relation("TicketOpenedBy")
-  assignedTickets Ticket[]            @relation("TicketAssignedTo")
+  openedTickets   Ticket[]           @relation("TicketOpenedBy")
+  assignedTickets Ticket[]           @relation("TicketAssignedTo")
   observedTickets TicketObserver[]
   timeEntries     TimeEntry[]
   attachments     TicketAttachment[]
+  ticketEvents    TicketEvent[]
 
   @@map("users")
 }
@@ -80,6 +94,7 @@ model Contract {
   code              String         @unique
   title             String
   description       String?        @db.Text
+  /// Valor mensal (mensalidade) do contrato. A receita de um período é proporcional aos dias de vigência.
   value             Decimal        @db.Decimal(12, 2)
   startDate         DateTime       @map("start_date") @db.Date
   endDate           DateTime?      @map("end_date") @db.Date
@@ -92,35 +107,60 @@ model Contract {
   client  Client   @relation(fields: [clientId], references: [id])
   tickets Ticket[]
 
+  @@index([status])
   @@map("contracts")
 }
 
 model Ticket {
-  id              String         @id @default(uuid())
-  contractId      String         @map("contract_id")
-  openedById      String         @map("opened_by_id")
-  assignedToId    String?        @map("assigned_to_id")
-  title           String
-  description     String         @db.Text
-  priority        TicketPriority
-  category        String
-  status          TicketStatus   @default(OPEN)
-  openedAt        DateTime       @map("opened_at")
-  firstResponseAt DateTime?      @map("first_response_at")
-  resolvedAt      DateTime?      @map("resolved_at")
-  closedAt        DateTime?      @map("closed_at")
-  solution        String?        @db.Text
-  createdAt       DateTime       @default(now()) @map("created_at")
-  updatedAt       DateTime       @updatedAt @map("updated_at")
+  id                String         @id @default(uuid())
+  contractId        String         @map("contract_id")
+  openedById        String         @map("opened_by_id")
+  assignedToId      String?        @map("assigned_to_id")
+  title             String
+  description       String         @db.Text
+  priority          TicketPriority
+  category          String
+  status            TicketStatus   @default(OPEN)
+  openedAt          DateTime       @map("opened_at")
+  /// Metas de SLA copiadas do contrato na abertura: mudar o contrato não reescreve o histórico.
+  responseMinutes   Int            @map("response_minutes")
+  resolutionMinutes Int            @map("resolution_minutes")
+  firstResponseAt   DateTime?      @map("first_response_at")
+  resolvedAt        DateTime?      @map("resolved_at")
+  closedAt          DateTime?      @map("closed_at")
+  solution          String?        @db.Text
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
 
-  contract     Contract           @relation(fields: [contractId], references: [id])
-  openedBy     User               @relation("TicketOpenedBy", fields: [openedById], references: [id])
-  assignedTo   User?              @relation("TicketAssignedTo", fields: [assignedToId], references: [id])
-  observers    TicketObserver[]
-  timeEntries  TimeEntry[]
-  attachments  TicketAttachment[]
+  contract    Contract           @relation(fields: [contractId], references: [id])
+  openedBy    User               @relation("TicketOpenedBy", fields: [openedById], references: [id])
+  assignedTo  User?              @relation("TicketAssignedTo", fields: [assignedToId], references: [id])
+  observers   TicketObserver[]
+  timeEntries TimeEntry[]
+  attachments TicketAttachment[]
+  events      TicketEvent[]
 
+  @@index([status])
+  @@index([openedAt])
   @@map("tickets")
+}
+
+/// Histórico auditável do chamado (RF07): cada alteração gera um evento imutável.
+model TicketEvent {
+  id        String          @id @default(uuid())
+  /// Ordem de gravação: eventos da mesma alteração têm o mesmo horário.
+  sequence  Int             @unique @default(autoincrement())
+  ticketId  String          @map("ticket_id")
+  actorId   String          @map("actor_id")
+  type      TicketEventType
+  data      Json?
+  createdAt DateTime        @default(now()) @map("created_at")
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  actor  User   @relation(fields: [actorId], references: [id])
+
+  @@index([ticketId, createdAt])
+  @@map("ticket_events")
 }
 
 model TicketAttachment {
@@ -154,17 +194,20 @@ model TicketObserver {
 }
 
 model TimeEntry {
-  id        String   @id @default(uuid())
-  ticketId  String   @map("ticket_id")
-  userId    String   @map("user_id")
-  hours     Decimal  @db.Decimal(10, 4)
-  note      String?
-  workedAt  DateTime @map("worked_at")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id         String   @id @default(uuid())
+  ticketId   String   @map("ticket_id")
+  userId     String   @map("user_id")
+  hours      Decimal  @db.Decimal(10, 4)
+  /// Custo/hora do colaborador no momento do apontamento (não muda se o custo do usuário mudar depois).
+  hourlyCost Decimal  @map("hourly_cost") @db.Decimal(10, 2)
+  note       String?
+  workedAt   DateTime @map("worked_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
 
   ticket Ticket @relation(fields: [ticketId], references: [id])
   user   User   @relation(fields: [userId], references: [id])
 
+  @@index([workedAt])
   @@map("time_entries")
 }

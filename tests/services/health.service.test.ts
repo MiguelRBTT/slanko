@@ -1,13 +1,13 @@
-﻿import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { HealthService } from "@/services/health.service";
 import type { HealthRepository } from "@/repositories/health.repository";
 
 // Unit tests for HealthService with a mocked repository.
 
 describe("HealthService", () => {
-  const mockRepository: HealthRepository = {
+  const mockRepository = {
     pingDatabase: vi.fn(),
-  };
+  } as unknown as HealthRepository;
 
   beforeEach(() => {
     vi.clearAllMocks();

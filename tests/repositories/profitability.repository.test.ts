@@ -13,20 +13,20 @@ describe("ProfitabilityRepository", () => {
     vi.clearAllMocks();
   });
 
-  it("findActiveContracts works without optional filters", async () => {
+  it("findContracts works without optional filters", async () => {
     mockDb.contract.findMany.mockResolvedValue([]);
 
     const repository = new ProfitabilityRepository(mockDb as unknown as PrismaClient);
-    await repository.findActiveContracts();
+    await repository.findContracts();
 
     expect(mockDb.contract.findMany).toHaveBeenCalledWith({
-      where: { status: "ACTIVE" },
+      where: { status: { in: ["ACTIVE"] } },
       include: {
         tickets: {
           include: {
             timeEntries: {
               where: {},
-              include: { user: true },
+              include: { user: { select: { id: true, name: true } } },
               orderBy: { workedAt: "desc" },
             },
           },
@@ -36,11 +36,11 @@ describe("ProfitabilityRepository", () => {
     });
   });
 
-  it("findActiveContracts applies profitability filters", async () => {
+  it("findContracts applies profitability filters", async () => {
     mockDb.contract.findMany.mockResolvedValue([]);
 
     const repository = new ProfitabilityRepository(mockDb as unknown as PrismaClient);
-    await repository.findActiveContracts({
+    await repository.findContracts({
       contractId: "contract-1",
       clientId: "client-1",
       workedFrom: new Date("2026-08-01T00:00:00.000Z"),
@@ -49,7 +49,7 @@ describe("ProfitabilityRepository", () => {
 
     expect(mockDb.contract.findMany).toHaveBeenCalledWith({
       where: {
-        status: "ACTIVE",
+        status: { in: ["ACTIVE"] },
         id: "contract-1",
         clientId: "client-1",
       },
@@ -63,7 +63,7 @@ describe("ProfitabilityRepository", () => {
                   lte: new Date("2026-08-31T23:59:59.999Z"),
                 },
               },
-              include: { user: true },
+              include: { user: { select: { id: true, name: true } } },
               orderBy: { workedAt: "desc" },
             },
           },
@@ -73,12 +73,12 @@ describe("ProfitabilityRepository", () => {
     });
   });
 
-  it("findActiveContracts supports partial workedAt filters", async () => {
+  it("findContracts supports partial workedAt filters", async () => {
     mockDb.contract.findMany.mockResolvedValue([]);
 
     const repository = new ProfitabilityRepository(mockDb as unknown as PrismaClient);
-    await repository.findActiveContracts({ workedFrom: new Date("2026-08-01T00:00:00.000Z") });
-    await repository.findActiveContracts({ workedTo: new Date("2026-08-31T23:59:59.999Z") });
+    await repository.findContracts({ workedFrom: new Date("2026-08-01T00:00:00.000Z") });
+    await repository.findContracts({ workedTo: new Date("2026-08-31T23:59:59.999Z") });
 
     expect(mockDb.contract.findMany).toHaveBeenNthCalledWith(
       1,
@@ -88,7 +88,7 @@ describe("ProfitabilityRepository", () => {
             include: {
               timeEntries: {
                 where: { workedAt: { gte: new Date("2026-08-01T00:00:00.000Z") } },
-                include: { user: true },
+                include: { user: { select: { id: true, name: true } } },
                 orderBy: { workedAt: "desc" },
               },
             },
@@ -105,7 +105,7 @@ describe("ProfitabilityRepository", () => {
             include: {
               timeEntries: {
                 where: { workedAt: { lte: new Date("2026-08-31T23:59:59.999Z") } },
-                include: { user: true },
+                include: { user: { select: { id: true, name: true } } },
                 orderBy: { workedAt: "desc" },
               },
             },

@@ -44,9 +44,45 @@ describe("authorize helpers", () => {
       role: "GESTOR",
     });
 
-    const authContext = await authenticateAuthorizationHeader(`Bearer ${token}`, "/api/users");
+    const authContext = await authenticateAuthorizationHeader(`Bearer ${token}`, "/api/users", async () => ({
+      id: "user-1",
+      email: "gestor@slanko.local",
+      role: "GESTOR",
+      active: true,
+    }));
 
     expect(authContext.userId).toBe("user-1");
+  });
+
+  it("rejects tokens of users that were deactivated or removed", async () => {
+    const token = await signAccessToken({ userId: "user-1", email: "a@slanko.local", role: "GESTOR" });
+
+    await expect(
+      authenticateAuthorizationHeader(`Bearer ${token}`, "/api/users", async () => ({
+        id: "user-1",
+        email: "a@slanko.local",
+        role: "GESTOR",
+        active: false,
+      })),
+    ).rejects.toBeInstanceOf(UnauthorizedError);
+
+    await expect(
+      authenticateAuthorizationHeader(`Bearer ${token}`, "/api/users", async () => null),
+    ).rejects.toBeInstanceOf(UnauthorizedError);
+  });
+
+  it("uses the current role from the database, not the role inside the token", async () => {
+    const token = await signAccessToken({ userId: "user-1", email: "a@slanko.local", role: "GESTOR" });
+
+    // Gestor rebaixado a técnico perde acesso às rotas de gestor imediatamente.
+    await expect(
+      authenticateAuthorizationHeader(`Bearer ${token}`, "/api/clients", async () => ({
+        id: "user-1",
+        email: "a@slanko.local",
+        role: "TECNICO",
+        active: true,
+      })),
+    ).rejects.toBeInstanceOf(ForbiddenError);
   });
 
   it("rejects missing bearer tokens", async () => {

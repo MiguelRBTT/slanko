@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { decimal } from "../helpers/fixtures";
 import { NotFoundError } from "@/lib/errors/app-error";
 import { SlaService } from "@/services/sla.service";
 import type { SlaRepository } from "@/repositories/sla.repository";
@@ -9,7 +10,7 @@ const sampleContract = {
   code: "CTR-001",
   title: "Suporte mensal",
   description: null,
-  value: { toString: () => "4500" },
+  value: decimal("4500"),
   startDate: new Date("2026-01-01"),
   endDate: null,
   status: "ACTIVE" as const,
@@ -30,6 +31,8 @@ const sampleTicket = {
   category: "Infraestrutura",
   status: "RESOLVED" as const,
   openedAt: new Date("2026-08-19T10:00:00.000Z"),
+  responseMinutes: 60,
+  resolutionMinutes: 480,
   firstResponseAt: new Date("2026-08-19T10:30:00.000Z"),
   resolvedAt: new Date("2026-08-19T14:00:00.000Z"),
   closedAt: null,
@@ -40,10 +43,10 @@ const sampleTicket = {
 };
 
 describe("SlaService", () => {
-  const mockSla: SlaRepository = {
+  const mockSla = {
     findTickets: vi.fn(),
-    findActiveContract: vi.fn(),
-  };
+    findReportableContract: vi.fn(),
+  } as unknown as SlaRepository;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -62,7 +65,7 @@ describe("SlaService", () => {
   });
 
   it("builds a contract SLA report", async () => {
-    vi.mocked(mockSla.findActiveContract).mockResolvedValue(sampleContract);
+    vi.mocked(mockSla.findReportableContract).mockResolvedValue(sampleContract);
     vi.mocked(mockSla.findTickets).mockResolvedValue([sampleTicket]);
 
     const service = new SlaService(mockSla);
@@ -73,10 +76,107 @@ describe("SlaService", () => {
     expect(report.tickets).toHaveLength(1);
   });
 
+  it("counts an overdue ticket without response or resolution as breached", async () => {
+    vi.mocked(mockSla.findTickets).mockResolvedValue([
+      {
+        ...sampleTicket,
+        status: "OPEN" as const,
+        firstResponseAt: null,
+        resolvedAt: null,
+        solution: null,
+      },
+    ]);
+
+    // 10h depois da abertura: resposta (60 min) e resolução (480 min) já estouraram.
+    const service = new SlaService(mockSla, () => new Date("2026-08-19T20:00:00.000Z"));
+    const summary = await service.getSummary();
+
+    expect(summary.response.breached).toBe(1);
+    expect(summary.response.pending).toBe(0);
+    expect(summary.resolution.breached).toBe(1);
+    expect(summary.response.complianceRate).toBe(0);
+    expect(summary.tickets[0].response.elapsedMinutes).toBe(600);
+  });
+
+  it("keeps a ticket still within the deadline as pending", async () => {
+    vi.mocked(mockSla.findTickets).mockResolvedValue([
+      { ...sampleTicket, status: "OPEN" as const, firstResponseAt: null, resolvedAt: null },
+    ]);
+
+    const service = new SlaService(mockSla, () => new Date("2026-08-19T10:20:00.000Z"));
+    const summary = await service.getSummary();
+
+    expect(summary.response.pending).toBe(1);
+    expect(summary.response.complianceRate).toBeNull();
+  });
+
+  it("uses closedAt as resolution when a ticket was closed without being resolved", async () => {
+    vi.mocked(mockSla.findTickets).mockResolvedValue([
+      {
+        ...sampleTicket,
+        status: "CLOSED" as const,
+        resolvedAt: null,
+        closedAt: new Date("2026-08-19T12:00:00.000Z"),
+      },
+    ]);
+
+    const service = new SlaService(mockSla, () => new Date("2026-09-01T00:00:00.000Z"));
+    const summary = await service.getSummary();
+
+    expect(summary.resolution.met).toBe(1);
+    expect(summary.tickets[0].resolution.elapsedMinutes).toBe(120);
+  });
+
   it("throws when contract is missing", async () => {
-    vi.mocked(mockSla.findActiveContract).mockResolvedValue(null);
+    vi.mocked(mockSla.findReportableContract).mockResolvedValue(null);
 
     const service = new SlaService(mockSla);
     await expect(service.getContractReport("missing")).rejects.toBeInstanceOf(NotFoundError);
+  });
+
+  it("uses the SLA targets frozen on the ticket, not the current contract targets", async () => {
+    vi.mocked(mockSla.findTickets).mockResolvedValue([
+      {
+        ...sampleTicket,
+        // Meta do contrato foi apertada para 10 min depois da abertura deste chamado.
+        contract: { ...sampleContract, responseMinutes: 10 },
+      },
+    ]);
+
+    const service = new SlaService(mockSla);
+    const summary = await service.getSummary();
+
+    expect(summary.tickets[0].response.targetMinutes).toBe(60);
+    expect(summary.response.met).toBe(1);
+  });
+
+  it("groups tickets by contract and flags contracts with critical SLA", async () => {
+    const breached = {
+      ...sampleTicket,
+      firstResponseAt: new Date("2026-08-19T12:00:00.000Z"),
+      resolvedAt: new Date("2026-08-21T10:00:00.000Z"),
+    };
+    const otherContract = { ...sampleContract, id: "contract-2", code: "CTR-002" };
+    vi.mocked(mockSla.findTickets).mockResolvedValue([
+      { ...breached, id: "t1" },
+      { ...breached, id: "t2" },
+      { ...breached, id: "t3" },
+      { ...sampleTicket, id: "t4", contractId: "contract-2", contract: otherContract },
+    ]);
+
+    const service = new SlaService(mockSla);
+    const summary = await service.getSummary();
+
+    const critical = summary.contracts.find((contract) => contract.contractId === "contract-1");
+    const healthy = summary.contracts.find((contract) => contract.contractId === "contract-2");
+
+    expect(critical).toMatchObject({
+      totalTickets: 3,
+      breachedTickets: 3,
+      responseComplianceRate: 0,
+      alert: true,
+      alertReasons: ["LOW_RESPONSE_COMPLIANCE", "LOW_RESOLUTION_COMPLIANCE", "RECURRING_BREACHES"],
+    });
+    expect(healthy).toMatchObject({ contractCode: "CTR-002", alert: false, alertReasons: [] });
   });
 });

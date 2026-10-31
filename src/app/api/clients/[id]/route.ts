@@ -1,4 +1,6 @@
 import { jsonError, jsonOk } from "@/lib/http/api-response";
+import { readJsonBody } from "@/lib/http/request-body";
+import { assertGestor } from "@/lib/auth/require-gestor";
 import { clientService } from "@/services/client.service";
 import type { UpdateClientInput } from "@/types/client";
 
@@ -10,8 +12,9 @@ type RouteContext = {
 // PUT /api/clients/:id - update client.
 // DELETE /api/clients/:id - deactivate client (soft delete).
 
-export async function GET(_request: Request, context: RouteContext) {
+export async function GET(request: Request, context: RouteContext) {
   try {
+    assertGestor(request);
     const { id } = await context.params;
     const client = await clientService.getClientById(id, true);
 
@@ -23,8 +26,9 @@ export async function GET(_request: Request, context: RouteContext) {
 
 export async function PUT(request: Request, context: RouteContext) {
   try {
+    assertGestor(request);
     const { id } = await context.params;
-    const body = (await request.json()) as UpdateClientInput;
+    const body = await readJsonBody<UpdateClientInput>(request);
     const client = await clientService.updateClient(id, body);
 
     return jsonOk({ client });
@@ -33,8 +37,9 @@ export async function PUT(request: Request, context: RouteContext) {
   }
 }
 
-export async function DELETE(_request: Request, context: RouteContext) {
+export async function DELETE(request: Request, context: RouteContext) {
   try {
+    assertGestor(request);
     const { id } = await context.params;
     const client = await clientService.deactivateClient(id);
 
