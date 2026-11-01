@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
+import { Archivo } from "next/font/google";
 import "./globals.css";
 
-const jakarta = Plus_Jakarta_Sans({
+// Archivo variável (peso e largura num único arquivo): largura normal no texto e
+// semi-expandida em títulos e na marca. Tem algarismos tabulares para as colunas de valores.
+const archivo = Archivo({
   subsets: ["latin"],
-  variable: "--font-jakarta",
+  variable: "--font-archivo",
   display: "swap",
-  weight: ["500", "600", "700", "800"],
+  axes: ["wdth"],
 });
 
 // Renderização dinâmica: a CSP usa um nonce novo por requisição (ver middleware).
@@ -24,7 +26,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
-      <body className={`${jakarta.variable} ${jakarta.className}`}>{children}</body>
+      <body className={`${archivo.variable} ${archivo.className}`}>{children}</body>
     </html>
   );
 }

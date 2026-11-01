@@ -45,16 +45,14 @@ export function labelSlaCheck(status: string): string {
   return SLA_CHECK_LABEL[status] ?? status;
 }
 
+// Cores com significado: verde = resolvido, âmbar = em andamento/aguardando,
+// cinza = encerrado ou sem ação pendente. Vermelho fica para prioridade crítica e violações.
 export function ticketStatusBadgeClass(status: string): string {
-  if (status === "RESOLVED" || status === "CLOSED") {
+  if (status === "RESOLVED") {
     return "badge badge-ok";
   }
 
-  if (status === "WAITING") {
-    return "badge badge-warn";
-  }
-
-  if (status === "IN_PROGRESS") {
+  if (status === "WAITING" || status === "IN_PROGRESS") {
     return "badge badge-warn";
   }
 
@@ -62,11 +60,11 @@ export function ticketStatusBadgeClass(status: string): string {
 }
 
 export function ticketPriorityBadgeClass(priority: string): string {
-  if (priority === "CRITICAL" || priority === "HIGH") {
+  if (priority === "CRITICAL") {
     return "badge badge-danger";
   }
 
-  if (priority === "MEDIUM") {
+  if (priority === "HIGH") {
     return "badge badge-warn";
   }
 

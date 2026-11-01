@@ -16,6 +16,13 @@ const NAV = [
 
 const GESTOR_ONLY_PATHS = ["/dashboard", "/clients", "/contracts", "/users"] as const;
 
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const first = parts[0]?.[0] ?? "";
+  const last = parts.length > 1 ? parts[parts.length - 1][0] : "";
+  return `${first}${last}`.toUpperCase();
+}
+
 function homePathForRole(role: SessionUser["role"]): string {
   return role === "GESTOR" ? "/dashboard" : "/tickets";
 }
@@ -74,7 +81,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Link href={homeHref} className={styles.brand} prefetch>
             Slanko
           </Link>
-          <p className={styles.brandTag}>Suporte com visão de negócio</p>
+          <p className={styles.brandTag}>Suporte, SLA e margem</p>
         </div>
 
         <nav className={styles.nav}>
@@ -95,6 +102,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className={styles.userBox}>
+          <span className={styles.avatar} aria-hidden="true">
+            {initials(user.name)}
+          </span>
           <div className={styles.userMeta}>
             <strong>{user.name}</strong>
             <p>{user.role === "GESTOR" ? "Gestor" : "Técnico"}</p>
@@ -119,7 +129,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <main className={styles.main}>{children}</main>
+      <main className={styles.main}>
+        <div className={styles.mainInner}>{children}</div>
+      </main>
     </div>
   );
 }

@@ -21,6 +21,7 @@ Sistema web para gestão de contratos de suporte técnico com análise de SLA e 
 * [Arquitetura](#arquitetura)
 * [Diagramas](#diagramas)
 * [Modelagem de dados](#modelagem-de-dados)
+* [Identidade visual](#identidade-visual)
 * [Status de implementação](#status-de-implementação)
 * [Instruções de execução](#instruções-de-execução)
 * [Próximos passos](#próximos-passos)
@@ -262,6 +263,52 @@ Entidades: **User**, **Client**, **Contract**, **Ticket**, **TimeEntry**.
 * Histórico: cada alteração do chamado gera um `TicketEvent` (RF07)
 
 Dicionário de dados, regras e esboço Prisma: [docs/modelagem.md](docs/modelagem.md).
+
+---
+
+## Identidade visual
+
+A interface usa poucos elementos e cores com função: o **laranja é sinal**, não decoração. Ele aparece na ação principal de cada tela, no item ativo do menu e nos alertas de prazo; o resto da interface é grafite e neutros. Os tokens ficam em [`src/app/globals.css`](src/app/globals.css).
+
+![Paleta de cores do Slanko](docs/assets/paleta-slanko.svg)
+
+### Paleta de cores
+
+| Cor | Hex | Token CSS | Uso |
+|---|---|---|---|
+| Laranja sinal | `#C94A0B` | `--brand` | Botão de ação principal (texto branco com contraste 4,7:1) |
+| Laranja queimado | `#A33F09` | `--brand-hover` | Hover do botão principal, texto laranja sobre fundo claro, prazo de SLA perto de estourar |
+| Laranja aceso | `#F28A4B` | `--brand-bright` | Marcador do item ativo no menu (sobre o grafite) |
+| Laranja névoa | `#FCE9DD` | `--brand-soft` | Fundo de destaque suave (linha selecionada, seleção de texto) |
+| Grafite | `#20262D` | `--graphite` | Barra lateral e painel da tela de login |
+| Grafite tinta | `#1D2228` | `--ink` | Texto principal |
+| Cinza ardósia | `#5B6470` | `--ink-muted` | Texto secundário e rótulos |
+| Cinza névoa | `#8A929C` | `--ink-subtle` | Placeholders e ícones inativos |
+| Concreto claro | `#F3F4F1` | `--paper` | Fundo da aplicação |
+| Branco | `#FFFFFF` | `--surface-raised` | Painéis, tabelas e formulários |
+| Linha | `#DCDFDA` / `#C7CBC5` | `--line` / `--line-strong` | Divisórias / bordas de campos e cabeçalhos de tabela |
+| Verde ok | `#1F7A4D` sobre `#E3F1E8` | `--ok` / `--ok-soft` | Resolvido, dentro do prazo, ativo |
+| Âmbar alerta | `#8F5100` sobre `#F8EBD3` | `--warn` / `--warn-soft` | Em andamento, aguardando, prioridade alta, suspenso |
+| Vermelho crítico | `#B8322A` sobre `#F9E2DF` | `--danger` / `--danger-soft` | Prazo violado, prioridade crítica, prejuízo, erros |
+| Azul foco | `#2B6CB0` | `--focus` | Anel de foco do teclado (fora da paleta da marca de propósito, para nunca se confundir com alerta) |
+
+Todas as combinações de texto passam no contraste mínimo do WCAG AA (4,5:1). Antes, o laranja `#EA580C` com texto branco tinha 3,56:1.
+
+### Tipografia
+
+* **Archivo** (variável, carregada pelo `next/font`): uma família só, com a largura semi-expandida nos títulos e expandida no nome da marca. O peso e a largura vêm de um único arquivo de fonte.
+* Texto em peso 400; rótulos e ênfases em 600; títulos em 650.
+* Algarismos tabulares (`font-variant-numeric: tabular-nums`) em tabelas, indicadores e prazos, para que valores, horas e percentuais fiquem alinhados. Colunas numéricas são alinhadas à direita.
+
+### Princípios
+
+* **Uma ousadia só:** a frase grande em fonte expandida no painel grafite do login. O resto é contido.
+* **Chamados em cartões:** cada cartão é uma prévia (situação, prazo de SLA, título, contrato, prioridade, responsável e tempo); as ações ficam no painel de detalhe, que abre ao clicar no cartão.
+* **Separação por borda:** painéis usam só borda. Sombra fica para o que flutua (diálogos e bolhas de ajuda).
+* **Raio por função:** 6px em controles e badges, 10px em painéis e 14px em diálogos.
+* **Cor com significado:** badges suaves com um ponto de cor; vermelho só para o que pede ação imediata.
+* **Rótulos em caixa normal**, sem caixa alta, e foco do teclado sempre visível.
+* **Movimento só como resposta a uma ação** (abrir, trocar de aba, passar o mouse) e desligado para quem pede `prefers-reduced-motion`.
 
 ---
 

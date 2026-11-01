@@ -30,7 +30,8 @@ import type { PublicTimeEntry } from "@/types/time-entry";
 import type { PublicUserSummary } from "@/types/user";
 import { ClockIcon, CloseIcon, EditIcon, TrashIcon } from "../action-icons";
 import styles from "../page-shared.module.css";
-import { nextSortState, SortHeader, type SortDir } from "../sort-header";
+import type { SortDir } from "../sort-header";
+import cards from "./tickets.module.css";
 import {
   AttachmentFileInput,
   PendingFilesList,
@@ -43,8 +44,38 @@ type TicketsPayload = { tickets: PublicTicket[] };
 type ContractsPayload = { contracts: PublicContractSummary[] };
 type TimeEntriesPayload = { timeEntries: PublicTimeEntry[] };
 type UsersPayload = { users: PublicUserSummary[] };
-type PanelMode = "hours" | "resolve" | "edit" | "history";
-type SortKey = "title" | "sla" | "time" | "priority" | "status";
+type PanelMode = "detail" | "hours" | "resolve" | "edit" | "history";
+type SortKey = "sla" | "priority" | "recent" | "time" | "title";
+type StatusTab = "open" | "resolved" | "closed" | "all";
+
+const STATUS_TABS: Array<{ value: StatusTab; label: string }> = [
+  { value: "open", label: "Abertos" },
+  { value: "resolved", label: "Resolvidos" },
+  { value: "closed", label: "Encerrados" },
+  { value: "all", label: "Todos" },
+];
+
+const SORT_OPTIONS: Array<{ value: SortKey; label: string }> = [
+  { value: "sla", label: "Prazo de SLA" },
+  { value: "priority", label: "Prioridade" },
+  { value: "recent", label: "Mais recentes" },
+  { value: "time", label: "Tempo apontado" },
+  { value: "title", label: "Título" },
+];
+
+function matchesTab(ticket: PublicTicket, tab: StatusTab): boolean {
+  if (tab === "open") return ticket.status === "OPEN" || ticket.status === "IN_PROGRESS" || ticket.status === "WAITING";
+  if (tab === "resolved") return ticket.status === "RESOLVED";
+  if (tab === "closed") return ticket.status === "CLOSED";
+  return true;
+}
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const first = parts[0]?.[0] ?? "";
+  const last = parts.length > 1 ? parts[parts.length - 1][0] : "";
+  return `${first}${last}`.toUpperCase();
+}
 
 const PRIORITIES = [
   { value: "LOW", label: "Baixa" },
@@ -66,28 +97,12 @@ const PRIORITY_RANK: Record<string, number> = {
   LOW: 3,
 };
 
-const STATUS_RANK: Record<string, number> = {
-  OPEN: 0,
-  IN_PROGRESS: 1,
-  WAITING: 2,
-  RESOLVED: 3,
-  CLOSED: 4,
-};
-
 const SORT_DEFAULT_DIR: Record<SortKey, SortDir> = {
-  title: "asc",
   sla: "asc",
-  time: "desc",
   priority: "asc",
-  status: "asc",
-};
-
-const SORT_HINT: Record<SortKey, { asc: string; desc: string }> = {
-  title: { asc: "Ordenar A–Z", desc: "Ordenar Z–A" },
-  sla: { asc: "Ordenar estourado → normal", desc: "Ordenar normal → estourado" },
-  time: { asc: "Ordenar menor → maior tempo", desc: "Ordenar maior → menor tempo" },
-  priority: { asc: "Ordenar crítica → baixa", desc: "Ordenar baixa → crítica" },
-  status: { asc: "Ordenar aberto → encerrado", desc: "Ordenar encerrado → aberto" },
+  recent: "desc",
+  time: "desc",
+  title: "asc",
 };
 
 function todayInputValue(): string {
@@ -108,6 +123,144 @@ function isoToDateInput(iso: string): string {
 
 function errorMessage(err: unknown, fallback: string): string {
   return err instanceof ApiClientError ? err.message : fallback;
+}
+
+/** Painel de detalhe: tudo sobre o chamado e as ações possíveis na situação atual. */
+function TicketDetail({
+  ticket,
+  minutes,
+  now,
+  saving,
+  userName,
+  onOpen,
+  onClose,
+  onDelete,
+}: {
+  ticket: PublicTicket;
+  minutes: number;
+  now: Date;
+  saving: boolean;
+  userName: (id: string | null | undefined) => string;
+  onOpen: (mode: PanelMode) => void;
+  onClose: () => void;
+  onDelete: () => void;
+}) {
+  const closed = ticket.status === "CLOSED";
+  const resolved = ticket.status === "RESOLVED" || closed;
+  const deadline = getActiveSlaDeadline({
+    openedAt: ticket.openedAt,
+    firstResponseAt: ticket.firstResponseAt,
+    resolvedAt: ticket.resolvedAt,
+    status: ticket.status,
+    responseMinutes: ticket.responseMinutes,
+    resolutionMinutes: ticket.resolutionMinutes,
+    now,
+  });
+  const observers = ticket.observerIds.map((id) => userName(id));
+
+  return (
+    <>
+      <div className={cards.detailBadges}>
+        <span className={ticketStatusBadgeClass(ticket.status)}>{labelTicketStatus(ticket.status)}</span>
+        <span className={ticketPriorityBadgeClass(ticket.priority)}>
+          Prioridade {labelTicketPriority(ticket.priority).toLowerCase()}
+        </span>
+        {deadline ? (
+          <span
+            className={`${styles.slaClock} ${
+              deadline.tone === "breached" ? styles.slaBreached : deadline.tone === "warn" ? styles.slaWarn : styles.slaOk
+            }`}
+          >
+            <ClockIcon />
+            <span>{formatSlaDeadlineLabel(deadline)}</span>
+          </span>
+        ) : null}
+      </div>
+
+      <div className={cards.detailActions}>
+        {!resolved ? (
+          <button type="button" className={`btn btn-primary ${styles.compact}`} onClick={() => onOpen("resolve")}>
+            Resolver
+          </button>
+        ) : null}
+        {ticket.status === "RESOLVED" ? (
+          <button type="button" className={`btn btn-primary ${styles.compact}`} onClick={onClose} disabled={saving}>
+            Encerrar
+          </button>
+        ) : null}
+        {!closed ? (
+          <button type="button" className={`btn btn-ghost ${styles.compact}`} onClick={() => onOpen("hours")}>
+            Apontar tempo
+          </button>
+        ) : null}
+        {!closed ? (
+          <button type="button" className={`btn btn-ghost ${styles.compact}`} onClick={() => onOpen("edit")}>
+            <EditIcon />
+            Editar
+          </button>
+        ) : null}
+        <button type="button" className={`btn btn-ghost ${styles.compact}`} onClick={() => onOpen("history")}>
+          Histórico
+        </button>
+        {!resolved && minutes === 0 ? (
+          <button
+            type="button"
+            className={`${styles.iconBtn} ${styles.iconBtnDanger} ${cards.push}`}
+            onClick={onDelete}
+            disabled={saving}
+            title="Excluir chamado aberto por engano (sem tempo apontado)"
+            aria-label="Excluir chamado"
+          >
+            <TrashIcon />
+          </button>
+        ) : null}
+      </div>
+
+      <dl className={cards.facts}>
+        <div>
+          <dt>Responsável</dt>
+          <dd>{ticket.assignedToId ? (ticket.assignedToName ?? userName(ticket.assignedToId)) : "Sem responsável"}</dd>
+        </div>
+        <div>
+          <dt>Observadores</dt>
+          <dd>{observers.length > 0 ? observers.join(", ") : "Nenhum"}</dd>
+        </div>
+        <div>
+          <dt>Categoria</dt>
+          <dd>{ticket.category}</dd>
+        </div>
+        <div>
+          <dt>Aberto em</dt>
+          <dd>{formatDateBR(ticket.openedAt)}</dd>
+        </div>
+        <div>
+          <dt>Tempo apontado</dt>
+          <dd>{formatWorkedMinutes(minutes, true)}</dd>
+        </div>
+        <div>
+          <dt>Metas de SLA</dt>
+          <dd>
+            Resposta em {formatSlaDuration(ticket.responseMinutes)}, resolução em{" "}
+            {formatSlaDuration(ticket.resolutionMinutes)}
+          </dd>
+        </div>
+      </dl>
+
+      <div className={cards.textBlock}>
+        <h3>Descrição</h3>
+        <p>{ticket.description}</p>
+      </div>
+
+      {ticket.solution ? (
+        <div className={cards.textBlock}>
+          <h3>Solução</h3>
+          <p>{ticket.solution}</p>
+        </div>
+      ) : null}
+
+      <TicketAttachmentGallery ticketId={ticket.id} canEdit={false} onError={() => undefined} />
+    </>
+  );
 }
 
 export default function TicketsPage() {
@@ -151,8 +304,8 @@ export default function TicketsPage() {
   const [saving, setSaving] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [now, setNow] = useState(() => new Date());
-  const [sortKey, setSortKey] = useState<SortKey>("priority");
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [sortKey, setSortKey] = useState<SortKey>("sla");
+  const [statusTab, setStatusTab] = useState<StatusTab>("open");
   const [search, setSearch] = useState("");
   const dialogRef = useRef<HTMLDialogElement>(null);
   const createDialogRef = useRef<HTMLDialogElement>(null);
@@ -160,6 +313,7 @@ export default function TicketsPage() {
   const isGestor = currentUser?.role === "GESTOR";
   const selected = tickets.find((ticket) => ticket.id === selectedId) ?? null;
   const selectedEntries = selected ? (entriesByTicket[selected.id] ?? []) : [];
+  const selectedEntriesLoaded = selected ? selected.id in entriesByTicket : false;
   // Total vem agregado na listagem; os apontamentos só são buscados para o chamado aberto.
   const selectedMinutes = selected ? hoursToMinutes(selected.loggedHours) : 0;
 
@@ -200,12 +354,23 @@ export default function TicketsPage() {
   const contractName = useMemo(() => {
     return (id: string) => {
       const contract = contractById.get(id);
-      return contract ? `${contract.code} · ${contract.title}` : "Contrato";
+      return contract ? `${contract.code}: ${contract.title}` : "Contrato";
     };
   }, [contractById]);
 
+  const tabCounts = useMemo(() => {
+    const counts: Record<StatusTab, number> = { open: 0, resolved: 0, closed: 0, all: tickets.length };
+    for (const ticket of tickets) {
+      if (matchesTab(ticket, "open")) counts.open += 1;
+      if (ticket.status === "RESOLVED") counts.resolved += 1;
+      if (ticket.status === "CLOSED") counts.closed += 1;
+    }
+    return counts;
+  }, [tickets]);
+
   const listedTickets = useMemo(() => {
     const rows = tickets.filter((ticket) => {
+      if (!matchesTab(ticket, statusTab)) return false;
       const contract = contractById.get(ticket.contractId);
       return matchesSearch(
         search,
@@ -218,7 +383,7 @@ export default function TicketsPage() {
         contract?.title,
       );
     });
-    const direction = sortDir === "asc" ? 1 : -1;
+    const direction = SORT_DEFAULT_DIR[sortKey] === "asc" ? 1 : -1;
 
     rows.sort((a, b) => {
       let cmp = 0;
@@ -226,6 +391,9 @@ export default function TicketsPage() {
       switch (sortKey) {
         case "title":
           cmp = a.title.localeCompare(b.title, "pt-BR", { sensitivity: "base" });
+          break;
+        case "recent":
+          cmp = new Date(a.openedAt).getTime() - new Date(b.openedAt).getTime();
           break;
         case "sla": {
           const remainingA = slaRemainingMinutes(a);
@@ -241,9 +409,6 @@ export default function TicketsPage() {
         case "priority":
           cmp = (PRIORITY_RANK[a.priority] ?? 99) - (PRIORITY_RANK[b.priority] ?? 99);
           break;
-        case "status":
-          cmp = (STATUS_RANK[a.status] ?? 99) - (STATUS_RANK[b.status] ?? 99);
-          break;
         default:
           cmp = 0;
       }
@@ -253,13 +418,7 @@ export default function TicketsPage() {
     });
 
     return rows;
-  }, [tickets, search, sortKey, sortDir, slaRemainingMinutes, contractById]);
-
-  function toggleSort(key: SortKey) {
-    const next = nextSortState(sortKey, sortDir, key, SORT_DEFAULT_DIR[key]);
-    setSortKey(next.key);
-    setSortDir(next.dir);
-  }
+  }, [tickets, search, sortKey, statusTab, slaRemainingMinutes, contractById]);
 
   async function loadEntries(ticketId: string) {
     try {
@@ -585,7 +744,7 @@ export default function TicketsPage() {
         },
       });
 
-      requestClose();
+      setPanel("detail");
       await load();
     } catch (err) {
       setError(errorMessage(err, "Falha ao resolver chamado"));
@@ -621,7 +780,7 @@ export default function TicketsPage() {
       }
 
       await apiRequest(`/api/tickets/${selected.id}`, { method: "PUT", body });
-      requestClose();
+      setPanel("detail");
       await load();
     } catch (err) {
       setError(errorMessage(err, "Falha ao corrigir chamado"));
@@ -651,7 +810,7 @@ export default function TicketsPage() {
         method: "PUT",
         body: { status: "CLOSED" },
       });
-      if (selectedId === ticket.id) closePanel();
+      if (selectedId === ticket.id) setPanel("detail");
       await load();
     } catch (err) {
       setError(errorMessage(err, "Falha ao encerrar chamado"));
@@ -701,219 +860,127 @@ export default function TicketsPage() {
 
       {error && !panel && !showCreateForm ? <div className="error-banner">{error}</div> : null}
 
-      <section className={`${styles.listPanel} panel`}>
-        <div className={styles.listToolbar}>
-          <h2>Lista de chamados</h2>
-          <div className={styles.searchField}>
-            <label className="sr-only" htmlFor="ticket-search">
-              Buscar chamados
-            </label>
-            <input
-              id="ticket-search"
-              type="search"
-              placeholder="Buscar por título, categoria ou contrato…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
+      <div className={cards.toolbar}>
+        <div className={cards.tabs} role="group" aria-label="Situação dos chamados">
+          {STATUS_TABS.map((tab) => (
+            <button
+              key={tab.value}
+              type="button"
+              className={`${cards.tab} ${statusTab === tab.value ? cards.tabActive : ""}`}
+              aria-pressed={statusTab === tab.value}
+              onClick={() => setStatusTab(tab.value)}
+            >
+              {tab.label}
+              <span className={cards.tabCount}>{tabCounts[tab.value]}</span>
+            </button>
+          ))}
         </div>
-        {loading ? (
-          <p className="empty-state">Carregando…</p>
-        ) : tickets.length === 0 ? (
-          <p className="empty-state">Nenhum chamado encontrado. Clique em Novo chamado para abrir o primeiro.</p>
-        ) : listedTickets.length === 0 ? (
-          <p className="empty-state">Nenhum chamado corresponde à busca.</p>
-        ) : (
-          <div className="table-wrap">
-            <table className="data">
-              <thead>
-                <tr>
-                  <th>
-                    <SortHeader
-                      label="Chamado"
-                      active={sortKey === "title"}
-                      sortDir={sortDir}
-                      defaultDir={SORT_DEFAULT_DIR.title}
-                      hintAsc={SORT_HINT.title.asc}
-                      hintDesc={SORT_HINT.title.desc}
-                      alpha
-                      onToggle={() => toggleSort("title")}
-                    />
-                  </th>
-                  <th>
-                    <SortHeader
-                      label="SLA"
-                      active={sortKey === "sla"}
-                      sortDir={sortDir}
-                      defaultDir={SORT_DEFAULT_DIR.sla}
-                      hintAsc={SORT_HINT.sla.asc}
-                      hintDesc={SORT_HINT.sla.desc}
-                      onToggle={() => toggleSort("sla")}
-                    />
-                  </th>
-                  <th>
-                    <SortHeader
-                      label="Tempo apontado"
-                      active={sortKey === "time"}
-                      sortDir={sortDir}
-                      defaultDir={SORT_DEFAULT_DIR.time}
-                      hintAsc={SORT_HINT.time.asc}
-                      hintDesc={SORT_HINT.time.desc}
-                      onToggle={() => toggleSort("time")}
-                    />
-                  </th>
-                  <th>
-                    <SortHeader
-                      label="Prioridade"
-                      active={sortKey === "priority"}
-                      sortDir={sortDir}
-                      defaultDir={SORT_DEFAULT_DIR.priority}
-                      hintAsc={SORT_HINT.priority.asc}
-                      hintDesc={SORT_HINT.priority.desc}
-                      onToggle={() => toggleSort("priority")}
-                    />
-                  </th>
-                  <th>
-                    <SortHeader
-                      label="Situação"
-                      active={sortKey === "status"}
-                      sortDir={sortDir}
-                      defaultDir={SORT_DEFAULT_DIR.status}
-                      hintAsc={SORT_HINT.status.asc}
-                      hintDesc={SORT_HINT.status.desc}
-                      onToggle={() => toggleSort("status")}
-                    />
-                  </th>
-                  <th>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {listedTickets.map((ticket) => {
-                  const minutes = hoursToMinutes(ticket.loggedHours);
-                  const closed = ticket.status === "CLOSED";
-                  const resolved = ticket.status === "RESOLVED" || closed;
-                  const deadline = getActiveSlaDeadline({
-                    openedAt: ticket.openedAt,
-                    firstResponseAt: ticket.firstResponseAt,
-                    resolvedAt: ticket.resolvedAt,
-                    status: ticket.status,
-                    responseMinutes: ticket.responseMinutes,
-                    resolutionMinutes: ticket.resolutionMinutes,
-                    now,
-                  });
-                  const slaToneClass =
-                    deadline?.tone === "breached"
-                      ? styles.slaBreached
-                      : deadline?.tone === "warn"
-                        ? styles.slaWarn
-                        : styles.slaOk;
+        <div className={`${styles.searchField} ${cards.search}`}>
+          <label className="sr-only" htmlFor="ticket-search">
+            Buscar chamados
+          </label>
+          <input
+            id="ticket-search"
+            type="search"
+            placeholder="Buscar por título, categoria ou contrato…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <label className={`field ${cards.sort}`}>
+          <span>Ordenar por</span>
+          <select value={sortKey} onChange={(e) => setSortKey(e.target.value as SortKey)}>
+            {SORT_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
 
-                  return (
-                    <tr key={ticket.id} className={selectedId === ticket.id ? styles.selectedRow : undefined}>
-                      <td>
-                        <strong>{ticket.title}</strong>
-                        <div className="muted">{ticket.category}</div>
-                        <div className="muted">{contractName(ticket.contractId)}</div>
-                        <div className="muted">
-                          Resp.: {ticket.assignedToName ?? userName(ticket.assignedToId)}
-                          {ticket.observerIds.length > 0
-                            ? ` · ${ticket.observerIds.length} ${ticket.observerIds.length === 1 ? "observador" : "observadores"}`
-                            : ""}
-                        </div>
-                      </td>
-                      <td>
-                        {deadline ? (
-                          <span
-                            className={`${styles.slaClock} ${slaToneClass}`}
-                            title={formatSlaDeadlineLabel(deadline)}
-                            aria-label={formatSlaDeadlineLabel(deadline)}
-                          >
-                            <ClockIcon />
-                            <span>
-                              {deadline.remainingMinutes <= 0
-                                ? "Estourado"
-                                : formatSlaDuration(deadline.remainingMinutes)}
-                            </span>
+      {loading ? (
+        <p className={cards.empty}>Carregando chamados…</p>
+      ) : tickets.length === 0 ? (
+        <p className={cards.empty}>Nenhum chamado ainda. Clique em Novo chamado para abrir o primeiro.</p>
+      ) : listedTickets.length === 0 ? (
+        <p className={cards.empty}>
+          {search ? "Nenhum chamado corresponde à busca." : "Nenhum chamado nesta situação."}
+        </p>
+      ) : (
+        <ul className={cards.grid}>
+          {listedTickets.map((ticket) => {
+            const minutes = hoursToMinutes(ticket.loggedHours);
+            const deadline = getActiveSlaDeadline({
+              openedAt: ticket.openedAt,
+              firstResponseAt: ticket.firstResponseAt,
+              resolvedAt: ticket.resolvedAt,
+              status: ticket.status,
+              responseMinutes: ticket.responseMinutes,
+              resolutionMinutes: ticket.resolutionMinutes,
+              now,
+            });
+            const toneClass =
+              deadline?.tone === "breached" ? cards.cardBreached : deadline?.tone === "warn" ? cards.cardWarn : "";
+            const slaToneClass =
+              deadline?.tone === "breached"
+                ? styles.slaBreached
+                : deadline?.tone === "warn"
+                  ? styles.slaWarn
+                  : styles.slaOk;
+            const assignee = ticket.assignedToId ? (ticket.assignedToName ?? userName(ticket.assignedToId)) : null;
+
+            return (
+              <li key={ticket.id}>
+                <button
+                  type="button"
+                  className={[
+                    cards.card,
+                    toneClass,
+                    selectedId === ticket.id ? cards.cardSelected : "",
+                    ticket.status === "CLOSED" ? cards.cardClosed : "",
+                  ].join(" ")}
+                  onClick={() => openPanel(ticket, "detail")}
+                >
+                  <span className={cards.cardTop}>
+                    <span className={ticketStatusBadgeClass(ticket.status)}>{labelTicketStatus(ticket.status)}</span>
+                    {deadline ? (
+                      <span className={`${styles.slaClock} ${slaToneClass}`} title={formatSlaDeadlineLabel(deadline)}>
+                        <ClockIcon />
+                        <span>
+                          {deadline.remainingMinutes <= 0 ? "Estourado" : formatSlaDuration(deadline.remainingMinutes)}
+                        </span>
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className={cards.cardTitle}>{ticket.title}</span>
+                  <span className={cards.cardContract}>{contractName(ticket.contractId)}</span>
+                  <span className={cards.cardFoot}>
+                    <span className={cards.person}>
+                      <span className={ticketPriorityBadgeClass(ticket.priority)}>
+                        {labelTicketPriority(ticket.priority)}
+                      </span>
+                      {assignee ? (
+                        <>
+                          <span className={cards.avatar} aria-hidden="true">
+                            {initials(assignee)}
                           </span>
-                        ) : (
-                          <span className="muted">—</span>
-                        )}
-                      </td>
-                      <td>
-                        <strong>{formatWorkedMinutes(minutes, true)}</strong>
-                        <div className="muted">{minutes > 0 ? "tempo de trabalho" : "nenhum apontamento"}</div>
-                      </td>
-                      <td>
-                        <span className={ticketPriorityBadgeClass(ticket.priority)}>
-                          {labelTicketPriority(ticket.priority)}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={ticketStatusBadgeClass(ticket.status)}>
-                          {labelTicketStatus(ticket.status)}
-                        </span>
-                      </td>
-                      <td>
-                        <div className={styles.actions}>
-                          {!closed ? (
-                            <button type="button" className={`btn btn-ghost ${styles.compact}`} onClick={() => openPanel(ticket, "hours")}>
-                              Apontar tempo
-                            </button>
-                          ) : null}
-                          {!resolved ? (
-                            <button type="button" className={`btn btn-primary ${styles.compact}`} onClick={() => openPanel(ticket, "resolve")}>
-                              Resolver
-                            </button>
-                          ) : null}
-                          {ticket.status === "RESOLVED" ? (
-                            <button type="button" className={`btn btn-danger ${styles.compact}`} onClick={() => void closeTicket(ticket)} disabled={saving}>
-                              Encerrar
-                            </button>
-                          ) : null}
-                          <button
-                            type="button"
-                            className={`btn btn-ghost ${styles.compact}`}
-                            onClick={() => openPanel(ticket, "history")}
-                          >
-                            Histórico
-                          </button>
-                          {!closed ? (
-                            <>
-                              <button
-                                type="button"
-                                className={styles.iconBtn}
-                                onClick={() => openPanel(ticket, "edit")}
-                                title="Editar informações do chamado"
-                                aria-label="Editar informações do chamado"
-                              >
-                                <EditIcon />
-                              </button>
-                              {!resolved && minutes === 0 ? (
-                                <button
-                                  type="button"
-                                  className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
-                                  onClick={() => void deleteTicket(ticket)}
-                                  disabled={saving}
-                                  title="Excluir chamado aberto por engano (sem tempo apontado)"
-                                  aria-label="Excluir chamado"
-                                >
-                                  <TrashIcon />
-                                </button>
-                              ) : null}
-                            </>
-                          ) : (
-                            <span className="muted">Encerrado</span>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+                          <span>{assignee}</span>
+                        </>
+                      ) : (
+                        <span>Sem responsável</span>
+                      )}
+                    </span>
+                    <span className={`${cards.time} ${minutes === 0 ? cards.timeEmpty : ""}`}>
+                      {minutes > 0 ? formatWorkedMinutes(minutes, true) : "0 min"}
+                    </span>
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
 
       {showCreateForm ? (
         <dialog
@@ -1053,7 +1120,7 @@ export default function TicketsPage() {
       {selected && panel ? (
         <dialog
           ref={dialogRef}
-          className={styles.dialog}
+          className={`${styles.dialog} ${styles.dialogWide}`}
           aria-labelledby="ticket-dialog-title"
           onClose={closePanel}
           onMouseDown={(event: MouseEvent<HTMLDialogElement>) => {
@@ -1064,15 +1131,17 @@ export default function TicketsPage() {
           <div className={styles.sectionHead}>
             <div>
               <h2 id="ticket-dialog-title">
-                {panel === "hours"
-                  ? "Apontar tempo"
-                  : panel === "edit"
-                    ? "Editar chamado"
-                    : panel === "history"
-                      ? "Histórico do chamado"
-                      : "Resolver chamado"}
+                {panel === "detail"
+                  ? selected.title
+                  : panel === "hours"
+                    ? "Apontar tempo"
+                    : panel === "edit"
+                      ? "Editar chamado"
+                      : panel === "history"
+                        ? "Histórico do chamado"
+                        : "Resolver chamado"}
               </h2>
-              <p className="muted">{selected.title}</p>
+              <p className="muted">{panel === "detail" ? contractName(selected.contractId) : selected.title}</p>
             </div>
             <button
               type="button"
@@ -1085,12 +1154,33 @@ export default function TicketsPage() {
             </button>
           </div>
 
+          {panel !== "detail" ? (
+            <button type="button" className={cards.back} onClick={() => setPanel("detail")}>
+              Voltar ao chamado
+            </button>
+          ) : null}
+
           {error ? <div className="error-banner">{error}</div> : null}
+
+          {panel === "detail" ? (
+            <TicketDetail
+              ticket={selected}
+              minutes={selectedMinutes}
+              now={now}
+              saving={saving}
+              userName={userName}
+              onOpen={(mode) => setPanel(mode)}
+              onClose={() => void closeTicket(selected)}
+              onDelete={() => void deleteTicket(selected)}
+            />
+          ) : null}
 
           {panel === "hours" ? (
             <>
-              {selectedEntries.length === 0 ? (
-                <p className="empty-state">Nenhum apontamento.</p>
+              {!selectedEntriesLoaded ? (
+                <p className="muted">Carregando apontamentos…</p>
+              ) : selectedEntries.length === 0 ? (
+                <p className="empty-state">Nenhum tempo apontado ainda.</p>
               ) : (
                 <ul className={styles.entryList}>
                   {selectedEntries.map((entry) => (

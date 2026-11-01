@@ -99,7 +99,8 @@ describe("DashboardPage", () => {
     await waitFor(() => expect(screen.getByText("Contratos com SLA crítico")).toBeTruthy());
     expect(screen.getByText("custo passou da receita")).toBeTruthy();
     expect(screen.getByText("01/08/2026 a 31/10/2026")).toBeTruthy();
-    expect(screen.getByText("resposta abaixo de 80%; 3 ou mais chamados fora do prazo")).toBeTruthy();
+    expect(screen.getByText("Resposta abaixo de 80%")).toBeTruthy();
+    expect(screen.getByText("3+ chamados fora do prazo")).toBeTruthy();
     expect(screen.getByText("Prontuario travando")).toBeTruthy();
   });
 
