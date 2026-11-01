@@ -71,7 +71,7 @@ describe("LoginPage", () => {
     await user.type(screen.getByLabelText("Email"), "gestor@slanko.local");
     await user.clear(screen.getByLabelText("Senha"));
     await user.type(screen.getByLabelText("Senha"), "Slanko@123");
-    await user.click(screen.getByRole("button", { name: "Acessar painel" }));
+    await user.click(screen.getByRole("button", { name: "Entrar" }));
 
     await waitFor(() => {
       expect(saveSpy).toHaveBeenCalled();
@@ -96,7 +96,7 @@ describe("LoginPage", () => {
     });
 
     render(<LoginPage />);
-    await user.click(screen.getByRole("button", { name: "Acessar painel" }));
+    await user.click(screen.getByRole("button", { name: "Entrar" }));
 
     await waitFor(() => {
       expect(replace).toHaveBeenCalledWith("/tickets");
@@ -109,7 +109,7 @@ describe("LoginPage", () => {
     vi.spyOn(api, "apiRequest").mockRejectedValue(new api.ApiClientError("Credenciais inválidas", 401));
 
     render(<LoginPage />);
-    await user.click(screen.getByRole("button", { name: "Acessar painel" }));
+    await user.click(screen.getByRole("button", { name: "Entrar" }));
 
     await waitFor(() => {
       expect(screen.getByText("Credenciais inválidas")).toBeTruthy();

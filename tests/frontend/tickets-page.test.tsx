@@ -11,6 +11,10 @@ vi.mock("@/app/(app)/page-shared.module.css", () => ({
   default: new Proxy({}, { get: (_target, key: string) => key }),
 }));
 
+vi.mock("@/app/(app)/tickets/tickets.module.css", () => ({
+  default: new Proxy({}, { get: (_target, key: string) => key }),
+}));
+
 vi.mock("@/app/(app)/tickets/ticket-attachments", () => ({
   AttachmentFileInput: () => null,
   PendingFilesList: () => null,
@@ -124,30 +128,62 @@ describe("TicketsPage", () => {
     };
   });
 
-  it("lists tickets with the aggregated logged time and without per-ticket requests", async () => {
+  /** Abre o cartão do chamado (prévia) e devolve o diálogo de detalhe. */
+  async function openCard(user: ReturnType<typeof userEvent.setup>, title: string) {
+    await user.click(screen.getByText(title).closest("button") as HTMLElement);
+    return screen.findByRole("dialog");
+  }
+
+  it("shows open tickets as preview cards with the aggregated logged time", async () => {
     loginAs("GESTOR");
     const request = mockApi();
 
     render(<TicketsPage />);
 
     await waitFor(() => expect(screen.getByText("Servidor lento")).toBeTruthy());
-    // t1 e t3 têm 0,75 h (45 min) somadas no servidor; t2 não tem apontamento.
-    expect(screen.getAllByText("45 min")).toHaveLength(2);
+    // Aba padrão "Abertos": t1 (45 min) e t2 (sem tempo); o encerrado t3 fica em outra aba.
+    expect(screen.getByText("45 min")).toBeTruthy();
+    expect(screen.queryByText("Backup antigo")).toBeNull();
+    expect(screen.getByRole("button", { name: /Abertos/ }).getAttribute("aria-pressed")).toBe("true");
+    // Ações ficam no detalhe, não na prévia.
+    expect(screen.queryByRole("button", { name: "Apontar tempo" })).toBeNull();
     expect(request.mock.calls.some(([path]) => String(path).endsWith("/time-entries"))).toBe(false);
   });
 
-  it("only offers deletion for tickets opened by mistake (no time logged, not resolved)", async () => {
+  it("filters cards by status tab", async () => {
+    const user = userEvent.setup();
     loginAs("GESTOR");
     mockApi();
 
     render(<TicketsPage />);
+    await waitFor(() => expect(screen.getByText("Servidor lento")).toBeTruthy());
 
-    await waitFor(() => expect(screen.getByText("Impressora parada")).toBeTruthy());
-    expect(screen.getAllByRole("button", { name: "Excluir chamado" })).toHaveLength(1);
-    expect(screen.getAllByRole("button", { name: "Histórico" })).toHaveLength(3);
+    await user.click(screen.getByRole("button", { name: /Encerrados/ }));
+    expect(screen.getByText("Backup antigo")).toBeTruthy();
+    expect(screen.queryByText("Servidor lento")).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: /Todos/ }));
+    expect(screen.getAllByText("45 min")).toHaveLength(2);
   });
 
-  it("opens the history panel, loading entries only for that ticket", async () => {
+  it("only offers deletion for tickets opened by mistake (no time logged, not resolved)", async () => {
+    const user = userEvent.setup();
+    loginAs("GESTOR");
+    mockApi();
+
+    render(<TicketsPage />);
+    await waitFor(() => expect(screen.getByText("Impressora parada")).toBeTruthy());
+
+    const mistake = await openCard(user, "Impressora parada");
+    expect(within(mistake).getByRole("button", { name: "Excluir chamado" })).toBeTruthy();
+    await user.click(within(mistake).getByRole("button", { name: "Fechar" }));
+
+    const worked = await openCard(user, "Servidor lento");
+    expect(within(worked).queryByRole("button", { name: "Excluir chamado" })).toBeNull();
+    expect(within(worked).getByRole("button", { name: "Resolver" })).toBeTruthy();
+  });
+
+  it("opens the history from the detail panel, loading entries only for that ticket", async () => {
     const user = userEvent.setup();
     loginAs("GESTOR");
     const request = mockApi({
@@ -167,14 +203,20 @@ describe("TicketsPage", () => {
     });
 
     render(<TicketsPage />);
-    await waitFor(() => expect(screen.getByText("Backup antigo")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("Servidor lento")).toBeTruthy());
+    await user.click(screen.getByRole("button", { name: /Encerrados/ }));
 
-    await user.click(screen.getAllByRole("button", { name: "Histórico" })[2]);
+    const dialog = await openCard(user, "Backup antigo");
+    // Encerrado: só consulta, sem ações de alteração.
+    expect(within(dialog).queryByRole("button", { name: "Apontar tempo" })).toBeNull();
+    await user.click(within(dialog).getByRole("button", { name: "Histórico" }));
 
-    const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByText("Histórico do chamado")).toBeTruthy();
     await waitFor(() => expect(within(dialog).getByText("Abriu o chamado")).toBeTruthy());
     expect(request).toHaveBeenCalledWith("/api/tickets/t3/time-entries");
+
+    await user.click(within(dialog).getByRole("button", { name: "Voltar ao chamado" }));
+    expect(within(dialog).getByText("Descrição")).toBeTruthy();
   });
 
   it("lets the author correct a time entry", async () => {
@@ -185,8 +227,8 @@ describe("TicketsPage", () => {
     render(<TicketsPage />);
     await waitFor(() => expect(screen.getByText("Servidor lento")).toBeTruthy());
 
-    await user.click(screen.getAllByRole("button", { name: "Apontar tempo" })[0]);
-    const dialog = await screen.findByRole("dialog");
+    const dialog = await openCard(user, "Servidor lento");
+    await user.click(within(dialog).getByRole("button", { name: "Apontar tempo" }));
     await user.click(await within(dialog).findByRole("button", { name: "Corrigir apontamento" }));
 
     const minutes = within(dialog).getByLabelText("Minutos");

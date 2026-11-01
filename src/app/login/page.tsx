@@ -49,53 +49,61 @@ export default function LoginPage() {
 
   return (
     <div className={styles.page}>
-      <section className={`${styles.hero} animate-rise`}>
-        <p className={styles.eyebrow}>Operação de suporte</p>
-        <h1 className={styles.brand}>Slanko</h1>
-        <p className={styles.lead}>
-          Chamados, SLA e rentabilidade no mesmo lugar, para microempresas de TI que precisam ver
-          margem e não só tickets.
-        </p>
+      <section className={styles.hero}>
+        <p className={styles.wordmark}>Slanko</p>
+        <div className={styles.heroBody}>
+          <p className={styles.headline}>Cada contrato com o prazo e a margem à vista.</p>
+          <p className={styles.lead}>
+            Chamados, SLA e custo das horas no mesmo lugar, para microempresas de TI que precisam saber
+            quanto cada cliente realmente custa.
+          </p>
+        </div>
+        <p className={styles.footnote}>Projeto de TCC em Engenharia de Software, Católica SC</p>
       </section>
 
-      <div className={styles.formWrap}>
-      <form className={`${styles.form} animate-rise-delay`} onSubmit={onSubmit}>
-        <div>
-          <h2>Entrar</h2>
-          <p className="muted">Use as credenciais do seed local para testar.</p>
-        </div>
+      <main className={styles.formWrap}>
+        <form className={styles.form} onSubmit={onSubmit}>
+          <div className={styles.formHead}>
+            <h1>Entrar</h1>
+            <p className="muted">Acesse com seu email e senha.</p>
+          </div>
 
-        {error ? <div className="error-banner">{error}</div> : null}
+          {error ? <div className="error-banner">{error}</div> : null}
 
-        <div className="field">
-          <label htmlFor="email">Email</label>
-          <input
-            id="email"
-            type="email"
-            autoComplete="username"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            required
-          />
-        </div>
+          <div className="field">
+            <label htmlFor="email">Email</label>
+            <input
+              id="email"
+              type="email"
+              autoComplete="username"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              required
+            />
+          </div>
 
-        <div className="field">
-          <label htmlFor="password">Senha</label>
-          <input
-            id="password"
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            required
-          />
-        </div>
+          <div className="field">
+            <label htmlFor="password">Senha</label>
+            <input
+              id="password"
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              required
+            />
+          </div>
 
-        <button className="btn btn-primary" type="submit" disabled={loading}>
-          {loading ? "Entrando…" : "Acessar painel"}
-        </button>
-      </form>
-      </div>
+          <button className={`btn btn-primary ${styles.submit}`} type="submit" disabled={loading}>
+            {loading ? "Entrando…" : "Entrar"}
+          </button>
+
+          <p className={styles.devNote}>
+            Ambiente local: os campos já vêm com o gestor do seed. Técnico:{" "}
+            <span className="num">tecnico@slanko.local</span>, mesma senha.
+          </p>
+        </form>
+      </main>
     </div>
   );
 }

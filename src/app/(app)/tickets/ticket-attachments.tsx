@@ -123,7 +123,7 @@ export function PendingFilesList({
       {files.map((file, index) => (
         <li key={`${file.name}-${file.size}-${index}`}>
           <span>
-            {file.name} · {formatBytes(file.size)}
+            {file.name} ({formatBytes(file.size)})
           </span>
           <button
             type="button"
@@ -198,7 +198,7 @@ export function AttachmentFileInput({
         onChange={onChange}
       />
       <p className="muted">
-        Imagem até 5 MB · Vídeo até 50 MB · até {MAX_ATTACHMENTS_PER_TICKET} por chamado
+        Imagens até 5 MB e vídeos até 50 MB, no máximo {MAX_ATTACHMENTS_PER_TICKET} por chamado
       </p>
     </div>
   );
@@ -301,7 +301,7 @@ export function TicketAttachmentGallery({
               <div className={styles.attachmentMeta}>
                 <strong title={attachment.fileName}>{attachment.fileName}</strong>
                 <span className="muted">
-                  {attachment.kind === "IMAGE" ? "Imagem" : "Vídeo"} · {formatBytes(attachment.sizeBytes)}
+                  {attachment.kind === "IMAGE" ? "Imagem" : "Vídeo"}, {formatBytes(attachment.sizeBytes)}
                 </span>
               </div>
             </li>

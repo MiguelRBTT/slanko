@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="330" viewBox="0 0 880 330" role="img" aria-labelledby="title desc">
+  <title id="title">Paleta de cores do Slanko</title>
+  <desc id="desc">Cores de marca, neutros e estados usados na interface do Slanko, com nome e código hexadecimal.</desc>
+  <style>
+    text { font-family: "Archivo", "Segoe UI", Arial, sans-serif; fill: #1d2228; }
+    .group { font-size: 13px; font-weight: 600; fill: #5b6470; }
+    .name { font-size: 13px; font-weight: 600; }
+    .hex { font-size: 12px; fill: #5b6470; }
+    .edge { stroke: #c7cbc5; stroke-width: 1; }
+  </style>
+  <rect width="880" height="330" fill="#f3f4f1"/>
+
+  <text x="24" y="34" class="group">Marca</text>
+  <rect x="24" y="46" width="120" height="64" rx="6" fill="#c94a0b"/>
+  <text x="24" y="130" class="name">Laranja sinal</text><text x="24" y="148" class="hex">#C94A0B</text>
+  <rect x="160" y="46" width="120" height="64" rx="6" fill="#a33f09"/>
+  <text x="160" y="130" class="name">Laranja queimado</text><text x="160" y="148" class="hex">#A33F09</text>
+  <rect x="296" y="46" width="120" height="64" rx="6" fill="#f28a4b"/>
+  <text x="296" y="130" class="name">Laranja aceso</text><text x="296" y="148" class="hex">#F28A4B</text>
+  <rect x="432" y="46" width="120" height="64" rx="6" fill="#fce9dd" class="edge"/>
+  <text x="432" y="130" class="name">Laranja névoa</text><text x="432" y="148" class="hex">#FCE9DD</text>
+
+  <text x="24" y="192" class="group">Neutros</text>
+  <rect x="24" y="204" width="120" height="64" rx="6" fill="#20262d"/>
+  <text x="24" y="288" class="name">Grafite</text><text x="24" y="306" class="hex">#20262D</text>
+  <rect x="160" y="204" width="120" height="64" rx="6" fill="#1d2228"/>
+  <text x="160" y="288" class="name">Grafite tinta</text><text x="160" y="306" class="hex">#1D2228</text>
+  <rect x="296" y="204" width="120" height="64" rx="6" fill="#5b6470"/>
+  <text x="296" y="288" class="name">Cinza ardósia</text><text x="296" y="306" class="hex">#5B6470</text>
+  <rect x="432" y="204" width="120" height="64" rx="6" fill="#f3f4f1" class="edge"/>
+  <text x="432" y="288" class="name">Concreto claro</text><text x="432" y="306" class="hex">#F3F4F1</text>
+
+  <text x="600" y="34" class="group">Estados</text>
+  <rect x="600" y="46" width="120" height="64" rx="6" fill="#1f7a4d"/>
+  <text x="600" y="130" class="name">Verde ok</text><text x="600" y="148" class="hex">#1F7A4D</text>
+  <rect x="736" y="46" width="120" height="64" rx="6" fill="#8f5100"/>
+  <text x="736" y="130" class="name">Âmbar alerta</text><text x="736" y="148" class="hex">#8F5100</text>
+  <rect x="600" y="204" width="120" height="64" rx="6" fill="#b8322a"/>
+  <text x="600" y="288" class="name">Vermelho crítico</text><text x="600" y="306" class="hex">#B8322A</text>
+  <rect x="736" y="204" width="120" height="64" rx="6" fill="#2b6cb0"/>
+  <text x="736" y="288" class="name">Azul foco</text><text x="736" y="306" class="hex">#2B6CB0</text>
+</svg>

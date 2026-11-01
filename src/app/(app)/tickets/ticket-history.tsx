@@ -46,7 +46,7 @@ export function TicketHistory({
       ) : events.length === 0 ? (
         <p className="empty-state">Nenhum evento registrado.</p>
       ) : (
-        <ul className={styles.entryList}>
+        <ul className={`${styles.entryList} ${styles.historyList}`}>
           {events.map((event) => (
             <li key={event.id}>
               <strong>{event.actorName}</strong>

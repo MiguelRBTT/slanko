@@ -1,12 +1,12 @@
 .page {
   display: grid;
-  gap: 1.35rem;
+  /* Coluna limitada à tela: tabelas largas rolam dentro do próprio painel */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.25rem;
 }
 
 .header h1 {
-  font-size: clamp(1.8rem, 3vw, 2.3rem);
-  letter-spacing: -0.03em;
-  margin-bottom: 0.35rem;
+  font-size: 1.75rem;
 }
 
 .loading {
@@ -14,22 +14,20 @@
   color: var(--ink-muted);
 }
 
+/* Faixa única de indicadores (em vez de cinco cartões iguais): a margem lidera */
 .metrics {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 0.9rem;
-}
-
-.filters {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 0.75rem;
-  padding: 1rem 1.15rem;
+  grid-template-columns: minmax(0, 1.6fr) repeat(4, minmax(0, 1fr));
+  overflow: visible;
 }
 
 .metric {
-  padding: 1.1rem 1.15rem 1.15rem;
-  overflow: visible;
+  padding: 1.1rem 1.25rem 1.2rem;
+  min-width: 0;
+}
+
+.metric + .metric {
+  border-left: 1px solid var(--line);
 }
 
 .metricHead,
@@ -41,17 +39,50 @@
 
 .metricLabel {
   color: var(--ink-muted);
-  font-size: 0.8rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-size: 0.8125rem;
+  font-weight: 500;
 }
 
 .metric strong {
   display: block;
-  font-size: 1.7rem;
-  letter-spacing: -0.03em;
-  margin-top: 0.55rem;
+  margin-top: 0.45rem;
+  font-size: 1.6rem;
+  font-weight: 650;
+  font-stretch: 108%;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.metricPrimary strong {
+  font-size: 2.15rem;
+}
+
+.metricNote {
+  margin-top: 0.4rem;
+  color: var(--ink-muted);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.toneDanger {
+  color: var(--danger);
+}
+
+.toneWarn {
+  color: var(--brand-hover);
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+  padding: 0.9rem 1rem;
+}
+
+.subtitle {
+  margin-top: 0.15rem;
+  color: var(--ink-muted);
 }
 
 .tip {
@@ -72,24 +103,21 @@
   width: 1.15rem;
   height: 1.15rem;
   padding: 0;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: 50%;
-  background: var(--surface);
+  background: var(--surface-raised);
   color: var(--ink-muted);
-  font-size: 0.72rem;
-  font-weight: 700;
+  font-size: 0.6875rem;
+  font-weight: 600;
   line-height: 1;
   letter-spacing: 0;
   text-transform: none;
   cursor: help;
 }
 
-.tipButton:hover,
-.tipButton:focus-visible {
-  border-color: var(--brand);
-  color: var(--brand-deep);
-  background: var(--brand-soft);
-  outline: none;
+.tipButton:hover {
+  border-color: var(--ink-subtle);
+  color: var(--ink);
 }
 
 .tipBubble {
@@ -99,16 +127,16 @@
   left: 50%;
   width: 15.5rem;
   padding: 0.7rem 0.8rem;
-  border-radius: 10px;
-  background: var(--ink);
+  border-radius: var(--radius-control);
+  background: var(--graphite);
   color: #fff;
-  font-size: 0.82rem;
-  font-weight: 500;
+  font-size: 0.8125rem;
+  font-weight: 400;
   line-height: 1.45;
   letter-spacing: 0;
   text-transform: none;
   text-align: left;
-  box-shadow: 0 10px 28px rgba(23, 23, 23, 0.22);
+  box-shadow: var(--shadow-overlay);
   opacity: 0;
   visibility: hidden;
   transform: translateX(-50%) translateY(4px);
@@ -126,7 +154,7 @@
   left: 50%;
   transform: translateX(-50%);
   border: 6px solid transparent;
-  border-bottom-color: var(--ink);
+  border-bottom-color: var(--graphite);
 }
 
 .tip:hover .tipBubble,
@@ -181,17 +209,37 @@
 }
 
 .sectionHead h2 {
-  font-size: 1.05rem;
+  font-size: 1rem;
 }
 
 .sectionCount {
   margin-top: 0.2rem;
-  font-size: 0.88rem;
+  font-size: 0.875rem;
 }
 
 @media (max-width: 1100px) {
   .metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .metricPrimary {
+    grid-column: 1 / -1;
+  }
+
+  .metric + .metric {
+    border-left: 0;
+  }
+
+  .metric {
+    border-top: 1px solid var(--line);
+  }
+
+  .metricPrimary {
+    border-top: 0;
+  }
+
+  .metric:nth-child(odd):not(.metricPrimary) {
+    border-left: 1px solid var(--line);
   }
 }
 
@@ -199,4 +247,102 @@
   .metrics {
     grid-template-columns: 1fr;
   }
+
+  /* No celular as bolhas de ajuda abrem sempre para a direita, dentro da tela */
+  .tip .tipBubble,
+  .tipStart .tipBubble,
+  .tipEnd .tipBubble {
+    left: 0;
+    right: auto;
+    width: min(15.5rem, calc(100vw - 4rem));
+    transform: translateY(4px);
+  }
+
+  .tip:hover .tipBubble,
+  .tip:focus-within .tipBubble {
+    transform: translateY(0);
+  }
+
+  .tip .tipBubble::after,
+  .tipEnd .tipBubble::after {
+    left: 0.45rem;
+    right: auto;
+    transform: none;
+  }
+
+  .metric:nth-child(odd):not(.metricPrimary) {
+    border-left: 0;
+  }
+}
+
+/* Primeira coluna (contrato/chamado) não espreme o código em duas linhas */
+.page :global(table.data) td:first-child {
+  min-width: 14rem;
+}
+
+/* Contratos com SLA crítico: lista que quebra linha sozinha (sem rolagem lateral) */
+.alertList {
+  list-style: none;
+  margin: 0 -1.1rem;
+  padding: 0;
+}
+
+.alertItem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.5rem;
+  padding: 0.85rem 1.1rem;
+  border-top: 1px solid var(--line);
+}
+
+.alertContract {
+  flex: 1 1 14rem;
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.alertContract .muted {
+  font-size: 0.875rem;
+}
+
+.alertStats {
+  flex: 0 1 auto;
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: 1.5rem;
+  margin: 0;
+}
+
+.alertStats dt {
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+
+.alertStats dd {
+  margin: 0.1rem 0 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.alertReasons {
+  flex: 1 1 14rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+@media (max-width: 640px) {
+  .alertStats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+    width: 100%;
+  }
+
+  .alertStats dt {
+    white-space: normal;
+  }
+
 }

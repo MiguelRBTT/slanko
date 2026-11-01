@@ -30,9 +30,9 @@ type Filters = {
 };
 
 const ALERT_REASON_LABEL: Record<SlaAlertReason, string> = {
-  LOW_RESPONSE_COMPLIANCE: "resposta abaixo de 80%",
-  LOW_RESOLUTION_COMPLIANCE: "resolução abaixo de 80%",
-  RECURRING_BREACHES: "3 ou mais chamados fora do prazo",
+  LOW_RESPONSE_COMPLIANCE: "Resposta abaixo de 80%",
+  LOW_RESOLUTION_COMPLIANCE: "Resolução abaixo de 80%",
+  RECURRING_BREACHES: "3+ chamados fora do prazo",
 };
 
 function filtersToQuery(filters: Filters): string {
@@ -205,12 +205,25 @@ export default function DashboardPage() {
     (contract) => !filters.clientId || contract.clientId === filters.clientId,
   );
   const hasPeriod = Boolean(filters.startDate || filters.endDate);
+  const scopeLabel = CONTRACT_SCOPES.find((item) => item.value === filters.scope)?.label ?? "";
+  const periodLabel = hasPeriod
+    ? `de ${filters.startDate ? formatDateBR(filters.startDate) : "início"} a ${filters.endDate ? formatDateBR(filters.endDate) : "hoje"}`
+    : "desde o início de cada contrato até hoje";
+  const deficitaryCount = profit?.deficitaryContracts ?? 0;
+  const marginValue = Number(profit?.totalMargin ?? 0);
+
+  function complianceTone(rate: number | null | undefined): string {
+    return rate !== null && rate !== undefined && rate < 80 ? styles.toneWarn : "";
+  }
 
   return (
     <section className={styles.page}>
       <header className={styles.header}>
         <div>
           <h1>Painel</h1>
+          <p className={styles.subtitle}>
+            {scopeLabel}, {periodLabel}.
+          </p>
         </div>
       </header>
 
@@ -277,54 +290,63 @@ export default function DashboardPage() {
 
       {error ? <div className="error-banner">{error}</div> : null}
 
-      <div className={styles.metrics}>
-        <article className={`${styles.metric} panel`}>
-          <div className={styles.metricHead}>
-            <p className={styles.metricLabel}>Prazo de resposta</p>
-            <InfoTip
-              align="start"
-              label="O que é o prazo de resposta"
-              text={`Percentual dos chamados respondidos dentro do prazo do contrato. Chamado sem resposta que já passou do prazo conta como fora do prazo. Conta o tempo de calendário entre a abertura e o início do atendimento, não os minutos de trabalho. ${rateSentence(sla?.response.met ?? 0, sla?.response.breached ?? 0, sla?.response.pending ?? 0, "resposta")}`}
-            />
-          </div>
-          <strong>{formatPercent(sla?.response.complianceRate ?? null)}</strong>
-        </article>
-
-        <article className={`${styles.metric} panel`}>
-          <div className={styles.metricHead}>
-            <p className={styles.metricLabel}>Prazo de resolução</p>
-            <InfoTip
-              label="O que é o prazo de resolução"
-              text={`Percentual dos chamados resolvidos dentro do prazo do contrato. Chamado ainda aberto que já passou do prazo conta como fora do prazo. Conta o tempo de calendário da abertura até marcar como resolvido. ${rateSentence(sla?.resolution.met ?? 0, sla?.resolution.breached ?? 0, sla?.resolution.pending ?? 0, "resolução")}`}
-            />
-          </div>
-          <strong>{formatPercent(sla?.resolution.complianceRate ?? null)}</strong>
-        </article>
-
-        <article className={`${styles.metric} panel`}>
+      <div className={`${styles.metrics} panel`}>
+        <article className={`${styles.metric} ${styles.metricPrimary}`}>
           <div className={styles.metricHead}>
             <p className={styles.metricLabel}>Margem dos contratos</p>
             <InfoTip
+              align="start"
               label="O que é a margem"
-              text={`Receita reconhecida de cada contrato até hoje (${formatMoneyBRL(profit?.totalRevenue ?? 0)}: valor mensal proporcional aos dias de vigência) menos o custo das horas apontadas (${formatMoneyBRL(profit?.totalCost ?? 0)}, ${formatHours(profit?.totalHours ?? 0)}). O custo de cada apontamento usa o custo por hora de quem trabalhou na data em que o tempo foi registrado.`}
+              text={`Receita reconhecida no período (valor mensal proporcional aos dias de vigência) menos o custo das horas apontadas (${formatHours(profit?.totalHours ?? 0)}). O custo de cada apontamento usa o custo por hora de quem trabalhou na data em que o tempo foi registrado.`}
             />
           </div>
-          <strong>{formatMoneyBRL(profit?.totalMargin ?? 0)}</strong>
+          <strong className={marginValue < 0 ? styles.toneDanger : ""}>
+            {formatMoneyBRL(profit?.totalMargin ?? 0)}
+          </strong>
+          <p className={styles.metricNote}>
+            Receita {formatMoneyBRL(profit?.totalRevenue ?? 0)}, custo {formatMoneyBRL(profit?.totalCost ?? 0)}
+          </p>
         </article>
 
-        <article className={`${styles.metric} panel`}>
+        <article className={styles.metric}>
+          <div className={styles.metricHead}>
+            <p className={styles.metricLabel}>Resposta no prazo</p>
+            <InfoTip
+              label="O que é a resposta no prazo"
+              text={`Percentual dos chamados respondidos dentro do prazo do contrato. Chamado sem resposta que já passou do prazo conta como fora do prazo. Conta o tempo de calendário entre a abertura e o início do atendimento, não os minutos de trabalho. ${rateSentence(sla?.response.met ?? 0, sla?.response.breached ?? 0, sla?.response.pending ?? 0, "resposta")}`}
+            />
+          </div>
+          <strong className={complianceTone(sla?.response.complianceRate)}>
+            {formatPercent(sla?.response.complianceRate ?? null)}
+          </strong>
+        </article>
+
+        <article className={styles.metric}>
+          <div className={styles.metricHead}>
+            <p className={styles.metricLabel}>Resolução no prazo</p>
+            <InfoTip
+              label="O que é a resolução no prazo"
+              text={`Percentual dos chamados resolvidos dentro do prazo do contrato. Chamado ainda aberto que já passou do prazo conta como fora do prazo. Conta o tempo de calendário da abertura até marcar como resolvido. ${rateSentence(sla?.resolution.met ?? 0, sla?.resolution.breached ?? 0, sla?.resolution.pending ?? 0, "resolução")}`}
+            />
+          </div>
+          <strong className={complianceTone(sla?.resolution.complianceRate)}>
+            {formatPercent(sla?.resolution.complianceRate ?? null)}
+          </strong>
+        </article>
+
+        <article className={styles.metric}>
           <div className={styles.metricHead}>
             <p className={styles.metricLabel}>Contratos no prejuízo</p>
             <InfoTip
               align="end"
               label="O que são contratos no prejuízo"
-              text={`De ${profit?.totalContracts ?? 0} contrato(s) no filtro, quantos têm custo de horas maior que a receita reconhecida até hoje. Há também ${breachedTickets.length} chamado(s) com prazo estourado.`}
+              text={`De ${profit?.totalContracts ?? 0} contrato(s) no filtro, quantos têm custo de horas maior que a receita reconhecida. Há também ${breachedTickets.length} chamado(s) com prazo estourado.`}
             />
           </div>
-          <strong>{profit?.deficitaryContracts ?? 0}</strong>
+          <strong className={deficitaryCount > 0 ? styles.toneDanger : ""}>{deficitaryCount}</strong>
         </article>
 
-        <article className={`${styles.metric} panel`}>
+        <article className={styles.metric}>
           <div className={styles.metricHead}>
             <p className={styles.metricLabel}>SLA crítico</p>
             <InfoTip
@@ -333,7 +355,7 @@ export default function DashboardPage() {
               text="Contratos com conformidade de resposta ou de resolução abaixo de 80%, ou com 3 ou mais chamados fora do prazo no período filtrado."
             />
           </div>
-          <strong>{slaAlerts.length}</strong>
+          <strong className={slaAlerts.length > 0 ? styles.toneDanger : ""}>{slaAlerts.length}</strong>
         </article>
       </div>
 
@@ -344,39 +366,43 @@ export default function DashboardPage() {
               <h2>Contratos com SLA crítico</h2>
             </div>
           </div>
-          <div className="table-wrap">
-            <table className="data">
-              <thead>
-                <tr>
-                  <th>Contrato</th>
-                  <th>Resposta no prazo</th>
-                  <th>Resolução no prazo</th>
-                  <th>Chamados fora do prazo</th>
-                  <th>Motivo</th>
-                </tr>
-              </thead>
-              <tbody>
-                {slaAlerts.map((alert) => (
-                  <tr key={alert.contractId}>
-                    <td>
-                      <strong>{alert.contractCode}</strong>
-                      <div className="muted">{alert.contractTitle}</div>
-                    </td>
-                    <td>{formatPercent(alert.responseComplianceRate)}</td>
-                    <td>{formatPercent(alert.resolutionComplianceRate)}</td>
-                    <td>
+          <ul className={styles.alertList}>
+            {slaAlerts.map((alert) => (
+              <li key={alert.contractId} className={styles.alertItem}>
+                <div className={styles.alertContract}>
+                  <strong>{alert.contractCode}</strong>
+                  <span className="muted">{alert.contractTitle}</span>
+                </div>
+                <dl className={styles.alertStats}>
+                  <div>
+                    <dt>Resposta no prazo</dt>
+                    <dd className={complianceTone(alert.responseComplianceRate)}>
+                      {formatPercent(alert.responseComplianceRate)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Resolução no prazo</dt>
+                    <dd className={complianceTone(alert.resolutionComplianceRate)}>
+                      {formatPercent(alert.resolutionComplianceRate)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Fora do prazo</dt>
+                    <dd>
                       {alert.breachedTickets} de {alert.totalTickets}
-                    </td>
-                    <td>
-                      <span className="badge badge-danger">
-                        {alert.alertReasons.map((reason) => ALERT_REASON_LABEL[reason]).join("; ")}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    </dd>
+                  </div>
+                </dl>
+                <div className={styles.alertReasons}>
+                  {alert.alertReasons.map((reason) => (
+                    <span key={reason} className="badge badge-danger">
+                      {ALERT_REASON_LABEL[reason]}
+                    </span>
+                  ))}
+                </div>
+              </li>
+            ))}
+          </ul>
         </section>
       ) : null}
 
@@ -399,11 +425,11 @@ export default function DashboardPage() {
               <thead>
                 <tr>
                   <th>Contrato</th>
-                  <th>Valor mensal</th>
-                  <th>{hasPeriod ? "Receita no período" : "Receita até hoje"}</th>
-                  <th>Horas apontadas</th>
-                  <th>Custo das horas</th>
-                  <th>Margem</th>
+                  <th className="cell-num">Valor mensal</th>
+                  <th className="cell-num">{hasPeriod ? "Receita no período" : "Receita até hoje"}</th>
+                  <th className="cell-num">Horas apontadas</th>
+                  <th className="cell-num">Custo das horas</th>
+                  <th className="cell-num">Margem</th>
                 </tr>
               </thead>
               <tbody>
@@ -418,17 +444,17 @@ export default function DashboardPage() {
                         </span>
                       ) : null}
                     </td>
-                    <td>{formatMoneyBRL(contract.contractValue)}</td>
-                    <td>
+                    <td className="cell-num">{formatMoneyBRL(contract.contractValue)}</td>
+                    <td className="cell-num">
                       {formatMoneyBRL(contract.revenue)}
                       <div className="muted">{revenuePeriodLabel(contract.periodStart, contract.periodEnd)}</div>
                     </td>
-                    <td>{formatHours(contract.totalHours)}</td>
-                    <td>{formatMoneyBRL(contract.totalCost)}</td>
-                    <td>
-                      <span className={contract.deficitary ? "badge badge-danger" : "badge badge-ok"}>
+                    <td className="cell-num">{formatHours(contract.totalHours)}</td>
+                    <td className="cell-num">{formatMoneyBRL(contract.totalCost)}</td>
+                    <td className="cell-num">
+                      <strong className={contract.deficitary ? styles.toneDanger : ""}>
                         {formatMoneyBRL(contract.margin)}
-                      </span>
+                      </strong>
                       <div className="muted">
                         {contract.marginRate === null
                           ? "sem receita no período"

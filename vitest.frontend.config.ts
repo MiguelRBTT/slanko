@@ -11,6 +11,8 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     include: ["tests/frontend/**/*.test.ts", "tests/frontend/**/*.test.tsx"],
+    // Testes de interface com digitação (userEvent) passam de 5 s em máquinas mais lentas.
+    testTimeout: 15_000,
     env: {
       JWT_SECRET: "test-secret-key-with-at-least-32-characters",
       JWT_EXPIRES_IN: "1h",
