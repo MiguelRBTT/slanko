@@ -78,9 +78,9 @@ A lacuna comum é a baixa integração entre operação e rentabilidade por hora
 | Documento | Conteúdo |
 |---|---|
 | [docs/RFC.md](docs/RFC.md) | Escopo, RF/RNF, critérios de aceite, stack e decisões |
-| [docs/casos-de-uso.md](docs/casos-de-uso.md) | Atores, UC01–UC11 e rastreabilidade |
+| [docs/casos-de-uso.md](docs/casos-de-uso.md) | Atores, UC01–UC15 e rastreabilidade |
 | [docs/arquitetura-c4.md](docs/arquitetura-c4.md) | C4 (contexto, contêineres e componentes) |
-| [docs/modelagem.md](docs/modelagem.md) | DER, dicionário de dados, regras e esboço Prisma |
+| [docs/modelagem.md](docs/modelagem.md) | DER, dicionário de dados e regras de negócio |
 
 A documentação oficial permanece no repositório e na [Wiki do GitHub](https://github.com/MiguelRBTT/slanko/wiki) (não em Notion/Obsidian para entrega). Fonte das páginas da Wiki: [`docs/wiki/`](docs/wiki/).
 
@@ -89,22 +89,31 @@ A documentação oficial permanece no repositório e na [Wiki do GitHub](https:/
 ```text
 slanko/
 ├── src/
-│   ├── app/                    # Next.js pages and API routes
-│   ├── components/             # UI (dashboard in later iterations)
-│   ├── lib/                    # prisma client, http helpers, errors
-│   ├── repositories/           # data access (Prisma)
-│   ├── services/               # business rules
-│   └── types/                  # shared DTOs
-├── tests/                      # Vitest unit and API route tests
-├── prisma/                     # schema, migrations, seed
+│   ├── app/                    # páginas (App Router) e rotas da API
+│   ├── components/             # shell da aplicação (menu lateral e sessão)
+│   ├── lib/                    # auth, HTTP, validação, SLA, rentabilidade, métricas
+│   ├── repositories/           # acesso a dados (Prisma)
+│   ├── services/               # regras de negócio
+│   ├── types/                  # DTOs compartilhados
+│   └── middleware.ts           # JWT, perfil atual no banco e CSP com nonce
+├── tests/
+│   ├── api/, services/, repositories/, lib/, types/   # unitários (backend)
+│   ├── frontend/               # interface (jsdom + Testing Library)
+│   └── integration/            # MySQL real (banco *_test)
+├── prisma/                     # schema, migrations e seed de demonstração
+├── docker/                     # Prometheus, Grafana e init do MySQL
 ├── docs/
 │   ├── RFC.md, casos-de-uso.md, arquitetura-c4.md, modelagem.md
+│   ├── assets/                 # diagramas (SVG e PNG) e paleta de cores
 │   └── wiki/                   # fonte das páginas da Wiki do GitHub
 ├── scripts/
 │   └── publish-wiki.ps1        # publica docs/wiki no GitHub Wiki
-├── docker-compose.yml          # MySQL local (slanko-db)
+├── .github/workflows/ci.yml    # CI: lint, typecheck, testes, build, Sonar e integração
+├── Dockerfile                  # imagem do slanko-app
+├── docker-compose.yml          # slanko-db, Prometheus, Grafana e slanko-app (perfil app)
+├── .nvmrc                      # versão do Node (22)
 ├── package.json
-└── vitest.config.ts
+└── vitest.config.ts, vitest.frontend.config.ts, vitest.integration.config.ts
 ```
 
 ### Versionamento
@@ -170,11 +179,11 @@ Detalhamento e critérios de aceite: [docs/RFC.md](docs/RFC.md).
 |---|---|
 | Full-stack | TypeScript, Next.js, React |
 | Dados | MySQL, Prisma |
-| Testes | Jest e/ou Vitest (TDD) |
-| Infra | Docker (`slanko-app`, `slanko-db`) |
+| Testes | Vitest e Testing Library (TDD), integração com MySQL real |
+| Infra | Docker (`slanko-app`, `slanko-db`, Prometheus e Grafana) |
 | CI/CD | GitHub Actions |
 | Qualidade | SonarCloud |
-| Observabilidade | Grafana e/ou Prometheus |
+| Observabilidade | Prometheus e Grafana (`/api/metrics`) |
 
 ### Segurança
 
@@ -229,7 +238,7 @@ Desenvolvimento iterativo com Kanban, commits frequentes e entregas modulares. G
 
 ![Diagrama de Casos de Uso do Slanko](docs/assets/diagrama-casos-de-uso.png)
 
-Atores: **Gestor** e **Técnico** (UC01 a UC11).  
+Atores: **Gestor** e **Técnico** (UC01 a UC15).  
 Detalhamento: [docs/casos-de-uso.md](docs/casos-de-uso.md).
 
 ### C4 - Contexto (nível 1)
@@ -240,7 +249,7 @@ Detalhamento: [docs/casos-de-uso.md](docs/casos-de-uso.md).
 
 ![C4 Contêineres - Slanko](docs/assets/c4-conteineres.png)
 
-Detalhamento: [docs/arquitetura-c4.md](docs/arquitetura-c4.md).
+Contêineres no `docker compose`: `slanko-app` (Next.js), `slanko-db` (MySQL), volume de anexos, `slanko-prometheus` e `slanko-grafana`. Detalhamento: [docs/arquitetura-c4.md](docs/arquitetura-c4.md).
 
 ### Fluxo de negócio (resumo)
 
@@ -256,13 +265,13 @@ Detalhamento: [docs/arquitetura-c4.md](docs/arquitetura-c4.md).
 
 ![DER Slanko](docs/assets/der-slanko.png)
 
-Entidades: **User**, **Client**, **Contract**, **Ticket**, **TimeEntry**.
+Entidades: **User**, **Client**, **Contract**, **Ticket**, **TimeEntry**, **TicketObserver**, **TicketAttachment** e **TicketEvent**.
 
-* SLA: metas no contrato (`response_minutes`, `resolution_minutes`). O relógio começa na abertura; a 1ª resposta é o início do atendimento (sair de "Aberto" ou o 1º apontamento), não a atribuição. Chamado sem resposta/resolução com prazo vencido já conta como violação
+* SLA: metas no contrato (`response_minutes`, `resolution_minutes`), copiadas para o chamado na abertura. O relógio começa na abertura; a 1ª resposta é o início do atendimento (sair de "Aberto" ou o 1º apontamento), não a atribuição. Chamado sem resposta/resolução com prazo vencido já conta como violação
 * Rentabilidade: `TimeEntry.hours × TimeEntry.hourly_cost` (custo/hora congelado no apontamento) comparado à receita do período (`Contract.value` é **mensal**, proporcional aos dias de vigência)
 * Histórico: cada alteração do chamado gera um `TicketEvent` (RF07)
 
-Dicionário de dados, regras e esboço Prisma: [docs/modelagem.md](docs/modelagem.md).
+Dicionário de dados e regras: [docs/modelagem.md](docs/modelagem.md). Schema completo: [prisma/schema.prisma](prisma/schema.prisma).
 
 ---
 
@@ -600,6 +609,12 @@ O Slanko formaliza um webapp para gestão integrada de contratos de suporte téc
 * [x] Wiki do GitHub (RNF10) — páginas em `docs/wiki/` + script `scripts/publish-wiki.ps1`
 * [x] Metas globais de cobertura (RNF04) — ≥75% backend e ≥25% frontend no CI
 * [x] Observabilidade (RNF07) — Prometheus, Grafana e `/api/metrics`
+* [x] Regras de SLA e rentabilidade revisadas (receita proporcional, custo/hora e metas congeladas)
+* [x] Histórico auditável dos chamados (RF07), equipe e custo/hora, anexos e observadores
+* [x] Segurança reforçada (perfil checado a cada requisição, CSP, limite de login) e HTTPS local
+* [x] Testes de integração com MySQL e typecheck no CI
+* [x] Identidade visual e interface revisadas (chamados em cartões)
+* [x] Diagramas atualizados (DER, casos de uso e C4 de contexto e contêineres)
 
 ---
 

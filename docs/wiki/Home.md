@@ -28,7 +28,7 @@ Três fluxos de negócio:
 | [Arquitetura](Arquitetura) | Camadas, stack e visão C4 |
 | [API](API) | Endpoints HTTP e perfis |
 | [Autenticação](Autenticacao) | JWT, perfis gestor/técnico |
-| [Casos de Uso](Casos-de-Uso) | UC01–UC11 |
+| [Casos de Uso](Casos-de-Uso) | UC01–UC15 |
 | [Modelagem de Dados](Modelagem-de-Dados) | Entidades e Prisma |
 | [CI/CD e Qualidade](CI-CD-e-Qualidade) | GitHub Actions e SonarCloud |
 | [Observabilidade](Observabilidade) | Prometheus, Grafana e `/api/metrics` |

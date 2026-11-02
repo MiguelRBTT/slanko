@@ -10,7 +10,7 @@ O Slanko adota arquitetura **cliente-servidor em camadas**, com aplicação full
 |---|---|---|
 | 1 | Contexto | Documentado |
 | 2 | Contêineres | Documentado |
-| 3 | Componentes | Visão inicial (evolui com o código) |
+| 3 | Componentes | Componentes reais do `slanko-app` (texto) |
 | 4 | Código | Fora do escopo desta documentação (detalhe no repositório) |
 
 ---
@@ -45,7 +45,7 @@ Mostra o Slanko como caixa preta e quem interage com ele.
 
 ## Nível 2 - Diagrama de Contêineres
 
-Detalha a visão de contêineres prevista no relatório (Figura 1 / arquitetura em camadas).
+Contêineres como estão no `docker compose` do projeto (arquitetura em camadas da Figura 1 do relatório).
 
 ![C4 Contêineres - Slanko](assets/c4-conteineres.png)
 
@@ -53,8 +53,11 @@ Detalha a visão de contêineres prevista no relatório (Figura 1 / arquitetura 
 
 | Contêiner | Tecnologia | Responsabilidade |
 |---|---|---|
-| `slanko-app` | Next.js, React, TypeScript, Prisma | Interface responsiva, API REST interna, validação, autenticação JWT, regras de SLA e rentabilidade, acesso a dados via ORM. |
-| `slanko-db` | MySQL | Persistência de usuários, clientes, contratos, chamados, apontamentos de horas e metas de SLA. |
+| `slanko-app` | Next.js 15, React, TypeScript, Prisma (imagem do `Dockerfile`) | Interface responsiva, API REST interna, middleware de segurança (JWT, perfil atual no banco, CSP com nonce), regras de SLA e rentabilidade, acesso a dados via ORM e `/api/metrics`. |
+| `slanko-db` | MySQL 8.4 | Persistência de usuários, clientes, contratos, chamados, apontamentos, observadores, anexos (metadados) e histórico de eventos. |
+| `uploads` | Volume Docker | Arquivos dos anexos (imagens e vídeos), lidos e gravados pelo `slanko-app`. |
+| `slanko-prometheus` | Prometheus | Coleta `/api/metrics` a cada 15 s, com token, e guarda as séries. |
+| `slanko-grafana` | Grafana | Painel provisionado **Slanko Overview** sobre os dados do Prometheus. |
 
 ### Mapeamento para as camadas do relatório
 
@@ -72,8 +75,7 @@ MySQL (contratos, chamados, horas, usuários)
         |
         v
 Infraestrutura
-Docker (slanko-app, slanko-db), GitHub Actions, SonarCloud,
-Grafana e/ou Prometheus
+Docker (slanko-app, slanko-db, Prometheus, Grafana), GitHub Actions, SonarCloud
 ```
 
 No nível de contêineres, a apresentação e a aplicação ficam no mesmo processo/`slanko-app` (Next.js full-stack), e a camada de dados fica no `slanko-db`.
@@ -82,43 +84,45 @@ No nível de contêineres, a apresentação e a aplicação ficam no mesmo proce
 
 | De | Para | Protocolo / forma | Motivo |
 |---|---|---|---|
-| Gestor / Técnico | `slanko-app` | HTTPS (UI) | Uso da aplicação |
+| Gestor / Técnico | `slanko-app` | HTTPS (navegador; HTTPS local com `npm run dev`) | Uso da aplicação |
 | `slanko-app` | `slanko-db` | SQL via Prisma | Persistência |
-| GitHub Actions | `slanko-app` (código) | Pipeline CI | Lint, testes e build |
-| GitHub Actions / repo | SonarCloud | Integração CI | Qualidade e segurança |
-| `slanko-app` | Grafana / Prometheus | Métricas / instrumentação | Observabilidade |
+| `slanko-app` | `uploads` | Sistema de arquivos | Anexos dos chamados |
+| `slanko-prometheus` | `slanko-app` | HTTP `GET /api/metrics` com `Bearer METRICS_TOKEN` (coleta a cada 15 s) | Observabilidade |
+| `slanko-grafana` | `slanko-prometheus` | PromQL | Painéis |
+| GitHub Actions | código do repositório | Pipeline CI | Lint, typecheck, testes com cobertura, build e integração com MySQL |
+| GitHub Actions | SonarCloud | Integração CI | Quality Gate e cobertura |
 
 ### Decisão de empacotamento
 
-* Um único contêiner de aplicação (`slanko-app`) reduz complexidade no MVP acadêmico e mantém domínio técnico sobre a infraestrutura (Docker), evitando plataformas só de frontend.
+* Um único contêiner de aplicação (`slanko-app`) reduz complexidade no MVP acadêmico e mantém domínio técnico sobre a infraestrutura (Docker), evitando plataformas só de frontend. Ele fica no perfil `app` do compose (`npm run app:up`) e aplica as migrations ao iniciar.
 * Banco separado (`slanko-db`) garante persistência relacional real (MySQL), conforme a linha Web Apps.
+* `npm run db:up` sobe banco, Prometheus e Grafana; no desenvolvimento, o app roda fora do Docker com `npm run dev`.
 
 ---
 
-## Nível 3 - Componentes (visão inicial)
+## Nível 3 - Componentes
 
-Visão prevista da organização interna do `slanko-app`, alinhada à estrutura citada no relatório:
+Organização interna do `slanko-app`. Toda requisição à API passa pelo middleware antes de chegar às rotas; as rotas chamam services, que chamam repositories.
 
 ```text
-slanko-app
-├── components/      # Interface (UI)
-├── services/        # Regras de negócio (SLA, rentabilidade, chamados)
-├── repositories/    # Acesso a dados (Prisma)
-└── tests/           # Testes automatizados (TDD)
+Navegador ──> middleware.ts ──> app/api/*/route.ts ──> services/ ──> repositories/ ──> Prisma ──> MySQL
+              (JWT, perfil      (lê o corpo, checa      (regras de     (consultas)
+               no banco, CSP)    perfil, responde)        negócio)
 ```
 
-### Componentes lógicos previstos
-
-| Componente | Responsabilidade | Casos de uso / RF |
-|---|---|---|
-| Autenticação e autorização | Login JWT e controle por perfil (gestor / técnico) | UC01, RF01 |
-| Clientes e contratos | Cadastro e vínculo cliente-contrato | UC02, UC03, RF02, RF03 |
-| Chamados | Abertura, atribuição, horas e encerramento | UC05-UC08, RF04-RF07 |
-| SLA | Metas, cálculo de cumprimento e violações | UC04, UC09, RF08-RF10 |
-| Rentabilidade | Custo por horas, margem e alertas | UC10, UC11, RF11-RF14 |
-| Dashboard | Consolidação visual de indicadores | UC11, RF14 |
-
-Este nível será refinado com diagramas adicionais quando os módulos existirem no código.
+| Componente | Onde está | Responsabilidade | Casos de uso / RF |
+|---|---|---|---|
+| Segurança | `src/middleware.ts`, `auth.service`, `src/lib/auth/` | JWT, usuário ativo e perfil atual a cada requisição, CSP com nonce, limite de tentativas de login | UC01, RF01, RNF08 |
+| Clientes e contratos | `client.service`, `contract.service` | Cadastro, vigência, valor mensal e metas de SLA | UC02-UC04, RF02, RF03, RF08 |
+| Equipe | `user.service`, tela `/users` | Pessoas, perfil, custo/hora, desativação e senha | UC12, RF01, RF11 |
+| Chamados | `ticket.service`, `src/lib/tickets/` | Abertura, atribuição, observadores, situação, metas de SLA congeladas e exclusão restrita | UC05, UC06, UC08, UC15, RF04, RF05, RF07 |
+| Apontamentos | `time-entry.service` | Registro e correção de horas, custo/hora congelado, 1ª resposta | UC07, RF06, RF11 |
+| Histórico | `ticket-event.repository`, `src/lib/tickets/events.ts` | Evento imutável para cada alteração, gravado na mesma escrita | UC13, RF07 |
+| Anexos | `ticket-attachment.service`, `src/lib/attachments/` | Upload com checagem de tipo pelos bytes, limite de tamanho e volume `uploads` | UC14, RF04 |
+| SLA | `sla.service`, `src/lib/sla/` | Cumprimento, violações (inclusive prazos vencidos sem resposta) e alertas por contrato | UC09, RF09, RF10, RF13 |
+| Rentabilidade | `profitability.service`, `src/lib/profitability/` | Receita proporcional ao período, custo das horas e margem | UC10, RF11, RF12, RF13 |
+| Painel | `src/app/(app)/dashboard`, `src/lib/reports/` | Indicadores consolidados com filtros por situação, cliente, contrato e período | UC11, RF14 |
+| Observabilidade | `metrics.service`, `src/lib/observability/` | Saúde, métricas de negócio, erros da API e logins para o Prometheus | RNF07 |
 
 ---
 
@@ -127,20 +131,19 @@ Este nível será refinado com diagramas adicionais quando os módulos existirem
 | Requisito (RFC / Web Apps) | Como a arquitetura atende |
 |---|---|
 | Arquitetura definida | Cliente-servidor em camadas, documentada em C4 |
-| Modularidade | Separação components / services / repositories / tests |
+| Modularidade | Separação app (páginas e rotas) / services / repositories / lib / tests |
 | Persistência real | MySQL (`slanko-db`), sem SQLite/H2 |
-| CI/CD | GitHub Actions |
+| CI/CD | GitHub Actions: lint, typecheck, testes com cobertura, build, SonarCloud e integração com MySQL |
 | Análise estática | SonarCloud |
-| Observabilidade | Grafana e/ou Prometheus |
-| Segurança básica | JWT, perfis, validação de entradas, segredos em `.env` |
+| Observabilidade | Prometheus e Grafana, com métricas de saúde, de negócio, de erros e de login |
+| Segurança | JWT com perfil checado no banco a cada requisição, CSP com nonce, limite de login, validação de entradas, checagem de anexos, segredos em `.env` |
 
 ---
 
 ## Próximos passos de arquitetura
 
-1. Detalhar o nível de componentes com diagrama próprio após o scaffold.
-2. Publicar esta documentação também na Wiki do GitHub.
-3. Atualizar o diagrama de contêineres se o deploy local/produção mudar (ex.: reverse proxy).
+1. Atualizar o diagrama de contêineres se o deploy mudar (ex.: proxy reverso com HTTPS na frente do `slanko-app`).
+2. Republicar a Wiki (`scripts/publish-wiki.ps1`) sempre que esta documentação mudar.
 
 ## Referências
 
