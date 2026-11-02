@@ -1,7 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1480 980" width="1480" height="980" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1540 1040" width="1540" height="1040" role="img" aria-labelledby="title desc">
   <title id="title">Diagrama de Casos de Uso - Slanko</title>
-  <desc id="desc">Casos de uso do Slanko com associações ortogonais em corredores livres, sem atravessar balões. Gestor e Técnico podem registrar horas.</desc>
-
+  <desc id="desc">Casos de uso do Slanko (UC01 a UC15): exclusivos do gestor, compartilhados e exclusivos do técnico.</desc>
   <defs>
     <style>
       .bg { fill: #ffffff; }
@@ -11,102 +10,82 @@
       .uc { fill: #ffffff; stroke: #1e4e79; stroke-width: 2; }
       .uc-text { fill: #0f172a; font-family: Segoe UI, Arial, sans-serif; font-size: 12.5px; font-weight: 600; text-anchor: middle; dominant-baseline: middle; }
       .actor-label { fill: #0f172a; font-family: Segoe UI, Arial, sans-serif; font-size: 15px; font-weight: 700; text-anchor: middle; }
-      .assoc { stroke: #475569; stroke-width: 1.5; fill: none; }
-      .include { stroke: #94a3b8; stroke-width: 1.2; stroke-dasharray: 5 4; fill: none; }
-      .include-text { fill: #64748b; font-family: Segoe UI, Arial, sans-serif; font-size: 11px; font-style: italic; text-anchor: middle; }
-      .note { fill: #64748b; font-family: Segoe UI, Arial, sans-serif; font-size: 11px; }
-      .col-label { fill: #94a3b8; font-family: Segoe UI, Arial, sans-serif; font-size: 11px; text-anchor: middle; font-weight: 600; }
+      .assoc { stroke: #64748b; stroke-width: 1.5; fill: none; }
+      .note { fill: #64748b; font-family: Segoe UI, Arial, sans-serif; font-size: 12px; text-anchor: middle; }
+      .col-label { fill: #94a3b8; font-family: Segoe UI, Arial, sans-serif; font-size: 11px; text-anchor: middle; font-weight: 600; letter-spacing: 0.5px; }
     </style>
   </defs>
+  <rect class="bg" x="0" y="0" width="1540" height="1040"/>
+  <rect class="boundary" x="250" y="40" width="1040" height="960" rx="10"/>
+  <text class="boundary-title" x="770" y="72">Slanko</text>
+  <text class="subtitle" x="770" y="94">Sistema web de suporte técnico, SLA e rentabilidade</text>
+  <text class="col-label" x="430" y="128">GESTOR</text>
+  <text class="col-label" x="780" y="128">COMPARTILHADOS</text>
+  <text class="col-label" x="1110" y="128">TÉCNICO</text>
 
-  <rect class="bg" x="0" y="0" width="1480" height="980"/>
+  <!-- Associações do Gestor -->
+  <line class="assoc" x1="185" y1="180" x2="185" y2="880"/>
+  <line class="assoc" x1="125" y1="555" x2="185" y2="555"/>
+  <line class="assoc" x1="185" y1="180" x2="280" y2="180"/>
+  <line class="assoc" x1="185" y1="280" x2="280" y2="280"/>
+  <line class="assoc" x1="185" y1="380" x2="280" y2="380"/>
+  <line class="assoc" x1="185" y1="480" x2="280" y2="480"/>
+  <line class="assoc" x1="185" y1="580" x2="280" y2="580"/>
+  <line class="assoc" x1="185" y1="680" x2="280" y2="680"/>
+  <line class="assoc" x1="185" y1="780" x2="280" y2="780"/>
+  <line class="assoc" x1="185" y1="880" x2="280" y2="880"/>
+  <line class="assoc" x1="185" y1="230" x2="630" y2="230"/>
+  <line class="assoc" x1="185" y1="330" x2="630" y2="330"/>
+  <line class="assoc" x1="185" y1="430" x2="630" y2="430"/>
+  <line class="assoc" x1="185" y1="530" x2="630" y2="530"/>
+  <line class="assoc" x1="185" y1="630" x2="630" y2="630"/>
+  <line class="assoc" x1="185" y1="730" x2="630" y2="730"/>
 
-  <rect class="boundary" x="260" y="40" width="960" height="880" rx="10"/>
-  <text class="boundary-title" x="740" y="70">Slanko</text>
-  <text class="subtitle" x="740" y="90">Sistema web de suporte técnico, SLA e rentabilidade</text>
-
-  <text class="col-label" x="400" y="118">Gestor</text>
-  <text class="col-label" x="740" y="118">Compartilhados</text>
-  <text class="col-label" x="1080" y="118">Técnico</text>
-
-  <!--
-    Esquerda cx=400 | Centro cx=740 | Direita sem UC exclusivo
-    Corredor L = 570 | Corredor R = 910
-    Bus Gestor x=175 | Bus Técnico x=1305
-    Centro Y: UC01=155, UC05=290, UC07=420, UC08=550
-  -->
-
-  <line class="assoc" x1="175" y1="155" x2="175" y2="780"/>
-  <line class="assoc" x1="1305" y1="155" x2="1305" y2="550"/>
-
-  <line class="assoc" x1="115" y1="480" x2="175" y2="480"/>
-  <line class="assoc" x1="1365" y1="420" x2="1305" y2="420"/>
-
-  <!-- Gestor -> UCs da esquerda -->
-  <path class="assoc" d="M175,200 H272"/>
-  <path class="assoc" d="M175,300 H272"/>
-  <path class="assoc" d="M175,400 H265"/>
-  <path class="assoc" d="M175,500 H272"/>
-  <path class="assoc" d="M175,600 H265"/>
-  <path class="assoc" d="M175,700 H265"/>
-  <path class="assoc" d="M175,780 H272"/>
-
-  <!-- Gestor -> compartilhados (topo y=140 + corredor 570) -->
-  <path class="assoc" d="M175,155 H612"/>
-  <path class="assoc" d="M175,200 V140 H570 V290 H612"/>
-  <path class="assoc" d="M175,420 V140 H570 V420 H612"/>
-  <path class="assoc" d="M175,550 V140 H570 V550 H612"/>
-
-  <!-- Técnico -> compartilhados (corredor 910) -->
-  <path class="assoc" d="M1305,155 H868"/>
-  <path class="assoc" d="M1305,250 V250 H910 V290 H868"/>
-  <path class="assoc" d="M1305,420 H910 V420 H868"/>
-  <path class="assoc" d="M1305,550 H910 V550 H868"/>
-
-  <!-- Includes -->
-  <path class="include" d="M400,170 V128 H700 V125"/>
-  <text class="include-text" x="550" y="122">&lt;&lt;include&gt;&gt;</text>
-  <path class="include" d="M740,260 V200"/>
-  <text class="include-text" x="792" y="232">&lt;&lt;include&gt;&gt;</text>
-  <path class="include" d="M740,390 V340"/>
-  <text class="include-text" x="792" y="368">&lt;&lt;include&gt;&gt;</text>
+  <!-- Associações do Técnico -->
+  <line class="assoc" x1="1370" y1="230" x2="1370" y2="830"/>
+  <line class="assoc" x1="1370" y1="580" x2="1425" y2="580"/>
+  <line class="assoc" x1="1370" y1="230" x2="930" y2="230"/>
+  <line class="assoc" x1="1370" y1="330" x2="930" y2="330"/>
+  <line class="assoc" x1="1370" y1="430" x2="930" y2="430"/>
+  <line class="assoc" x1="1370" y1="530" x2="930" y2="530"/>
+  <line class="assoc" x1="1370" y1="630" x2="930" y2="630"/>
+  <line class="assoc" x1="1370" y1="730" x2="930" y2="730"/>
+  <line class="assoc" x1="1370" y1="830" x2="1260" y2="830"/>
 
   <!-- Balões -->
-  <ellipse class="uc" cx="740" cy="155" rx="128" ry="30"/>
-  <text class="uc-text" x="740" y="155">UC01 Autenticar no sistema</text>
-
-  <ellipse class="uc" cx="400" cy="200" rx="128" ry="30"/>
-  <text class="uc-text" x="400" y="200">UC02 Gerenciar clientes</text>
-
-  <ellipse class="uc" cx="400" cy="300" rx="128" ry="30"/>
-  <text class="uc-text" x="400" y="300">UC03 Gerenciar contratos</text>
-
-  <ellipse class="uc" cx="400" cy="400" rx="135" ry="30"/>
-  <text class="uc-text" x="400" y="400">UC04 Configurar metas de SLA</text>
-
-  <ellipse class="uc" cx="400" cy="500" rx="128" ry="30"/>
-  <text class="uc-text" x="400" y="500">UC06 Atribuir chamado</text>
-
-  <ellipse class="uc" cx="400" cy="600" rx="135" ry="30"/>
-  <text class="uc-text" x="400" y="600">UC09 Consultar painel de SLA</text>
-
-  <ellipse class="uc" cx="400" cy="700" rx="135" ry="30"/>
-  <text class="uc-text" x="400" y="700">UC10 Consultar rentabilidade</text>
-
-  <ellipse class="uc" cx="400" cy="780" rx="128" ry="30"/>
-  <text class="uc-text" x="400" y="780">UC11 Visualizar dashboard</text>
-
-  <ellipse class="uc" cx="740" cy="290" rx="128" ry="30"/>
-  <text class="uc-text" x="740" y="290">UC05 Abrir chamado</text>
-
-  <ellipse class="uc" cx="740" cy="420" rx="128" ry="30"/>
-  <text class="uc-text" x="740" y="420">UC07 Registrar horas</text>
-
-  <ellipse class="uc" cx="740" cy="550" rx="128" ry="30"/>
-  <text class="uc-text" x="740" y="550">UC08 Encerrar chamado</text>
+  <ellipse class="uc" cx="430" cy="180" rx="150" ry="30"/>
+  <text class="uc-text" x="430" y="180">UC02 Gerenciar clientes</text>
+  <ellipse class="uc" cx="430" cy="280" rx="150" ry="30"/>
+  <text class="uc-text" x="430" y="280">UC03 Gerenciar contratos</text>
+  <ellipse class="uc" cx="430" cy="380" rx="150" ry="30"/>
+  <text class="uc-text" x="430" y="380">UC04 Configurar metas de SLA</text>
+  <ellipse class="uc" cx="430" cy="480" rx="150" ry="30"/>
+  <text class="uc-text" x="430" y="480">UC06 Atribuir chamado</text>
+  <ellipse class="uc" cx="430" cy="580" rx="150" ry="30"/>
+  <text class="uc-text" x="430" y="580">UC09 Consultar painel de SLA</text>
+  <ellipse class="uc" cx="430" cy="680" rx="150" ry="30"/>
+  <text class="uc-text" x="430" y="680">UC10 Consultar rentabilidade</text>
+  <ellipse class="uc" cx="430" cy="780" rx="150" ry="30"/>
+  <text class="uc-text" x="430" y="780">UC11 Visualizar dashboard</text>
+  <ellipse class="uc" cx="430" cy="880" rx="150" ry="30"/>
+  <text class="uc-text" x="430" y="880">UC12 Gerenciar equipe e custo/hora</text>
+  <ellipse class="uc" cx="780" cy="230" rx="150" ry="30"/>
+  <text class="uc-text" x="780" y="230">UC01 Autenticar no sistema</text>
+  <ellipse class="uc" cx="780" cy="330" rx="150" ry="30"/>
+  <text class="uc-text" x="780" y="330">UC05 Abrir chamado</text>
+  <ellipse class="uc" cx="780" cy="430" rx="150" ry="30"/>
+  <text class="uc-text" x="780" y="430">UC07 Registrar e corrigir horas</text>
+  <ellipse class="uc" cx="780" cy="530" rx="150" ry="30"/>
+  <text class="uc-text" x="780" y="530">UC08 Encerrar chamado</text>
+  <ellipse class="uc" cx="780" cy="630" rx="150" ry="30"/>
+  <text class="uc-text" x="780" y="630">UC13 Consultar histórico do chamado</text>
+  <ellipse class="uc" cx="780" cy="730" rx="150" ry="30"/>
+  <text class="uc-text" x="780" y="730">UC14 Anexar arquivos ao chamado</text>
+  <ellipse class="uc" cx="1110" cy="830" rx="150" ry="30"/>
+  <text class="uc-text" x="1110" y="830">UC15 Assumir chamado sem responsável</text>
 
   <!-- Atores -->
-  <g transform="translate(95, 480)">
+  <g transform="translate(100, 559)">
     <circle cx="0" cy="-42" r="18" fill="#ffffff" stroke="#0f172a" stroke-width="2.2"/>
     <line x1="0" y1="-24" x2="0" y2="22" stroke="#0f172a" stroke-width="2.2"/>
     <line x1="-24" y1="-4" x2="24" y2="-4" stroke="#0f172a" stroke-width="2.2"/>
@@ -114,8 +93,7 @@
     <line x1="0" y1="22" x2="20" y2="52" stroke="#0f172a" stroke-width="2.2"/>
     <text class="actor-label" y="78">Gestor</text>
   </g>
-
-  <g transform="translate(1385, 420)">
+  <g transform="translate(1450, 584)">
     <circle cx="0" cy="-42" r="18" fill="#ffffff" stroke="#0f172a" stroke-width="2.2"/>
     <line x1="0" y1="-24" x2="0" y2="22" stroke="#0f172a" stroke-width="2.2"/>
     <line x1="-24" y1="-4" x2="24" y2="-4" stroke="#0f172a" stroke-width="2.2"/>
@@ -124,4 +102,6 @@
     <text class="actor-label" y="78">Técnico</text>
   </g>
 
+  <text class="note" x="770" y="950">Todos os casos de uso incluem UC01 (autenticação e perfil).</text>
+  <text class="note" x="770" y="970">UC15 é a forma restrita do UC06: o técnico só assume para si um chamado ainda sem responsável.</text>
 </svg>

@@ -6,7 +6,8 @@ Modelo relacional do banco MySQL do Slanko, alinhado ao [RFC](RFC.md), aos [caso
 
 * Banco: **MySQL** (persistência relacional real).
 * Acesso: **Prisma** (ORM) na camada de dados.
-* Metas de SLA ficam no **contrato** (`response_minutes`, `resolution_minutes`) no MVP. Se no futuro for necessário histórico de alteração de metas, extrai-se uma tabela `SlaRule`.
+* Metas de SLA são definidas no **contrato** (`response_minutes`, `resolution_minutes`) e **copiadas para o chamado** na abertura. Assim, mudar a meta do contrato não reescreve o SLA de chamados antigos, sem precisar de uma tabela própria de regras.
+* O custo/hora segue a mesma ideia: fica no usuário e é copiado para cada apontamento.
 * Horas trabalhadas ficam em `TimeEntry`, vinculadas ao chamado e ao usuário que apontou (gestor ou técnico).
 * Nomes de tabelas no banco em `snake_case` (padrão Prisma/MySQL); no código TypeScript usam-se modelos em `PascalCase`.
 
@@ -39,13 +40,20 @@ Modelo relacional do banco MySQL do Slanko, alinhado ao [RFC](RFC.md), aos [caso
 | User → TimeEntry | 1:N | Um usuário registra vários apontamentos |
 | Ticket → TicketEvent | 1:N | Cada alteração do chamado gera um evento imutável |
 | User → TicketEvent | 1:N | Autor de cada evento do histórico |
+| Ticket ↔ User (observadores) | N:N | Resolvido pela tabela `ticket_observers` |
+| Ticket → TicketAttachment | 1:N | Um chamado recebe vários anexos |
+| User → TicketAttachment | 1:N | Quem enviou cada anexo |
 
 ```text
 User 1 ──< Ticket (opened_by)
 User 1 ──< Ticket (assigned_to)   [opcional até a atribuição]
-Client 1 ──< Contract 1 ──< Ticket 1 ──< TimeEntry
-User 1 ──< TimeEntry
+Client 1 ──< Contract 1 ──< Ticket 1 ──< TimeEntry >── 1 User
+Ticket 1 ──< TicketObserver >── 1 User
+Ticket 1 ──< TicketAttachment >── 1 User (uploaded_by)
+Ticket 1 ──< TicketEvent >── 1 User (actor)
 ```
+
+Observadores, anexos e eventos são apagados junto com o chamado (`ON DELETE CASCADE`), o que só acontece na exclusão de chamado aberto por engano.
 
 ## Dicionário de dados
 
@@ -144,18 +152,45 @@ User 1 ──< TimeEntry
 | Campo | Tipo | Nulo | Descrição |
 |---|---|---|---|
 | id | CHAR(36) / UUID | não | Identificador |
+| sequence | INT | não | Auto incremento (único); ordem de gravação dos eventos |
 | ticket_id | CHAR(36) | não | FK → `tickets.id` |
 | actor_id | CHAR(36) | não | FK → `users.id` (quem fez a alteração) |
-| type | ENUM(`CREATED`,`UPDATED`,`STATUS_CHANGED`,`ASSIGNEE_CHANGED`,`OBSERVERS_CHANGED`,`TIME_LOGGED`,`ATTACHMENT_ADDED`,`ATTACHMENT_REMOVED`) | não | Tipo do evento |
+| type | ENUM(`CREATED`,`UPDATED`,`STATUS_CHANGED`,`ASSIGNEE_CHANGED`,`OBSERVERS_CHANGED`,`TIME_LOGGED`,`TIME_UPDATED`,`TIME_DELETED`,`ATTACHMENT_ADDED`,`ATTACHMENT_REMOVED`) | não | Tipo do evento |
 | data | JSON | sim | Detalhes (valores antes/depois, minutos apontados, arquivo) |
 | created_at | DATETIME | não | Momento do evento |
 
-Índice: (`ticket_id`, `created_at`). `sequence` (auto incremento, único) garante a ordem dos eventos gravados na mesma alteração. Os eventos são gravados na mesma escrita/transação da alteração que descrevem.
+Índices: único em `sequence`; (`ticket_id`, `created_at`). Eventos da mesma alteração têm o mesmo horário, por isso a ordem vem de `sequence`. Os eventos são gravados na mesma escrita/transação da alteração que descrevem.
+
+### `ticket_observers`
+
+| Campo | Tipo | Nulo | Descrição |
+|---|---|---|---|
+| ticket_id | CHAR(36) | não | FK → `tickets.id` |
+| user_id | CHAR(36) | não | FK → `users.id` (observador) |
+| created_at | DATETIME | não | Quando passou a observar |
+
+Chave primária composta (`ticket_id`, `user_id`): a mesma pessoa não observa o chamado duas vezes. Observadores são definidos pelo gestor (UC06).
+
+### `ticket_attachments`
+
+| Campo | Tipo | Nulo | Descrição |
+|---|---|---|---|
+| id | CHAR(36) / UUID | não | Identificador |
+| ticket_id | CHAR(36) | não | FK → `tickets.id` |
+| uploaded_by_id | CHAR(36) | não | FK → `users.id` (quem enviou) |
+| kind | ENUM(`IMAGE`,`VIDEO`) | não | Tipo do anexo |
+| file_name | VARCHAR(191) | não | Nome original do arquivo |
+| mime_type | VARCHAR(191) | não | Tipo do conteúdo, conferido pelos primeiros bytes do arquivo |
+| size_bytes | INT | não | Tamanho (imagem até 5 MB, vídeo até 50 MB) |
+| storage_key | VARCHAR(191) | não | Nome do arquivo no volume `uploads` |
+| created_at | DATETIME | não | Envio |
+
+Índice: `ticket_id`. O arquivo fica no volume `uploads`; o banco guarda só os metadados. Máximo de 10 anexos por chamado.
 
 ## Regras de negócio derivadas do modelo
 
 ### SLA
-* Meta de resposta e resolução vêm do `contracts.response_minutes` e `contracts.resolution_minutes`.
+* Meta de resposta e resolução são as do chamado (`tickets.response_minutes` e `tickets.resolution_minutes`), copiadas do contrato na abertura.
 * O relógio começa na abertura (`opened_at`). A 1ª resposta (`first_response_at`) é o início do atendimento: o chamado sai de `OPEN` (andamento, aguardando, resolvido ou encerrado) ou recebe o 1º apontamento de tempo. Atribuir responsável sozinho não conta (mesmo critério de Zendesk, Jira Service Management e Freshdesk).
 * Cumprimento de resposta: diferença entre `tickets.first_response_at` e `tickets.opened_at`.
 * Cumprimento de resolução: diferença entre `tickets.resolved_at` (ou `closed_at`, se encerrado sem passar por resolvido) e `tickets.opened_at`.
@@ -189,142 +224,20 @@ User 1 ──< TimeEntry
 
 | Entidade | Casos de uso | Requisitos |
 |---|---|---|
-| User | UC01 | RF01 |
+| User | UC01, UC12 | RF01, RF11 |
 | Client | UC02 | RF02 |
 | Contract | UC03, UC04 | RF03, RF08 |
-| Ticket | UC05, UC06, UC08, UC09 | RF04, RF05, RF07, RF09, RF10 |
+| Ticket | UC05, UC06, UC08, UC09, UC15 | RF04, RF05, RF07, RF09, RF10 |
 | TimeEntry | UC07, UC10 | RF06, RF11, RF12 |
+| TicketEvent | UC13 | RF07 |
+| TicketObserver | UC06 | RF05 |
+| TicketAttachment | UC14 | RF04 |
 
-## Esboço Prisma (referência futura)
+## Schema Prisma
 
-```prisma
-enum Role {
-  GESTOR
-  TECNICO
-}
-
-enum ContractStatus {
-  DRAFT
-  ACTIVE
-  SUSPENDED
-  FINISHED
-}
-
-enum TicketPriority {
-  LOW
-  MEDIUM
-  HIGH
-  CRITICAL
-}
-
-enum TicketStatus {
-  OPEN
-  IN_PROGRESS
-  WAITING
-  RESOLVED
-  CLOSED
-}
-
-model User {
-  id           String   @id @default(uuid())
-  name         String
-  email        String   @unique
-  passwordHash String   @map("password_hash")
-  role         Role
-  hourlyCost   Decimal  @map("hourly_cost") @db.Decimal(10, 2)
-  active       Boolean  @default(true)
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
-
-  openedTickets   Ticket[]    @relation("TicketOpenedBy")
-  assignedTickets Ticket[]    @relation("TicketAssignedTo")
-  timeEntries     TimeEntry[]
-
-  @@map("users")
-}
-
-model Client {
-  id        String     @id @default(uuid())
-  name      String
-  document  String?
-  email     String?
-  phone     String?
-  active    Boolean    @default(true)
-  createdAt DateTime   @default(now()) @map("created_at")
-  updatedAt DateTime   @updatedAt @map("updated_at")
-  contracts Contract[]
-
-  @@map("clients")
-}
-
-model Contract {
-  id                String         @id @default(uuid())
-  clientId          String         @map("client_id")
-  code              String         @unique
-  title             String
-  description       String?        @db.Text
-  value             Decimal        @db.Decimal(12, 2)
-  startDate         DateTime       @map("start_date") @db.Date
-  endDate           DateTime?      @map("end_date") @db.Date
-  status            ContractStatus @default(DRAFT)
-  responseMinutes   Int            @map("response_minutes")
-  resolutionMinutes Int            @map("resolution_minutes")
-  createdAt         DateTime       @default(now()) @map("created_at")
-  updatedAt         DateTime       @updatedAt @map("updated_at")
-
-  client  Client   @relation(fields: [clientId], references: [id])
-  tickets Ticket[]
-
-  @@map("contracts")
-}
-
-model Ticket {
-  id             String         @id @default(uuid())
-  contractId     String         @map("contract_id")
-  openedById     String         @map("opened_by_id")
-  assignedToId   String?        @map("assigned_to_id")
-  title          String
-  description    String         @db.Text
-  priority       TicketPriority
-  category       String
-  status         TicketStatus   @default(OPEN)
-  openedAt       DateTime       @map("opened_at")
-  firstResponseAt DateTime?     @map("first_response_at")
-  resolvedAt     DateTime?      @map("resolved_at")
-  closedAt       DateTime?      @map("closed_at")
-  solution       String?        @db.Text
-  createdAt      DateTime       @default(now()) @map("created_at")
-  updatedAt      DateTime       @updatedAt @map("updated_at")
-
-  contract    Contract    @relation(fields: [contractId], references: [id])
-  openedBy    User        @relation("TicketOpenedBy", fields: [openedById], references: [id])
-  assignedTo  User?       @relation("TicketAssignedTo", fields: [assignedToId], references: [id])
-  timeEntries TimeEntry[]
-
-  @@map("tickets")
-}
-
-model TimeEntry {
-  id        String   @id @default(uuid())
-  ticketId  String   @map("ticket_id")
-  userId    String   @map("user_id")
-  hours     Decimal  @db.Decimal(6, 2)
-  note      String?
-  workedAt  DateTime @map("worked_at")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  ticket Ticket @relation(fields: [ticketId], references: [id])
-  user   User   @relation(fields: [userId], references: [id])
-
-  @@map("time_entries")
-}
-```
-
-Este bloco foi materializado em `prisma/schema.prisma` na branch de setup do banco.
+O schema completo, com enums, índices e relações, está em [`prisma/schema.prisma`](../prisma/schema.prisma). As migrations ficam em `prisma/migrations/` e o seed de demonstração em `prisma/seed.js`.
 
 ## Próximos passos técnicos
 
-1. Scaffold Next.js consumindo o Prisma Client.
-2. Implementar autenticação e APIs de negócio.
-3. Evoluir seeds e testes de integração.
+1. Se as metas de SLA passarem a variar por prioridade, criar uma tabela de metas por contrato e prioridade (o chamado continua guardando a meta copiada).
+2. Manter este documento e o DER atualizados a cada nova migration.
