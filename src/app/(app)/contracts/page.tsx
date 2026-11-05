@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent } from "react";
 import { apiRequest, ApiClientError } from "@/lib/client/api";
-import { formatMoneyBRL, maskMoneyInput, parseMoneyInput } from "@/lib/client/format";
+import { describeContractTerm } from "@/lib/client/contract-term";
+import { formatDateBR, formatMoneyBRL, maskMoneyInput, parseMoneyInput } from "@/lib/client/format";
 import {
   contractStatusBadgeClass,
   labelContractStatus,
@@ -16,7 +17,10 @@ import { nextSortState, SortHeader, type SortDir } from "../sort-header";
 
 type ClientsPayload = { clients: PublicClient[] };
 type ContractsPayload = { contracts: PublicContract[] };
-type SortKey = "client" | "code" | "title" | "value" | "sla" | "status";
+type SortKey = "client" | "code" | "title" | "value" | "term" | "sla" | "status";
+
+/** Contrato sem data de fim conta como o mais distante na ordenação por vigência. */
+const NO_END_DATE = "9999-12-31";
 
 const CONTRACT_STATUSES = [
   { value: "DRAFT", label: "Rascunho" },
@@ -37,6 +41,7 @@ const SORT_DEFAULT_DIR: Record<SortKey, SortDir> = {
   code: "asc",
   title: "asc",
   value: "desc",
+  term: "asc",
   sla: "asc",
   status: "asc",
 };
@@ -46,6 +51,7 @@ const SORT_HINT: Record<SortKey, { asc: string; desc: string }> = {
   code: { asc: "Ordenar A–Z", desc: "Ordenar Z–A" },
   title: { asc: "Ordenar A–Z", desc: "Ordenar Z–A" },
   value: { asc: "Ordenar menor → maior valor", desc: "Ordenar maior → menor valor" },
+  term: { asc: "Ordenar fim mais próximo → mais distante", desc: "Ordenar fim mais distante → mais próximo" },
   sla: { asc: "Ordenar prazo mais curto → mais longo", desc: "Ordenar prazo mais longo → mais curto" },
   status: { asc: "Ordenar ativo → finalizado", desc: "Ordenar finalizado → ativo" },
 };
@@ -60,6 +66,8 @@ export default function ContractsPage() {
   const [title, setTitle] = useState("");
   const [value, setValue] = useState(formatMoneyBRL(4500));
   const [startDate, setStartDate] = useState("2026-01-01");
+  const [endDate, setEndDate] = useState("");
+  const [description, setDescription] = useState("");
   const [status, setStatus] = useState("ACTIVE");
   const [responseMinutes, setResponseMinutes] = useState("60");
   const [resolutionMinutes, setResolutionMinutes] = useState("480");
@@ -109,6 +117,9 @@ export default function ContractsPage() {
         case "value":
           cmp = Number(a.value) - Number(b.value);
           break;
+        case "term":
+          cmp = (a.endDate ?? NO_END_DATE).localeCompare(b.endDate ?? NO_END_DATE);
+          break;
         case "sla":
           cmp =
             a.responseMinutes + a.resolutionMinutes - (b.responseMinutes + b.resolutionMinutes);
@@ -126,6 +137,9 @@ export default function ContractsPage() {
 
     return rows;
   }, [contracts, search, sortKey, sortDir, clientNameById, clientName]);
+
+  const now = new Date();
+  const expiredCount = contracts.filter((contract) => describeContractTerm(contract, now).expired).length;
 
   function toggleSort(key: SortKey) {
     const next = nextSortState(sortKey, sortDir, key, SORT_DEFAULT_DIR[key]);
@@ -172,6 +186,8 @@ export default function ContractsPage() {
     setTitle("");
     setValue(formatMoneyBRL(4500));
     setStartDate("2026-01-01");
+    setEndDate("");
+    setDescription("");
     setStatus("ACTIVE");
     setResponseMinutes("60");
     setResolutionMinutes("480");
@@ -196,6 +212,8 @@ export default function ContractsPage() {
     setTitle("");
     setValue(formatMoneyBRL(4500));
     setStartDate("2026-01-01");
+    setEndDate("");
+    setDescription("");
     setStatus("ACTIVE");
     setResponseMinutes("60");
     setResolutionMinutes("480");
@@ -213,6 +231,8 @@ export default function ContractsPage() {
     setTitle(contract.title);
     setValue(formatMoneyBRL(contract.value));
     setStartDate(contract.startDate);
+    setEndDate(contract.endDate ?? "");
+    setDescription(contract.description ?? "");
     setStatus(contract.status);
     setResponseMinutes(String(contract.responseMinutes));
     setResolutionMinutes(String(contract.resolutionMinutes));
@@ -233,12 +253,21 @@ export default function ContractsPage() {
       return;
     }
 
+    // Datas no formato AAAA-MM-DD: a comparação de texto segue a ordem do calendário.
+    if (endDate && endDate < startDate) {
+      setFormError("O fim da vigência não pode ser antes do início.");
+      setSaving(false);
+      return;
+    }
+
     const payload = {
       clientId,
       code,
       title,
+      description: description.trim() || null,
       value: parsedValue,
       startDate,
+      endDate: endDate || null,
       status,
       responseMinutes: Number(responseMinutes),
       resolutionMinutes: Number(resolutionMinutes),
@@ -313,6 +342,15 @@ export default function ContractsPage() {
       </header>
 
       {error ? <div className="error-banner">{error}</div> : null}
+
+      {expiredCount > 0 ? (
+        <div className="warn-banner" role="status">
+          {expiredCount === 1
+            ? "1 contrato ativo está com a vigência vencida."
+            : `${expiredCount} contratos ativos estão com a vigência vencida.`}{" "}
+          Eles não recebem chamados novos: finalize ou renove (estenda o fim da vigência).
+        </div>
+      ) : null}
 
       <section className={`${styles.listPanel} panel`}>
         <div className={styles.listToolbar}>
@@ -390,6 +428,17 @@ export default function ContractsPage() {
                   </th>
                   <th>
                     <SortHeader
+                      label="Vigência"
+                      active={sortKey === "term"}
+                      sortDir={sortDir}
+                      defaultDir={SORT_DEFAULT_DIR.term}
+                      hintAsc={SORT_HINT.term.asc}
+                      hintDesc={SORT_HINT.term.desc}
+                      onToggle={() => toggleSort("term")}
+                    />
+                  </th>
+                  <th>
+                    <SortHeader
                       label="SLA"
                       active={sortKey === "sla"}
                       sortDir={sortDir}
@@ -414,47 +463,63 @@ export default function ContractsPage() {
                 </tr>
               </thead>
               <tbody>
-                {listedContracts.map((contract) => (
-                  <tr key={contract.id}>
-                    <td>
-                      <strong>{clientName(contract.clientId)}</strong>
-                    </td>
-                    <td>{contract.code}</td>
-                    <td>{contract.title}</td>
-                    <td>{formatMoneyBRL(contract.value)}</td>
-                    <td>
-                      Resposta {contract.responseMinutes} min / Resolução{" "}
-                      {contract.resolutionMinutes} min
-                    </td>
-                    <td>
-                      <span className={contractStatusBadgeClass(contract.status)}>
-                        {labelContractStatus(contract.status)}
-                      </span>
-                    </td>
-                    <td>
-                      <div className={styles.actions}>
-                        <button
-                          type="button"
-                          className={styles.iconBtn}
-                          onClick={() => startEdit(contract)}
-                          title="Editar informações do contrato"
-                          aria-label="Editar informações do contrato"
-                        >
-                          <EditIcon />
-                        </button>
-                        <button
-                          type="button"
-                          className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
-                          onClick={() => void removeContract(contract)}
-                          title="Excluir contrato"
-                          aria-label="Excluir contrato"
-                        >
-                          <TrashIcon />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {listedContracts.map((contract) => {
+                  const term = describeContractTerm(contract, now);
+
+                  return (
+                    <tr key={contract.id}>
+                      <td>
+                        <strong>{clientName(contract.clientId)}</strong>
+                      </td>
+                      <td>{contract.code}</td>
+                      <td>{contract.title}</td>
+                      <td>{formatMoneyBRL(contract.value)}</td>
+                      <td>
+                        {term.range}
+                        <div className="muted">{term.detail}</div>
+                      </td>
+                      <td>
+                        Resposta {contract.responseMinutes} min / Resolução{" "}
+                        {contract.resolutionMinutes} min
+                      </td>
+                      <td>
+                        <span className={contractStatusBadgeClass(contract.status)}>
+                          {labelContractStatus(contract.status)}
+                        </span>{" "}
+                        {term.expired ? (
+                          <span
+                            className="badge badge-warn"
+                            title={`A vigência terminou em ${formatDateBR(contract.endDate)}. Finalize ou renove o contrato.`}
+                          >
+                            Vencido
+                          </span>
+                        ) : null}
+                      </td>
+                      <td>
+                        <div className={styles.actions}>
+                          <button
+                            type="button"
+                            className={styles.iconBtn}
+                            onClick={() => startEdit(contract)}
+                            title="Editar informações do contrato"
+                            aria-label="Editar informações do contrato"
+                          >
+                            <EditIcon />
+                          </button>
+                          <button
+                            type="button"
+                            className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
+                            onClick={() => void removeContract(contract)}
+                            title="Excluir contrato"
+                            aria-label="Excluir contrato"
+                          >
+                            <TrashIcon />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -538,6 +603,17 @@ export default function ContractsPage() {
                   />
                 </div>
                 <div className="field">
+                  <label htmlFor="endDate">Fim da vigência (opcional)</label>
+                  <input
+                    id="endDate"
+                    type="date"
+                    min={startDate}
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                  />
+                  <p className="muted">Em branco, o contrato vale sem data de fim.</p>
+                </div>
+                <div className="field">
                   <label htmlFor="status">Situação</label>
                   <select id="status" value={status} onChange={(e) => setStatus(e.target.value)}>
                     {CONTRACT_STATUSES.map((item) => (
@@ -567,6 +643,16 @@ export default function ContractsPage() {
                     value={resolutionMinutes}
                     onChange={(e) => setResolutionMinutes(e.target.value)}
                     required
+                  />
+                </div>
+                <div className={`field ${styles.full}`}>
+                  <label htmlFor="description">Descrição (opcional)</label>
+                  <textarea
+                    id="description"
+                    rows={3}
+                    placeholder="Escopo do contrato: o que está incluído no suporte"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
                   />
                 </div>
               </div>

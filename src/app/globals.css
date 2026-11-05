@@ -348,6 +348,17 @@ table.data .cell-num {
   font-weight: 500;
 }
 
+.warn-banner {
+  background: var(--warn-soft);
+  color: var(--warn);
+  border: 1px solid #ecd6ad;
+  border-left: 3px solid var(--warn);
+  border-radius: var(--radius-control);
+  padding: 0.65rem 0.85rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
 .empty-state {
   padding: 2.25rem 1rem;
   text-align: center;
