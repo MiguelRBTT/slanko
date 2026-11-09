@@ -24,6 +24,7 @@ Sistema web para gestão de contratos de suporte técnico com análise de SLA e 
 * [Identidade visual](#identidade-visual)
 * [Status de implementação](#status-de-implementação)
 * [Instruções de execução](#instruções-de-execução)
+* [Resultados dos testes](#resultados-dos-testes)
 * [Próximos passos](#próximos-passos)
 * [Referências](#referências)
 
@@ -487,6 +488,8 @@ Escopos em `vitest.coverage.ts`. Testes de UI em `tests/frontend/` (jsdom + Test
 
 **Typecheck:** `npm run typecheck` checa o projeto inteiro, inclusive os testes (o `next build` só checa `src/`).
 
+Resultado da última execução, com imagens: [Resultados dos testes](#resultados-dos-testes).
+
 ### CI (GitHub Actions)
 
 O workflow `.github/workflows/ci.yml` roda em todo push/PR para `main`:
@@ -568,6 +571,35 @@ O Prometheus coleta do `npm run dev` em HTTPS (job `slanko-app`) e do container 
 Arquivos: `docker/prometheus/`, `docker/grafana/provisioning/`, `src/lib/observability/metrics.ts`. Detalhes: [docs/wiki/Observabilidade.md](docs/wiki/Observabilidade.md).
 
 Limitações conhecidas: as métricas HTTP por rota (latência) não são coletadas, porque o Next.js não oferece um hook por requisição sem envolver cada rota; o contador de erros cobre as respostas de erro.
+
+---
+
+## Resultados dos testes
+
+Execução de 09/11/2026 na branch `main`. Todos os testes passam, e a cobertura fica acima do mínimo da linha Web Apps (RNF04: 75% no backend e 25% no frontend).
+
+| Suíte | Comando | Arquivos | Testes | Cobertura de linhas | Mínimo |
+|---|---|---|---|---|---|
+| Backend | `npm run test:coverage:backend` | 64 | 352 passando | 95,7% | 75% |
+| Frontend | `npm run test:coverage:frontend` | 14 | 63 passando | 82,3% | 25% |
+| Integração (MySQL real) | `npm run test:integration` | 2 | 9 passando | não se aplica | — |
+
+![Resultado dos testes do backend: 352 testes passando e 95,7% de cobertura](docs/assets/testes-backend.png)
+
+![Resultado dos testes do frontend: 63 testes passando e 82,3% de cobertura](docs/assets/testes-frontend.png)
+
+As imagens mostram a saída real do Vitest com o reporter `dot` (um ponto verde por teste aprovado). Os números por camada vêm dos relatórios da própria execução (resultado dos testes em JSON e resumo de cobertura).
+
+O que cada camada testa:
+
+* **Rotas da API:** status HTTP, formato das respostas e permissões de gestor e técnico, com o service simulado.
+* **Services:** as regras de negócio (marcos de SLA, atribuição, apontamentos, exclusão de chamados e histórico), com repositórios falsos.
+* **Repositories:** se a consulta enviada ao Prisma é a esperada.
+* **Cálculos e segurança:** SLA, receita proporcional, margem, JWT, limite de login, validação e regras de anexo, sem mocks.
+* **Telas:** login, painel, chamados, contratos e equipe renderizados com Testing Library, simulando digitação e cliques.
+* **Integração:** o fluxo completo até o MySQL, sem mocks (detalhes em [Testes](#testes)).
+
+Os mínimos de cobertura ficam em `vitest.config.ts` e `vitest.frontend.config.ts`: se a cobertura cair abaixo deles, o comando falha e o CI fica vermelho.
 
 ---
 
