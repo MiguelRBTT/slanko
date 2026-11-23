@@ -7,13 +7,21 @@ import { getSession, saveSession, type SessionUser } from "@/lib/client/auth-ses
 import type { LoginResult } from "@/types/auth";
 import styles from "./login.module.css";
 
+// Em desenvolvimento, o login já vem preenchido com o gestor do seed (agiliza testes e demonstração).
+// Em produção os campos começam vazios.
+const DEV_LOGIN =
+  process.env.NODE_ENV === "development"
+    ? { email: "gestor@slanko.local", password: "Slanko@123" }
+    : { email: "", password: "" };
+
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("gestor@slanko.local");
-  const [password, setPassword] = useState("Slanko@123");
+  const [email, setEmail] = useState(DEV_LOGIN.email);
+  const [password, setPassword] = useState(DEV_LOGIN.password);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Já logado: vai direto para a tela inicial do perfil (gestor: Painel; técnico: Chamados).
   useEffect(() => {
     const session = getSession();
 
@@ -34,6 +42,7 @@ export default function LoginPage() {
         body: { email, password },
       });
 
+      // Guarda token e usuário no navegador para as próximas requisições.
       saveSession({
         token: result.token,
         user: result.user as SessionUser,

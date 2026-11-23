@@ -10,8 +10,8 @@ type RouteContext = {
 
 export const runtime = "nodejs";
 
-// GET /api/tickets/:id/attachments
-// POST /api/tickets/:id/attachments (multipart: file)
+// GET /api/tickets/:id/attachments - lista os anexos do chamado.
+// POST /api/tickets/:id/attachments - envia um anexo (multipart, campo "file").
 
 export async function GET(request: Request, context: RouteContext) {
   try {

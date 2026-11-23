@@ -8,9 +8,9 @@ type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
-// GET /api/clients/:id - fetch client by id.
-// PUT /api/clients/:id - update client.
-// DELETE /api/clients/:id - deactivate client (soft delete).
+// GET /api/clients/:id - busca cliente pelo id.
+// PUT /api/clients/:id - atualiza cliente.
+// DELETE /api/clients/:id - desativa o cliente (exclusão lógica).
 
 export async function GET(request: Request, context: RouteContext) {
   try {

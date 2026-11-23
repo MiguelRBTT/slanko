@@ -5,6 +5,7 @@ export type ClientListFilters = {
   includeInactive?: boolean;
 };
 
+/** Acesso a dados de clientes (só Prisma, sem regra de negócio). Por padrão lista só os ativos. */
 export class ClientRepository {
   constructor(private readonly db: PrismaClient = prisma) {}
 

@@ -1,4 +1,4 @@
-﻿// Application-level errors mapped to HTTP status codes in API routes.
+﻿// Erros da aplicação: cada classe carrega o código HTTP que a rota devolve.
 
 export class AppError extends Error {
   constructor(

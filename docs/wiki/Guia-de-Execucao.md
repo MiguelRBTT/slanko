@@ -45,7 +45,7 @@ Crie as tabelas:
 npm run db:migrate
 ```
 
-Na primeira execução, confirme o nome da migração (ex.: `init`).
+As migrations já estão no repositório (`prisma/migrations/`): o comando só aplica as que faltam.
 
 Popule dados de exemplo:
 

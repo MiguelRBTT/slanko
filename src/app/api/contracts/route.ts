@@ -21,8 +21,8 @@ function parseStatusFilter(value: string | null): ContractStatus | undefined {
   return value as ContractStatus;
 }
 
-// GET /api/contracts - list contracts (JWT; gestor or tecnico; tecnico receives no contract value).
-// POST /api/contracts - create contract (gestor only).
+// GET /api/contracts - lista contratos (JWT; gestor ou técnico; o técnico não recebe o valor).
+// POST /api/contracts - cadastra contrato (só gestor).
 
 export async function GET(request: Request) {
   try {

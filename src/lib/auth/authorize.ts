@@ -27,6 +27,7 @@ export function requiresGestorRole(pathname: string): boolean {
   return GESTOR_ONLY_API_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 
+/** Rotas exclusivas do gestor são barradas aqui, ainda no middleware (403). */
 export function assertRoleAllowed(pathname: string, role: Role): void {
   if (requiresGestorRole(pathname) && role !== "GESTOR") {
     throw new ForbiddenError("Insufficient permissions");

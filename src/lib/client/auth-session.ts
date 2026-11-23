@@ -12,6 +12,7 @@ export type Session = {
   user: SessionUser;
 };
 
+// Sessão (token + dados do usuário) fica no localStorage do navegador.
 const STORAGE_KEY = "slanko.session";
 
 export function saveSession(session: Session): void {

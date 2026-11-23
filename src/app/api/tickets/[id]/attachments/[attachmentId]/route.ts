@@ -8,7 +8,7 @@ type RouteContext = {
 
 export const runtime = "nodejs";
 
-// DELETE /api/tickets/:id/attachments/:attachmentId
+// DELETE /api/tickets/:id/attachments/:attachmentId - remove o anexo.
 
 export async function DELETE(request: Request, context: RouteContext) {
   try {

@@ -16,7 +16,7 @@ import {
 } from "@/types/user";
 import { UserRepository, userRepository } from "@/repositories/user.repository";
 
-// Business rules for user management (passwords never leave this layer exposed).
+// Regras de usuários: perfil válido, senha de 8+ caracteres guardada só como hash e email único.
 
 const ROLES: Role[] = ["GESTOR", "TECNICO"];
 

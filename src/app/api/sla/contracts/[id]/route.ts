@@ -7,7 +7,7 @@ type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
-// GET /api/sla/contracts/:id - SLA report for a single contract (requires JWT; gestor only).
+// GET /api/sla/contracts/:id - relatório de SLA de um contrato (JWT; só gestor).
 
 export async function GET(request: Request, context: RouteContext) {
   try {

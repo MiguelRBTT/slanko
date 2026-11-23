@@ -8,6 +8,7 @@ import styles from "../page-shared.module.css";
 
 type EventsPayload = { events: PublicTicketEvent[] };
 
+/** Linha do tempo do chamado (RF07): busca os eventos e descreve cada um em português. */
 export function TicketHistory({
   ticketId,
   userName,

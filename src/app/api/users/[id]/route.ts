@@ -9,8 +9,8 @@ type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
-// GET /api/users/:id - fetch a single active user by id (no hourly cost for tecnico).
-// PUT /api/users/:id - update user data, hourly cost, status or password (gestor only).
+// GET /api/users/:id - busca um usuário ativo pelo id (o técnico não recebe o custo/hora).
+// PUT /api/users/:id - atualiza dados, custo/hora, situação ou senha (só gestor).
 
 export async function GET(request: Request, context: RouteContext) {
   try {

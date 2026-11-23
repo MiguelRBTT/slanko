@@ -37,6 +37,7 @@ function parseOptionalContractStatus(value: unknown): ContractStatus | undefined
   return parseContractStatus(value);
 }
 
+/** Regras de contrato (RF03): cliente ativo, vigência válida, código único e exclusão só sem chamados. */
 export class ContractService {
   constructor(
     private readonly contracts: ContractRepository = contractRepository,
@@ -63,8 +64,10 @@ export class ContractService {
 
   async createContract(input: CreateContractInput): Promise<PublicContract> {
     const clientId = requireNonEmptyString(input.clientId, "clientId");
+    // Contrato só pode ser criado para cliente ativo.
     await this.ensureActiveClient(clientId);
 
+    // Fim da vigência é opcional (contrato sem prazo), mas nunca antes do início.
     const startDate = parseDateOnly(input.startDate, "startDate");
     const endDate = parseOptionalDateOnly(input.endDate, "endDate") ?? null;
     assertEndDateAfterStartDate(startDate, endDate);
@@ -78,13 +81,16 @@ export class ContractService {
         value: parsePositiveNumber(input.value, "value"),
         startDate,
         endDate,
+        // Sem situação informada, o contrato nasce como rascunho (fora dos relatórios).
         status: parseOptionalContractStatus(input.status) ?? "DRAFT",
+        // Metas de SLA em minutos (RF08); cada chamado novo copia (congela) esses valores.
         responseMinutes: parsePositiveInteger(input.responseMinutes, "responseMinutes"),
         resolutionMinutes: parsePositiveInteger(input.resolutionMinutes, "resolutionMinutes"),
       });
 
       return toPublicContract(contract);
     } catch (error) {
+      // Código repetido: o banco recusa (campo único) e a API devolve 409.
       if (isUniqueConstraintError(error)) {
         throw new ConflictError("Contract code already exists");
       }
@@ -107,6 +113,7 @@ export class ContractService {
       await this.ensureActiveClient(clientId);
     }
 
+    // Na edição, o que não foi enviado mantém o valor atual; a vigência é revalidada com as duas datas.
     const startDate = input.startDate ? parseDateOnly(input.startDate, "startDate") : existing.startDate;
     const endDate =
       input.endDate !== undefined
@@ -150,6 +157,7 @@ export class ContractService {
 
     const ticketCount = await this.contracts.countTickets(id);
 
+    // Contrato com chamados não é excluído: os chamados guardam o histórico de SLA e de custo.
     if (ticketCount > 0) {
       throw new ConflictError("Contract cannot be deleted while tickets exist");
     }

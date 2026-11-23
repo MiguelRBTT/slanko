@@ -8,9 +8,9 @@ type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
-// GET /api/tickets/:id - fetch ticket by id.
-// PUT /api/tickets/:id - update, assign or close a ticket.
-// DELETE /api/tickets/:id - remove ticket and its time entries.
+// GET /api/tickets/:id - busca chamado pelo id.
+// PUT /api/tickets/:id - edita, atribui, resolve ou encerra o chamado.
+// DELETE /api/tickets/:id - exclui chamado aberto por engano (recusa se resolvido, encerrado ou com tempo apontado).
 
 export async function GET(request: Request, context: RouteContext) {
   try {

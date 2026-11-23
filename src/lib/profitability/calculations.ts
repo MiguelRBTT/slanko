@@ -1,5 +1,6 @@
 const MS_PER_DAY = 86_400_000;
 
+// Valores em reais arredondados em centavos (2 casas).
 function roundMoney(value: number): number {
   return Math.round(value * 100) / 100;
 }
@@ -12,6 +13,7 @@ export function formatMoney(value: number): string {
   return roundMoney(value).toFixed(2);
 }
 
+/** Custo de um apontamento = horas × custo/hora gravado no apontamento (RF11). */
 export function calculateEntryCost(hours: number, hourlyCost: number): number {
   return roundMoney(hours * hourlyCost);
 }
@@ -96,6 +98,7 @@ export function calculateProratedRevenue(monthlyValue: number, window: RevenueWi
   return roundMoney(revenue);
 }
 
+/** Margem = receita − custo; margem % = margem ÷ receita. Margem negativa = contrato deficitário (RF12). */
 export function calculateContractProfitability(input: {
   contractValue: number;
   revenue: number;
@@ -103,6 +106,7 @@ export function calculateContractProfitability(input: {
   totalCost: number;
 }) {
   const margin = roundMoney(input.revenue - input.totalCost);
+  // Sem receita no período (vigência ainda não começou), não há margem % para calcular.
   const marginRate = input.revenue > 0 ? roundMoney((margin / input.revenue) * 100) : null;
 
   return {
@@ -116,6 +120,7 @@ export function calculateContractProfitability(input: {
   };
 }
 
+/** Totais do painel: soma dos contratos filtrados e quantos estão deficitários. */
 export function buildProfitabilityTotals(
   contracts: Array<{
     contractValue: string;

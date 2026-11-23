@@ -87,6 +87,7 @@ export default function ContractsPage() {
 
   const clientName = useCallback((id: string) => clientNameById.get(id) ?? "Cliente", [clientNameById]);
 
+  // Busca e ordenação no navegador; a coluna Vigência ordena pela data de fim (sem fim = mais distante).
   const listedContracts = useMemo(() => {
     const rows = contracts.filter((contract) =>
       matchesSearch(
@@ -147,6 +148,7 @@ export default function ContractsPage() {
     setSortDir(next.dir);
   }
 
+  // Contratos e clientes em paralelo; o primeiro cliente já vem escolhido no formulário.
   async function load() {
     setLoading(true);
     setError(null);
@@ -245,6 +247,7 @@ export default function ContractsPage() {
     setSaving(true);
     setFormError(null);
 
+    // Valor mensal digitado com máscara de moeda (R$) e convertido para número.
     const parsedValue = parseMoneyInput(value);
 
     if (!Number.isFinite(parsedValue) || parsedValue <= 0) {
@@ -301,6 +304,7 @@ export default function ContractsPage() {
     }
   }
 
+  /** A API recusa (409) excluir contrato que já tem chamados. */
   async function removeContract(contract: PublicContract) {
     const confirmed = window.confirm(
       `Excluir o contrato "${contract.code}"? Esta ação não pode ser desfeita.`,

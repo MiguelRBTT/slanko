@@ -39,6 +39,7 @@ import {
 
 const TICKET_PRIORITIES: TicketPriority[] = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
 const TICKET_STATUSES: TicketStatus[] = ["OPEN", "IN_PROGRESS", "WAITING", "RESOLVED", "CLOSED"];
+// Situações que contam como 1ª resposta: sair de "Aberto" é começar o atendimento.
 const RESPONSE_STATUSES: TicketStatus[] = ["IN_PROGRESS", "WAITING", "RESOLVED", "CLOSED"];
 
 function parseTicketPriority(value: unknown, field = "priority"): TicketPriority {
@@ -57,6 +58,7 @@ function parseTicketStatus(value: unknown, field = "status"): TicketStatus {
   return value as TicketStatus;
 }
 
+/** Chamado encerrado fica somente leitura. */
 function assertTicketMutable(ticket: Ticket): void {
   if (ticket.status === "CLOSED") {
     throw new BadRequestError("Closed tickets cannot be updated");
@@ -100,6 +102,7 @@ function applySlaTimestamps(
     }
   }
 
+  // Reabrir (voltar a uma situação de trabalho) apaga as datas de resolução e de encerramento.
   if (nextStatus !== "RESOLVED" && nextStatus !== "CLOSED" && existing.resolvedAt) {
     timestamps.resolvedAt = null;
   }
@@ -167,6 +170,7 @@ export class TicketService {
     private readonly events: TicketEventRepository = ticketEventRepository,
   ) {}
 
+  /** O gestor vê todos os chamados; o técnico só os que pode acessar (ver canAccessTicket). */
   async listTickets(auth: AuthContext, filters: TicketListFilters = {}): Promise<PublicTicket[]> {
     const rows =
       auth.role === "GESTOR"
@@ -176,6 +180,7 @@ export class TicketService {
             accessibleByUserId: auth.userId,
           });
 
+    // Total de horas de cada chamado numa só consulta (em vez de uma por chamado).
     const loggedHours = await this.tickets.sumLoggedHours(rows.map((row) => row.id));
 
     return rows.map((row) => ({ ...toPublicTicket(row), loggedHours: loggedHours.get(row.id) ?? "0" }));
@@ -195,6 +200,7 @@ export class TicketService {
 
   async createTicket(input: CreateTicketInput, auth: AuthContext): Promise<PublicTicket> {
     const contractId = requireNonEmptyString(input.contractId, "contractId");
+    // Chamado só em contrato ativo e vigente hoje (RF04).
     const contract = await this.ensureActiveContract(contractId);
 
     const assignedToId = parseAssigneeId(input.assignedToId) ?? null;
@@ -213,6 +219,7 @@ export class TicketService {
 
     const assignee = assignedToId ? await this.ensureActiveAssignee(assignedToId) : null;
 
+    // O responsável não precisa constar também como observador.
     const observerIds = await this.normalizeObserverIds(requestedObserverIds, assignedToId);
 
     const now = new Date();
@@ -236,6 +243,7 @@ export class TicketService {
       description: snapshot.description,
       priority: snapshot.priority,
       category: snapshot.category,
+      // Todo chamado nasce "Aberto"; o relógio do SLA começa em openedAt.
       status: "OPEN",
       openedAt: now,
       // Metas congeladas: alterar o contrato depois não muda o SLA deste chamado.
@@ -264,6 +272,7 @@ export class TicketService {
     return toPublicTicket(ticket);
   }
 
+  /** Edição, atribuição (RF05), resolução e encerramento (RF07); cada mudança vira evento no histórico. */
   async updateTicket(
     id: string,
     input: UpdateTicketInput,
@@ -300,6 +309,7 @@ export class TicketService {
         ? (optionalNullableString(input.solution) as string | null)
         : existing.solution;
 
+    // Resolver ou encerrar exige descrever a solução (RF07).
     if ((nextStatus === "RESOLVED" || nextStatus === "CLOSED") && !solution) {
       throw new BadRequestError("solution is required to resolve or close a ticket");
     }
@@ -307,6 +317,7 @@ export class TicketService {
     const existingObserverIds = existing.observers.map((observer) => observer.userId);
     const requestedObserverIds = parseObserverIds(input.observerIds);
 
+    // Só o gestor muda observadores; o técnico pode reenviar a mesma lista sem erro.
     if (
       auth.role !== "GESTOR" &&
       requestedObserverIds !== undefined &&
@@ -352,7 +363,9 @@ export class TicketService {
     };
 
     const now = new Date();
+    // Datas do SLA (1ª resposta, resolução, encerramento) calculadas a partir da nova situação.
     const slaTimestamps = applySlaTimestamps(existing, nextStatus, now);
+    // Compara antes e depois e gera um evento para cada campo alterado.
     const eventDrafts = buildUpdateEvents(before, after);
     const observersChanged = eventDrafts.some((draft) => draft.type === "OBSERVERS_CHANGED");
 
@@ -384,6 +397,7 @@ export class TicketService {
     return toPublicTicket(ticket);
   }
 
+  /** Histórico de auditoria do chamado (RF07), na ordem em que as mudanças aconteceram. */
   async listEvents(id: string, auth: AuthContext): Promise<PublicTicketEvent[]> {
     const ticket = await this.tickets.findById(id);
 
@@ -416,6 +430,7 @@ export class TicketService {
       throw new ConflictError("Tickets with logged time cannot be deleted");
     }
 
+    // Apaga os arquivos dos anexos do disco antes de remover o chamado do banco.
     await this.attachments.deleteAllForTicket(id);
     await this.tickets.delete(id);
   }
@@ -449,6 +464,7 @@ export class TicketService {
     return user;
   }
 
+  /** Tira o responsável da lista de observadores e confere se cada observador existe e está ativo. */
   private async normalizeObserverIds(
     observerIds: string[],
     assignedToId: string | null,

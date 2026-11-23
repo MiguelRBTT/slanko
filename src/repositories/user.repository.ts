@@ -1,7 +1,7 @@
 ﻿import type { Prisma, PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
-// Data access layer for User entities (Prisma only, no business rules).
+// Acesso a dados de usuários (só Prisma, sem regra de negócio).
 
 export class UserRepository {
   constructor(private readonly db: PrismaClient = prisma) {}

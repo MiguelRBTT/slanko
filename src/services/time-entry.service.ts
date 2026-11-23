@@ -23,6 +23,7 @@ import {
 } from "@/types/time-entry";
 
 const MS_PER_DAY = 86_400_000;
+// Um apontamento tem no máximo 24 horas.
 export const MAX_HOURS_PER_ENTRY = 24;
 
 function parseHours(value: unknown): number {
@@ -69,6 +70,7 @@ export class TimeEntryService {
     return rows.map(toPublicTimeEntry);
   }
 
+  /** Apontamento de horas (RF06): quem trabalhou, quanto, em que dia e o custo/hora daquele momento. */
   async createTimeEntry(
     ticketId: string,
     input: CreateTimeEntryInput,
@@ -103,6 +105,7 @@ export class TimeEntryService {
     const ticket = await this.requireOpenTicket(ticketId, auth);
     await this.requireOwnEntry(ticketId, entryId, auth);
 
+    // A correção também vai para o histórico, com quem alterou e os valores antes e depois.
     const entry = await this.timeEntries.update(
       entryId,
       {
@@ -135,6 +138,7 @@ export class TimeEntryService {
     return ticket;
   }
 
+  /** Chamado encerrado não aceita mudar o tempo; resolvido ainda aceita (ajuste antes de encerrar). */
   private async requireOpenTicket(ticketId: string, auth: AuthContext) {
     const ticket = await this.requireAccessibleTicket(ticketId, auth);
 

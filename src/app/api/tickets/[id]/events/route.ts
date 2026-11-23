@@ -6,7 +6,7 @@ type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
-// GET /api/tickets/:id/events - audit history of the ticket (RF07).
+// GET /api/tickets/:id/events - histórico de auditoria do chamado (RF07).
 
 export async function GET(request: Request, context: RouteContext) {
   try {

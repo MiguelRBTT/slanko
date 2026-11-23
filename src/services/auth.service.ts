@@ -8,6 +8,7 @@ import type { LoginInput, LoginResult } from "@/types/auth";
 export class AuthService {
   constructor(private readonly users: UserRepository = userRepository) {}
 
+  /** Login (RF01): confere email e senha e devolve o JWT com os dados públicos do usuário. */
   async login(input: LoginInput): Promise<LoginResult> {
     if (typeof input.email !== "string" || typeof input.password !== "string") {
       throw new UnauthorizedError("Invalid email or password");
@@ -21,6 +22,7 @@ export class AuthService {
 
     const user = await this.users.findByEmail(email);
 
+    // Mesma mensagem para email inexistente, usuário inativo ou senha errada: não revela quais emails existem.
     if (!user || !user.active) {
       throw new UnauthorizedError("Invalid email or password");
     }

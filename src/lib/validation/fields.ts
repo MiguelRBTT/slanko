@@ -1,3 +1,4 @@
+// Validações de entrada usadas pelos services: campo inválido vira 400 com o nome do campo.
 import { BadRequestError } from "@/lib/errors/app-error";
 
 export function requireNonEmptyString(value: unknown, field: string): string {
@@ -59,6 +60,7 @@ export function parsePositiveInteger(value: unknown, field: string): number {
   return parsed;
 }
 
+/** Data sem horário (AAAA-MM-DD), gravada como meia-noite UTC. */
 export function parseDateOnly(value: unknown, field: string): Date {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     throw new BadRequestError(`${field} must be a date in YYYY-MM-DD format`);
@@ -99,6 +101,7 @@ export function assertEndDateAfterStartDate(startDate: Date, endDate: Date | nul
   }
 }
 
+/** Erro P2002 do Prisma: valor repetido em campo único (código do contrato, email). */
 export function isUniqueConstraintError(error: unknown): boolean {
   return (
     typeof error === "object" &&

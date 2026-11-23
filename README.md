@@ -22,9 +22,12 @@ Sistema web para gestão de contratos de suporte técnico com análise de SLA e 
 * [Diagramas](#diagramas)
 * [Modelagem de dados](#modelagem-de-dados)
 * [Identidade visual](#identidade-visual)
+* [Telas do sistema](#telas-do-sistema)
 * [Status de implementação](#status-de-implementação)
 * [Instruções de execução](#instruções-de-execução)
 * [Resultados dos testes](#resultados-dos-testes)
+* [Resultados alcançados](#resultados-alcançados)
+* [Conclusão](#conclusão)
 * [Próximos passos](#próximos-passos)
 * [Referências](#referências)
 
@@ -214,12 +217,17 @@ Persistência     → MySQL (slanko-db)
 Infraestrutura   → Docker, GitHub Actions, SonarCloud, monitoramento
 ```
 
-Organização de código prevista:
+Organização do código em `src/`:
 
-* `components/` interface
+* `app/` telas (App Router) e rotas da API (`app/api/`)
+* `components/` estrutura comum da interface (menu lateral e sessão)
 * `services/` regras de negócio
-* `repositories/` acesso a dados
-* `tests/` testes automatizados
+* `repositories/` acesso a dados (Prisma)
+* `lib/` cálculos puros de SLA e rentabilidade, autenticação, validação e utilitários
+* `types/` formatos públicos que a API devolve
+* `middleware.ts` autenticação e headers de segurança de cada requisição
+
+Os testes automatizados ficam em `tests/`, na raiz.
 
 Documentação completa: [docs/arquitetura-c4.md](docs/arquitetura-c4.md).
 
@@ -229,7 +237,18 @@ Desenvolvimento iterativo com Kanban, commits frequentes e entregas modulares. G
 
 ### Registro de decisões
 
-* [RFC: Proposta Slanko](docs/RFC.md)
+A proposta e o escopo estão no [RFC](docs/RFC.md). As decisões técnicas tomadas durante o desenvolvimento:
+
+| Decisão | Por quê |
+|---|---|
+| Next.js full-stack (telas e API no mesmo projeto) | Uma linguagem (TypeScript) de ponta a ponta, um só build e um só contêiner, adequado ao porte de uma microempresa de TI. |
+| JWT no header `Authorization`, com o usuário conferido no banco a cada requisição | Sem cookie, não há CSRF, e a API também atende `curl` e integrações. Conferir o usuário a cada requisição faz a desativação e a troca de perfil valerem na hora, sem esperar o token expirar. |
+| 1ª resposta do SLA é o início do atendimento, não a atribuição | O SLA mede quando alguém começou a trabalhar: sair de "Aberto" ou o 1º apontamento de tempo. Só atribuir um responsável não é atender. |
+| Metas de SLA copiadas para o chamado e custo/hora gravado no apontamento | Alterar o contrato ou o custo de um colaborador não reescreve o passado: relatórios de meses anteriores continuam iguais. |
+| Receita proporcional aos dias de vigência | O valor do contrato é mensal. Para comparar com o custo de um período qualquer, a receita conta só os dias do período dentro da vigência, até hoje. |
+| Histórico gravado junto com a alteração | Cada mudança do chamado e o evento do histórico são salvos na mesma escrita (tudo ou nada), numa sequência que preserva a ordem. |
+| Exclusão lógica de clientes e usuários; chamado só é excluído sem tempo apontado | Preserva o histórico de SLA e de custo usado nos relatórios. |
+| Camadas rota → service → repository, com dependências pelo construtor | As regras de negócio são testadas com repositórios falsos, sem banco, e o acesso a dados fica isolado no Prisma. |
 
 ---
 
@@ -322,14 +341,28 @@ Todas as combinações de texto passam no contraste mínimo do WCAG AA (4,5:1). 
 
 ---
 
+## Telas do sistema
+
+Capturas com os dados fictícios do seed.
+
+**Painel do gestor:** filtros por situação, cliente, contrato e período; margem, conformidade de resposta e de resolução, contratos no prejuízo e com SLA crítico; e o resultado de cada contrato.
+
+![Painel do Slanko com margem, conformidade de SLA, contratos com SLA crítico e o resultado de cada contrato](docs/assets/tela-painel.png)
+
+**Chamados em cartões:** cada cartão mostra a situação, o prazo de SLA restante (ou "Estourado"), o contrato, a prioridade, o responsável e o tempo apontado. As ações ficam no painel de detalhe, que abre ao clicar no cartão.
+
+![Dois cartões de chamado: um em andamento com o prazo estourado e outro aberto, sem responsável, faltando 46 minutos](docs/assets/tela-chamados-cartoes.png)
+
+---
+
 ## Status de implementação
 
 | Área | Status |
 |---|---|
-| Documentação (RFC, UC, C4, modelagem) | Concluída (fase de planejamento) |
+| Documentação (RFC, UC, C4, modelagem) | Concluída e atualizada com o sistema entregue (diagramas, casos de uso e modelagem) |
 | Banco MySQL + Prisma + Docker | Concluído (schema, migrate, seed) |
 | Back-end (Next.js API + services) | Concluído (clientes, contratos, chamados, horas, SLA e rentabilidade) |
-| Front-end (UI / dashboard) | Concluído (login, painel SLA/rentabilidade, clientes, contratos e chamados) |
+| Front-end (UI / dashboard) | Concluído (login, painel SLA/rentabilidade, clientes, contratos, chamados e equipe) |
 | Testes (TDD 75% / 25%) | Concluído (Vitest: ≥75% backend + ≥25% frontend no CI) |
 | CI/CD (GitHub Actions) | CI concluído (lint, typecheck, test:coverage, build, SonarCloud e integração com MySQL); deploy não automatizado (apresentação local) |
 | SonarCloud | Concluído (scan no CI + Quality Gate; secret `SONAR_TOKEN`) |
@@ -367,7 +400,7 @@ Todas as combinações de texto passam no contraste mínimo do WCAG AA (4,5:1). 
    ```bash
    npm run db:migrate
    ```
-   Na primeira execução, confirme o nome da migração (ex.: `init`).
+   As migrations já estão no repositório (`prisma/migrations/`): o comando só aplica as que faltam.
 6. (Opcional) Popule dados de exemplo:
    ```bash
    npm run db:seed
@@ -377,7 +410,7 @@ Todas as combinações de texto passam no contraste mínimo do WCAG AA (4,5:1). 
    npm run db:studio
    ```
 
-**Usuários de teste (seed):** senha `Slanko@123`.
+**Usuários de teste (seed):** senha `Slanko@123`. No modo de desenvolvimento, a tela de login já vem preenchida com o gestor; no container (produção), os campos começam vazios.
 
 | E-mail | Perfil | O que vê na interface |
 |---|---|---|
@@ -428,7 +461,7 @@ Endpoints:
 | Rota | Auth | Perfil |
 |------|------|--------|
 | `GET /api/health` | Pública | — |
-| `GET /api/metrics` | Pública | — (Prometheus) |
+| `GET /api/metrics` | Token `METRICS_TOKEN` (Bearer), quando definido | — (Prometheus) |
 | `POST /api/auth/login` | Pública | — (429 após 5 falhas em 15 min) |
 | `GET /api/users` | JWT | gestor ou técnico (`includeInactive=true`: gestor) |
 | `POST /api/users` | JWT | gestor only |
@@ -603,24 +636,49 @@ Os mínimos de cobertura ficam em `vitest.config.ts` e `vitest.frontend.config.t
 
 ---
 
-## Resultados esperados
+## Resultados alcançados
 
-Ao final do Portfólio:
-
-* aplicação navegável com os três fluxos de negócio
-* cobertura de testes conforme a linha Web Apps
-* CI/CD e análise estática
-* documentação técnica completa (incluindo Wiki e guia de execução)
+* **Aplicação navegável com os três fluxos de negócio:** chamados com acompanhamento de SLA, apontamento de horas e rentabilidade por contrato, em seis telas (login, painel, clientes, contratos, chamados e equipe).
+* **API com 35 endpoints**, protegida por JWT e perfil (gestor e técnico), com histórico auditável de cada chamado e anexos de imagem e vídeo.
+* **Mais de 420 testes automatizados** (backend, frontend e integração com MySQL), com cobertura de linhas de 95,7% no backend e 82,3% no frontend; os mínimos da linha Web Apps são 75% e 25%.
+* **CI no GitHub Actions** com lint, typecheck, testes com cobertura, build, integração com MySQL e SonarCloud com Quality Gate.
+* **Segurança:** usuário conferido a cada requisição, CSP com nonce, limite de tentativas de login e anexos validados pela assinatura do arquivo.
+* **Observabilidade:** Prometheus e Grafana com métricas técnicas e de negócio (chamados, SLA e margem).
+* **Documentação:** RFC, casos de uso, C4, modelagem de dados, registro de decisões, Wiki e guia de execução.
 
 ---
 
 ## Conclusão
 
-O Slanko formaliza um webapp para gestão integrada de contratos de suporte técnico. O diferencial é correlacionar chamados, SLA e custo real das horas para indicar a rentabilidade por contrato, em formato adequado a microempresas de TI.
+O Slanko entrega o que a proposta prometia: num só lugar, o gestor acompanha os chamados, o cumprimento do SLA e quanto cada contrato realmente rende, com base nas horas apontadas e no custo/hora de quem trabalhou.
+
+**Aprendizados:**
+
+* Definir as regras antes do código evitou retrabalho. O que conta como 1ª resposta, quando um prazo vira violação e como dividir o valor mensal no período mudam os números do painel, então cada regra ficou documentada e testada.
+* Congelar valores (metas de SLA no chamado e custo/hora no apontamento) é o que torna os relatórios confiáveis: mudar um cadastro hoje não altera o passado.
+* Testar as regras sem banco (services com repositórios falsos e cálculos em funções puras) deixou os testes rápidos; os testes de integração com MySQL cobrem o que os mocks não pegam.
+
+**Limites conhecidos:**
+
+* O prazo de SLA corre 24 horas por dia, sem considerar horário comercial nem feriados.
+* As metas de SLA são por contrato, e não por prioridade do chamado.
+* Não há avisos (email ou notificação) quando um prazo está perto de estourar; o alerta aparece só nas telas.
+* O técnico não vê a fila de chamados sem responsável abertos por outras pessoas; quem distribui é o gestor.
+* O deploy em nuvem não é automatizado: o sistema roda localmente ou em contêiner.
 
 ---
 
 ## Próximos passos
+
+* [ ] Publicar em nuvem com deploy automático a partir do CI
+* [ ] Prazos de SLA em horário comercial (dias úteis e feriados)
+* [ ] Metas de SLA por prioridade dentro do contrato
+* [ ] Avisos por email quando um prazo estiver perto de estourar
+* [ ] Fila de chamados sem responsável visível para todos os técnicos
+* [ ] Latência por rota nas métricas do Prometheus (hoje há só o contador de erros)
+* [ ] Limite de login compartilhado (Redis) e anexos em armazenamento de objetos, para rodar mais de uma instância
+
+### Entregas realizadas
 
 * [x] Estruturar repositório GitHub e README
 * [x] Publicar RFC (`docs/RFC.md`)
@@ -683,4 +741,4 @@ Projeto acadêmico - Engenharia de Software - Católica SC.
 
 ## Licença
 
-Uso acadêmico e de portfólio. Licença definitiva a definir no repositório.
+Projeto acadêmico de portfólio, sem licença de código aberto: o código pode ser consultado para avaliação, e os direitos ficam com o autor.

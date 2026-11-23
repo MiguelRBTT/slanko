@@ -6,6 +6,7 @@ export type ContractListFilters = {
   status?: ContractStatus;
 };
 
+/** Acesso a dados de contratos (só Prisma, sem regra de negócio). */
 export class ContractRepository {
   constructor(private readonly db: PrismaClient = prisma) {}
 
@@ -46,6 +47,7 @@ export class ContractRepository {
     return this.db.contract.delete({ where: { id } });
   }
 
+  /** Usado para impedir a exclusão de contrato que já tem chamados. */
   countTickets(contractId: string) {
     return this.db.ticket.count({ where: { contractId } });
   }

@@ -7,6 +7,7 @@ import {
 } from "@/lib/auth/constants";
 import type { AuthContext } from "@/types/auth";
 
+/** Lê o usuário autenticado dos headers internos que o middleware preencheu. */
 export function getAuthContextFromHeaders(request: Request): AuthContext {
   const userId = request.headers.get(USER_ID_HEADER);
   const email = request.headers.get(USER_EMAIL_HEADER);

@@ -15,6 +15,7 @@ type UserPayload = { user: PublicUser };
 type Role = PublicUser["role"];
 type SortKey = "name" | "role" | "hourlyCost" | "status";
 
+// Mesmo mínimo exigido pela API.
 const MIN_PASSWORD_LENGTH = 8;
 
 const ROLE_LABEL: Record<Role, string> = {
@@ -55,6 +56,7 @@ export default function UsersPage() {
   const [search, setSearch] = useState("");
   const dialogRef = useRef<HTMLDialogElement>(null);
 
+  // Editando o próprio cadastro: o gestor não muda o próprio perfil nem se desativa.
   const editingSelf = editingId !== null && editingId === currentUserId;
   const activeCount = users.filter((user) => user.active).length;
 
@@ -96,6 +98,7 @@ export default function UsersPage() {
     setError(null);
 
     try {
+      // Lista também os inativos, para poder reativar.
       const result = await apiRequest<UsersPayload>("/api/users?includeInactive=true");
       setUsers(result.users);
     } catch (err) {
@@ -164,11 +167,13 @@ export default function UsersPage() {
 
     const parsedCost = parseMoneyInput(hourlyCost);
 
+    // Custo/hora obrigatório: é a base do custo de cada apontamento na rentabilidade (RF11).
     if (!Number.isFinite(parsedCost) || parsedCost <= 0) {
       setFormError("Informe o custo por hora em reais (ex.: 85,50). Ele é a base do cálculo de rentabilidade.");
       return;
     }
 
+    // Senha obrigatória no cadastro; na edição, só quando for trocar.
     if ((!editingId || password) && password.length < MIN_PASSWORD_LENGTH) {
       setFormError(`A senha precisa ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`);
       return;
@@ -212,6 +217,7 @@ export default function UsersPage() {
     }
   }
 
+  /** Desativar bloqueia o acesso na hora (o middleware confere o usuário a cada requisição); os apontamentos continuam. */
   async function toggleActive(user: PublicUser) {
     const confirmed = window.confirm(
       user.active
@@ -353,6 +359,7 @@ export default function UsersPage() {
                         >
                           <EditIcon />
                         </button>
+                        {/* Sem botão "Desativar" para o próprio usuário. */}
                         {user.id !== currentUserId ? (
                           <button
                             type="button"

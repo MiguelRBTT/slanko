@@ -1,7 +1,7 @@
 ﻿import type { PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
-// Lightweight database connectivity checks for health endpoints.
+// Checagem leve da conexão com o banco, usada pelo /api/health.
 
 export class HealthRepository {
   constructor(private readonly db: PrismaClient = prisma) {}

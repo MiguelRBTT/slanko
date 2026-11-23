@@ -43,6 +43,7 @@ export default function ClientsPage() {
   const [search, setSearch] = useState("");
   const dialogRef = useRef<HTMLDialogElement>(null);
 
+  // Busca (sem acento e sem diferenciar maiúsculas) e ordenação feitas no navegador.
   const listedClients = useMemo(() => {
     const rows = clients.filter((client) =>
       matchesSearch(search, client.name, client.email, client.phone, client.active ? "ativo" : "inativo"),
@@ -70,6 +71,7 @@ export default function ClientsPage() {
       }
 
       if (cmp !== 0) return cmp * direction;
+      // Empate: desempata pelo nome.
       return a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" });
     });
 
@@ -94,6 +96,7 @@ export default function ClientsPage() {
     void load();
   }, []);
 
+  // Formulário em <dialog> nativo (modal); fechar o dialog chama resetForm (onClose).
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog || !showForm) return;
@@ -183,6 +186,7 @@ export default function ClientsPage() {
     }
   }
 
+  /** "Excluir" cliente é desativar: some das listas ativas, mas o histórico fica. */
   async function deactivateClient(client: PublicClient) {
     const confirmed = window.confirm(
       `Desativar o cliente "${client.name}"? Ele deixará de aparecer nas listas ativas.`,

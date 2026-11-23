@@ -2,6 +2,7 @@ import type { Role } from "@prisma/client";
 import { ForbiddenError } from "@/lib/errors/app-error";
 import { getAuthContextFromHeaders } from "@/lib/auth/request-context";
 
+/** Barra quem não é gestor (403). Usado nas rotas de escrita, como cadastro de contratos e usuários. */
 export function assertGestor(request: Request): void {
   const auth = getAuthContextFromHeaders(request);
 

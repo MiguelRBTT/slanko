@@ -1,7 +1,7 @@
 ﻿import { jsonError, jsonOk } from "@/lib/http/api-response";
 import { healthService } from "@/services/health.service";
 
-// GET /api/health - smoke check for the app and MySQL connectivity.
+// GET /api/health - verificação rápida da aplicação e da conexão com o MySQL.
 
 export async function GET() {
   try {

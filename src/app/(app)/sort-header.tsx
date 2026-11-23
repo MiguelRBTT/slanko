@@ -45,6 +45,7 @@ export function SortHeader({
   );
 }
 
+/** Clicar na mesma coluna inverte a ordem; clicar em outra começa pela ordem padrão dela. */
 export function nextSortState<K extends string>(
   currentKey: K,
   currentDir: SortDir,

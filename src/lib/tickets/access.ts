@@ -7,6 +7,10 @@ export type TicketAccessFields = {
   observers?: Array<{ userId: string }>;
 };
 
+/**
+ * Quem acessa o chamado: o gestor vê todos; o técnico vê os chamados de que é responsável,
+ * os que abriu e seguem sem responsável e os que observa.
+ */
 export function canAccessTicket(ticket: TicketAccessFields, auth: AuthContext): boolean {
   if (auth.role === "GESTOR") {
     return true;
@@ -16,6 +20,7 @@ export function canAccessTicket(ticket: TicketAccessFields, auth: AuthContext): 
     return true;
   }
 
+  // Abriu e ninguém assumiu ainda: continua visível para quem abriu.
   if (ticket.openedById === auth.userId && ticket.assignedToId === null) {
     return true;
   }

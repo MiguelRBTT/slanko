@@ -8,7 +8,7 @@ type RouteContext = {
 
 export const runtime = "nodejs";
 
-// GET /api/tickets/:id/attachments/:attachmentId/file
+// GET /api/tickets/:id/attachments/:attachmentId/file - baixa o arquivo do anexo (só quem acessa o chamado).
 
 export async function GET(request: Request, context: RouteContext) {
   try {

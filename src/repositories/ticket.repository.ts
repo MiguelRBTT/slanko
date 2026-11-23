@@ -41,6 +41,7 @@ export class TicketRepository {
       where.openedById = filters.openedById;
     }
 
+    // Visibilidade do técnico no banco (mesma regra de canAccessTicket): responsável, autor sem responsável ou observador.
     if (filters.accessibleByUserId) {
       where.OR = [
         { assignedToId: filters.accessibleByUserId },
@@ -57,6 +58,7 @@ export class TicketRepository {
     return this.db.ticket.findMany({
       where,
       include: ticketAccessInclude,
+      // Ordem padrão: por situação e, dentro dela, os mais recentes primeiro.
       orderBy: [{ status: "asc" }, { openedAt: "desc" }],
     });
   }
@@ -107,6 +109,7 @@ export class TicketRepository {
     return this.db.timeEntry.count({ where: { ticketId } });
   }
 
+  /** Transação (tudo ou nada): anexos, apontamentos e observadores saem junto; o histórico sai por cascata no banco. */
   delete(id: string) {
     return this.db.$transaction(async (tx) => {
       await tx.ticketAttachment.deleteMany({ where: { ticketId: id } });
