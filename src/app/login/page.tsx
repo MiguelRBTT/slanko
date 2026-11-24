@@ -7,17 +7,11 @@ import { getSession, saveSession, type SessionUser } from "@/lib/client/auth-ses
 import type { LoginResult } from "@/types/auth";
 import styles from "./login.module.css";
 
-// Em desenvolvimento, o login já vem preenchido com o gestor do seed (agiliza testes e demonstração).
-// Em produção os campos começam vazios.
-const DEV_LOGIN =
-  process.env.NODE_ENV === "development"
-    ? { email: "gestor@slanko.local", password: "Slanko@123" }
-    : { email: "", password: "" };
-
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState(DEV_LOGIN.email);
-  const [password, setPassword] = useState(DEV_LOGIN.password);
+  // Campos começam vazios: nenhuma credencial fica no código da tela (os usuários de teste estão no README).
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 

@@ -120,7 +120,7 @@ describe("LoginPage", () => {
     });
   });
 
-  it("starts with empty fields outside development", () => {
+  it("starts with empty fields", () => {
     vi.spyOn(authSession, "getSession").mockReturnValue(null);
 
     render(<LoginPage />);

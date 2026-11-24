@@ -410,7 +410,7 @@ Capturas com os dados fictícios do seed.
    npm run db:studio
    ```
 
-**Usuários de teste (seed):** senha `Slanko@123`. No modo de desenvolvimento, a tela de login já vem preenchida com o gestor; no container (produção), os campos começam vazios.
+**Usuários de teste (seed):** senha `Slanko@123`. A tela de login começa com os campos vazios: nenhuma credencial fica no código da interface.
 
 | E-mail | Perfil | O que vê na interface |
 |---|---|---|
