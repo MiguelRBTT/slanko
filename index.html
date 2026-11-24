@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Slanko · Demonstração e código</title>
+<meta name="description" content="Slanko: gestão de contratos de suporte técnico com SLA e rentabilidade. Vídeo da demonstração e código no GitHub.">
+<meta property="og:title" content="Slanko · Demonstração e código">
+<meta property="og:description" content="Gestão de contratos de suporte técnico com SLA e rentabilidade. TCC de Engenharia de Software, Católica SC.">
+<meta property="og:image" content="https://miguelrbtt.github.io/slanko/poster.jpg">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#20262D">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --brand: #C94A0B; --brand-hover: #A33F09; --brand-bright: #F28A4B;
+    --graphite: #20262D; --ink: #1D2228; --ink-muted: #5B6470; --paper: #F3F4F1;
+    --surface: #FFFFFF; --line: #DCDFDA; --focus: #2B6CB0;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--paper); color: var(--ink); font-family: "Archivo", system-ui, sans-serif; line-height: 1.5; }
+  a { color: inherit; }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+
+  header { background: var(--graphite); color: #fff; padding: 44px 16px 92px; }
+  .wrap { max-width: 760px; margin: 0 auto; }
+  .brand { font-weight: 700; font-stretch: 125%; font-size: clamp(40px, 9vw, 60px); letter-spacing: -.01em; margin: 0; line-height: 1.05; }
+  .bar { width: 56px; height: 5px; border-radius: 3px; background: var(--brand-bright); margin-bottom: 18px; }
+  .tagline { font-size: clamp(18px, 4.4vw, 22px); color: #D9DDE2; margin: 12px 0 0; max-width: 560px; }
+
+  main { padding: 0 16px 48px; }
+  .player { margin-top: -64px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; box-shadow: 0 14px 40px rgba(20, 24, 28, .18); }
+  video { display: block; width: 100%; aspect-ratio: 16 / 10; background: #000; }
+  .player p { margin: 0; padding: 14px 18px 16px; color: var(--ink-muted); font-size: 15px; }
+  .player strong { color: var(--ink); font-weight: 600; }
+
+  .links { list-style: none; padding: 0; margin: 22px 0 0; display: grid; gap: 12px; }
+  .links a {
+    display: flex; align-items: center; gap: 14px; text-decoration: none;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+    padding: 16px 18px; min-height: 64px; transition: border-color .15s ease, background .15s ease;
+  }
+  .links a:hover { border-color: #C7CBC5; background: #FBFBFA; }
+  .links a.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+  .links a.primary:hover { background: var(--brand-hover); border-color: var(--brand-hover); }
+  .links svg { flex: none; width: 26px; height: 26px; }
+  .links b { display: block; font-size: 17px; font-weight: 600; }
+  .links span { display: block; font-size: 14px; color: var(--ink-muted); }
+  .links a.primary span { color: #FCE9DD; }
+  .links .go { margin-left: auto; font-size: 20px; opacity: .7; }
+
+  footer { border-top: 1px solid var(--line); padding: 20px 16px 32px; color: var(--ink-muted); font-size: 14px; }
+  @media (prefers-reduced-motion: reduce) { .links a { transition: none; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="bar" aria-hidden="true"></div>
+    <h1 class="brand">Slanko</h1>
+    <p class="tagline">Gestão de contratos de suporte técnico com SLA e rentabilidade.</p>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <section class="player" aria-label="Vídeo da demonstração">
+      <video controls playsinline preload="metadata" poster="poster.jpg">
+        <source src="slanko-demonstracao.mp4" type="video/mp4">
+        Seu navegador não toca o vídeo. <a href="slanko-demonstracao.mp4">Baixe o arquivo MP4</a>.
+      </video>
+      <p><strong>Demonstração completa, 7 min.</strong> Painel, clientes, contratos, equipe, chamados e a visão do técnico, com dados fictícios.</p>
+    </section>
+
+    <ul class="links">
+      <li>
+        <a class="primary" href="https://github.com/MiguelRBTT/slanko">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.65.5.5 5.65.5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.52-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.42-2.7 5.39-5.26 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z"/></svg>
+          <div><b>Código no GitHub</b><span>README, testes, CI e diagramas</span></div>
+          <span class="go" aria-hidden="true">→</span>
+        </a>
+      </li>
+      <li>
+        <a href="https://github.com/MiguelRBTT/slanko/wiki">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v17H6.5A2.5 2.5 0 0 0 4 21.5v-17Z"/><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M8 7h8M8 11h6"/></svg>
+          <div><b>Documentação (Wiki)</b><span>Guia de execução, arquitetura, API e regras</span></div>
+          <span class="go" aria-hidden="true">→</span>
+        </a>
+      </li>
+      <li>
+        <a href="slanko-demonstracao.mp4" download>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 19h16"/></svg>
+          <div><b>Baixar o vídeo</b><span>MP4, para assistir sem internet</span></div>
+          <span class="go" aria-hidden="true">↓</span>
+        </a>
+      </li>
+    </ul>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">Miguel Ricardo Buttendorf · Engenharia de Software · Católica SC</div>
+</footer>
+</body>
+</html>
