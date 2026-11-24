@@ -101,10 +101,13 @@ export default function LoginPage() {
             {loading ? "Entrando…" : "Entrar"}
           </button>
 
-          <p className={styles.devNote}>
-            Ambiente local: os campos já vêm com o gestor do seed. Técnico:{" "}
-            <span className="num">tecnico@slanko.local</span>, mesma senha.
-          </p>
+          {/* Dica só no ambiente local: em produção a tela não mostra contas de teste. */}
+          {process.env.NODE_ENV === "development" ? (
+            <p className={styles.devNote}>
+              Ambiente local: <span className="num">gestor@slanko.local</span> ou{" "}
+              <span className="num">tecnico@slanko.local</span>, com a senha do seed (veja o README).
+            </p>
+          ) : null}
         </form>
       </main>
     </div>
