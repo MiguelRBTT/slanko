@@ -109,7 +109,9 @@ export class ContractService {
     const clientId =
       input.clientId !== undefined ? requireNonEmptyString(input.clientId, "clientId") : undefined;
 
-    if (clientId) {
+    // Só trocar para outro cliente exige cliente ativo: o contrato de um cliente já desativado
+    // continua editável (por exemplo, para ser finalizado).
+    if (clientId && clientId !== existing.clientId) {
       await this.ensureActiveClient(clientId);
     }
 

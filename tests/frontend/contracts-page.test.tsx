@@ -31,9 +31,11 @@ const contracts = [
   { ...baseContract, id: "k3", code: "CTR-003", title: "Vencido", startDate: "2025-03-01", endDate: "2026-02-28" },
 ];
 
-function mockApi(list = contracts) {
+const inactiveClient = { ...client, id: "cl2", name: "Auto Peças Rodovia Sul", active: false };
+
+function mockApi(list = contracts, clients = [client]) {
   return vi.spyOn(api, "apiRequest").mockImplementation(async (path: string, options?: { method?: string }) => {
-    if (path === "/api/clients") return { clients: [client] } as never;
+    if (path === "/api/clients?includeInactive=true") return { clients } as never;
     if (path === "/api/contracts" && !options?.method) return { contracts: list } as never;
     return { contract: list[0] } as never;
   });
@@ -76,6 +78,23 @@ describe("ContractsPage", () => {
     expect(screen.getByText("Terminou há 8 meses")).toBeTruthy();
     expect(screen.getAllByText("Vencido").some((node) => node.classList.contains("badge-warn"))).toBe(true);
     expect(screen.getByRole("status").textContent).toContain("1 contrato ativo está com a vigência vencida.");
+  });
+
+  it("shows the name of an inactive client but only offers active clients for new contracts", async () => {
+    const user = userEvent.setup();
+    const finished = { ...baseContract, id: "k4", clientId: "cl2", code: "CTR-004", title: "Contrato antigo", status: "FINISHED", startDate: "2025-01-01", endDate: "2025-12-31" };
+    mockApi([finished], [client, inactiveClient]);
+
+    render(<ContractsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Auto Peças Rodovia Sul")).toBeTruthy();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Novo contrato" }));
+    const options = Array.from((screen.getByLabelText("Cliente") as HTMLSelectElement).options).map((option) => option.text);
+    expect(options).toContain("Tech Solutions");
+    expect(options.some((text) => text.includes("Auto Peças"))).toBe(false);
   });
 
   it("sends the end date and description when creating a contract", async () => {

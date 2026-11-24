@@ -233,6 +233,21 @@ describe("ContractService", () => {
     expect(contract.title).toBe("Updated");
   });
 
+  it("keeps a contract of an inactive client editable when the client does not change", async () => {
+    vi.mocked(mockContracts.findById).mockResolvedValue(sampleContract);
+    vi.mocked(mockClients.findById).mockResolvedValue({ ...sampleClient, active: false });
+    vi.mocked(mockContracts.update).mockResolvedValue({ ...sampleContract, status: "FINISHED" });
+
+    const service = new ContractService(mockContracts, mockClients);
+    const contract = await service.updateContract("contract-1", {
+      clientId: sampleContract.clientId,
+      status: "FINISHED",
+    });
+
+    expect(contract.status).toBe("FINISHED");
+    expect(mockClients.findById).not.toHaveBeenCalled();
+  });
+
   it("updates only provided contract fields", async () => {
     vi.mocked(mockContracts.findById).mockResolvedValue(sampleContract);
     vi.mocked(mockContracts.update).mockResolvedValue({ ...sampleContract, title: "Only title" });

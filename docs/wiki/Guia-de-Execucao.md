@@ -58,7 +58,8 @@ npm run db:seed
 | Email | Senha | Perfil |
 |---|---|---|
 | `gestor@slanko.local` | `Slanko@123` | GESTOR |
-| `tecnico@slanko.local` | `Slanko@123` | TECNICO |
+| `tecnico@slanko.local` | `Slanko@123` | TECNICO (responsável) |
+| `tecnico2@slanko.local` | `Slanko@123` | TECNICO (observador) |
 
 Scripts úteis:
 

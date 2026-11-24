@@ -50,7 +50,7 @@ O usuário informa credenciais e recebe acesso conforme o perfil (gestor ou téc
 O gestor cadastra, edita e lista clientes atendidos pela microempresa.
 
 ### UC03 - Gerenciar contratos
-O gestor cadastra contratos vinculados a clientes, com valor, vigência e dados básicos de escopo.
+O gestor cadastra contratos vinculados a clientes, com valor, vigência e dados básicos de escopo. Contrato novo só pode ser de cliente ativo; os contratos de um cliente desativado continuam visíveis e podem ser editados, por exemplo para serem finalizados.
 
 ### UC04 - Configurar metas de SLA
 O gestor define tempos de resposta e resolução por contrato.

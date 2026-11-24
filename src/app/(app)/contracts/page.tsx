@@ -80,10 +80,20 @@ export default function ContractsPage() {
   const [search, setSearch] = useState("");
   const dialogRef = useRef<HTMLDialogElement>(null);
 
+  // A lista traz também os clientes inativos, para os contratos antigos mostrarem o nome;
+  // contrato novo só pode ser de cliente ativo.
+  const activeClients = useMemo(() => clients.filter((client) => client.active), [clients]);
+
   const clientNameById = useMemo(() => {
     const map = new Map(clients.map((client) => [client.id, client.name]));
     return map;
   }, [clients]);
+
+  // No formulário: clientes ativos e, na edição, o cliente atual mesmo que já esteja inativo.
+  const clientOptions = useMemo(() => {
+    const current = clients.find((client) => client.id === clientId);
+    return current && !current.active ? [...activeClients, current] : activeClients;
+  }, [clients, activeClients, clientId]);
 
   const clientName = useCallback((id: string) => clientNameById.get(id) ?? "Cliente", [clientNameById]);
 
@@ -156,12 +166,13 @@ export default function ContractsPage() {
     try {
       const [contractsResult, clientsResult] = await Promise.all([
         apiRequest<ContractsPayload>("/api/contracts"),
-        apiRequest<ClientsPayload>("/api/clients"),
+        apiRequest<ClientsPayload>("/api/clients?includeInactive=true"),
       ]);
       setContracts(contractsResult.contracts);
       setClients(clientsResult.clients);
-      if (!clientId && clientsResult.clients[0]) {
-        setClientId(clientsResult.clients[0].id);
+      const firstActive = clientsResult.clients.find((client) => client.active);
+      if (!clientId && firstActive) {
+        setClientId(firstActive.id);
       }
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : "Falha ao carregar contratos");
@@ -193,8 +204,8 @@ export default function ContractsPage() {
     setStatus("ACTIVE");
     setResponseMinutes("60");
     setResolutionMinutes("480");
-    if (clients[0]) {
-      setClientId(clients[0].id);
+    if (activeClients[0]) {
+      setClientId(activeClients[0].id);
     }
     setFormError(null);
   }
@@ -219,8 +230,8 @@ export default function ContractsPage() {
     setStatus("ACTIVE");
     setResponseMinutes("60");
     setResolutionMinutes("480");
-    if (clients[0]) {
-      setClientId(clients[0].id);
+    if (activeClients[0]) {
+      setClientId(activeClients[0].id);
     }
     setShowForm(true);
     setFormError(null);
@@ -570,9 +581,9 @@ export default function ContractsPage() {
                     <option value="" disabled>
                       Selecione
                     </option>
-                    {clients.map((client) => (
+                    {clientOptions.map((client) => (
                       <option key={client.id} value={client.id}>
-                        {client.name}
+                        {client.active ? client.name : `${client.name} (inativo)`}
                       </option>
                     ))}
                   </select>

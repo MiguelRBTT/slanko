@@ -103,19 +103,22 @@ slanko/
 ├── tests/
 │   ├── api/, services/, repositories/, lib/, types/   # unitários (backend)
 │   ├── frontend/               # interface (jsdom + Testing Library)
-│   └── integration/            # MySQL real (banco *_test)
+│   ├── integration/            # MySQL real (banco *_test)
+│   └── helpers/                # requisição autenticada e dados de teste compartilhados
 ├── prisma/                     # schema, migrations e seed de demonstração
 ├── docker/                     # Prometheus, Grafana e init do MySQL
 ├── docs/
 │   ├── RFC.md, casos-de-uso.md, arquitetura-c4.md, modelagem.md
-│   ├── assets/                 # diagramas (SVG e PNG) e paleta de cores
+│   ├── assets/                 # diagramas, paleta, telas do sistema e resultados dos testes
 │   └── wiki/                   # fonte das páginas da Wiki do GitHub
 ├── scripts/
 │   └── publish-wiki.ps1        # publica docs/wiki no GitHub Wiki
 ├── .github/workflows/ci.yml    # CI: lint, typecheck, testes, build, Sonar e integração
 ├── Dockerfile                  # imagem do slanko-app
 ├── docker-compose.yml          # slanko-db, Prometheus, Grafana e slanko-app (perfil app)
+├── .env.example                # variáveis de ambiente (copie para .env)
 ├── .nvmrc                      # versão do Node (22)
+├── sonar-project.properties    # configuração do SonarCloud
 ├── package.json
 └── vitest.config.ts, vitest.frontend.config.ts, vitest.integration.config.ts
 ```
@@ -464,19 +467,19 @@ Endpoints:
 | `GET /api/metrics` | Token `METRICS_TOKEN` (Bearer), quando definido | — (Prometheus) |
 | `POST /api/auth/login` | Pública | — (429 após 5 falhas em 15 min) |
 | `GET /api/users` | JWT | gestor ou técnico (`includeInactive=true`: gestor) |
-| `POST /api/users` | JWT | gestor only |
+| `POST /api/users` | JWT | só gestor |
 | `GET /api/users/:id` | JWT | gestor ou técnico |
-| `PUT /api/users/:id` | JWT | gestor only |
-| `GET /api/clients` | JWT | gestor only |
-| `POST /api/clients` | JWT | gestor only |
-| `GET /api/clients/:id` | JWT | gestor only |
-| `PUT /api/clients/:id` | JWT | gestor only |
-| `DELETE /api/clients/:id` | JWT | gestor only (soft delete) |
+| `PUT /api/users/:id` | JWT | só gestor |
+| `GET /api/clients` | JWT | só gestor (`includeInactive=true` traz os inativos) |
+| `POST /api/clients` | JWT | só gestor |
+| `GET /api/clients/:id` | JWT | só gestor |
+| `PUT /api/clients/:id` | JWT | só gestor |
+| `DELETE /api/clients/:id` | JWT | só gestor (desativa o cliente) |
 | `GET /api/contracts` | JWT | gestor ou técnico |
-| `POST /api/contracts` | JWT | gestor only |
+| `POST /api/contracts` | JWT | só gestor |
 | `GET /api/contracts/:id` | JWT | gestor ou técnico |
-| `PUT /api/contracts/:id` | JWT | gestor only |
-| `DELETE /api/contracts/:id` | JWT | gestor only |
+| `PUT /api/contracts/:id` | JWT | só gestor |
+| `DELETE /api/contracts/:id` | JWT | só gestor |
 | `GET /api/tickets` | JWT | gestor ou técnico |
 | `POST /api/tickets` | JWT | gestor ou técnico |
 | `GET /api/tickets/:id` | JWT | gestor ou técnico |
@@ -491,12 +494,12 @@ Endpoints:
 | `POST /api/tickets/:id/attachments` | JWT | gestor ou técnico (multipart `file`) |
 | `DELETE /api/tickets/:id/attachments/:attachmentId` | JWT | gestor ou técnico |
 | `GET /api/tickets/:id/attachments/:attachmentId/file` | JWT | gestor ou técnico |
-| `GET /api/sla/summary` | JWT | gestor only |
-| `GET /api/sla/contracts/:id` | JWT | gestor only |
-| `GET /api/profitability/summary` | JWT | gestor only |
-| `GET /api/profitability/contracts/:id` | JWT | gestor only |
+| `GET /api/sla/summary` | JWT | só gestor |
+| `GET /api/sla/contracts/:id` | JWT | só gestor |
+| `GET /api/profitability/summary` | JWT | só gestor |
+| `GET /api/profitability/contracts/:id` | JWT | só gestor |
 
-Filtros úteis: `GET /api/sla/summary` aceita `clientId`, `contractId`, `startDate`, `endDate` (YYYY-MM-DD) e `status` (`ACTIVE` padrão, `SUSPENDED`, `FINISHED` ou `ALL`; rascunhos nunca entram). O painel tem o mesmo filtro de situação. O relatório por contrato aceita `startDate` e `endDate`. Os endpoints de rentabilidade usam os mesmos filtros de período: o custo considera o `workedAt` das horas apontadas e a receita é o valor mensal proporcional aos dias de vigência dentro do período (limitado a hoje).
+Filtros úteis: `GET /api/tickets` aceita `contractId`, `status`, `assignedToId` e `priority`. `GET /api/sla/summary` aceita `clientId`, `contractId`, `startDate`, `endDate` (YYYY-MM-DD) e `status` (`ACTIVE` padrão, `SUSPENDED`, `FINISHED` ou `ALL`; rascunhos nunca entram). O painel tem o mesmo filtro de situação. O relatório por contrato aceita `startDate` e `endDate`. Os endpoints de rentabilidade aceitam os mesmos filtros (`clientId`, `contractId`, `status`, `startDate` e `endDate`): o custo considera o `workedAt` das horas apontadas e a receita é o valor mensal proporcional aos dias de vigência dentro do período (limitado a hoje).
 
 ### Testes
 
@@ -562,7 +565,7 @@ Painel do projeto (após o primeiro scan): [SonarCloud — Slanko](https://sonar
 
 ### Wiki do GitHub (RNF10)
 
-Páginas versionadas em [`docs/wiki/`](docs/wiki/) (Home, guia de execução, arquitetura, API, autenticação, casos de uso, modelagem, CI/SonarCloud).
+Páginas versionadas em [`docs/wiki/`](docs/wiki/): Home, guia de execução, documentação técnica, arquitetura, API, autenticação, casos de uso, modelagem de dados, CI/CD e qualidade, e observabilidade.
 
 Publicar na Wiki (após habilitar Wikis no repositório e criar a primeira página Home uma vez na UI):
 
@@ -609,17 +612,17 @@ Limitações conhecidas: as métricas HTTP por rota (latência) não são coleta
 
 ## Resultados dos testes
 
-Execução de 09/11/2026 na branch `main`. Todos os testes passam, e a cobertura fica acima do mínimo da linha Web Apps (RNF04: 75% no backend e 25% no frontend).
+Execução de 24/11/2026. Todos os testes passam, e a cobertura fica acima do mínimo da linha Web Apps (RNF04: 75% no backend e 25% no frontend).
 
 | Suíte | Comando | Arquivos | Testes | Cobertura de linhas | Mínimo |
 |---|---|---|---|---|---|
-| Backend | `npm run test:coverage:backend` | 64 | 352 passando | 95,7% | 75% |
-| Frontend | `npm run test:coverage:frontend` | 14 | 63 passando | 82,3% | 25% |
+| Backend | `npm run test:coverage:backend` | 64 | 353 passando | 95,7% | 75% |
+| Frontend | `npm run test:coverage:frontend` | 14 | 65 passando | 82,4% | 25% |
 | Integração (MySQL real) | `npm run test:integration` | 2 | 9 passando | não se aplica | — |
 
-![Resultado dos testes do backend: 352 testes passando e 95,7% de cobertura](docs/assets/testes-backend.png)
+![Resultado dos testes do backend: 353 testes passando e 95,7% de cobertura](docs/assets/testes-backend.png)
 
-![Resultado dos testes do frontend: 63 testes passando e 82,3% de cobertura](docs/assets/testes-frontend.png)
+![Resultado dos testes do frontend: 65 testes passando e 82,4% de cobertura](docs/assets/testes-frontend.png)
 
 As imagens mostram a saída real do Vitest com o reporter `dot` (um ponto verde por teste aprovado). Os números por camada vêm dos relatórios da própria execução (resultado dos testes em JSON e resumo de cobertura).
 
@@ -629,7 +632,7 @@ O que cada camada testa:
 * **Services:** as regras de negócio (marcos de SLA, atribuição, apontamentos, exclusão de chamados e histórico), com repositórios falsos.
 * **Repositories:** se a consulta enviada ao Prisma é a esperada.
 * **Cálculos e segurança:** SLA, receita proporcional, margem, JWT, limite de login, validação e regras de anexo, sem mocks.
-* **Telas:** login, painel, chamados, contratos e equipe renderizados com Testing Library, simulando digitação e cliques.
+* **Telas:** login, menu, painel, clientes, contratos, equipe e chamados renderizados com Testing Library, simulando digitação e cliques.
 * **Integração:** o fluxo completo até o MySQL, sem mocks (detalhes em [Testes](#testes)).
 
 Os mínimos de cobertura ficam em `vitest.config.ts` e `vitest.frontend.config.ts`: se a cobertura cair abaixo deles, o comando falha e o CI fica vermelho.
@@ -640,7 +643,7 @@ Os mínimos de cobertura ficam em `vitest.config.ts` e `vitest.frontend.config.t
 
 * **Aplicação navegável com os três fluxos de negócio:** chamados com acompanhamento de SLA, apontamento de horas e rentabilidade por contrato, em seis telas (login, painel, clientes, contratos, chamados e equipe).
 * **API com 35 endpoints**, protegida por JWT e perfil (gestor e técnico), com histórico auditável de cada chamado e anexos de imagem e vídeo.
-* **Mais de 420 testes automatizados** (backend, frontend e integração com MySQL), com cobertura de linhas de 95,7% no backend e 82,3% no frontend; os mínimos da linha Web Apps são 75% e 25%.
+* **Mais de 420 testes automatizados** (backend, frontend e integração com MySQL), com cobertura de linhas de 95,7% no backend e 82,4% no frontend; os mínimos da linha Web Apps são 75% e 25%.
 * **CI no GitHub Actions** com lint, typecheck, testes com cobertura, build, integração com MySQL e SonarCloud com Quality Gate.
 * **Segurança:** usuário conferido a cada requisição, CSP com nonce, limite de tentativas de login e anexos validados pela assinatura do arquivo.
 * **Observabilidade:** Prometheus e Grafana com métricas técnicas e de negócio (chamados, SLA e margem).

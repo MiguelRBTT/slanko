@@ -22,13 +22,18 @@
 
 Definidas no `.env` (veja `.env.example`):
 
-* `JWT_SECRET` — chave com pelo menos 32 caracteres
-* `JWT_EXPIRES_IN` — ex.: `1h`
 * `DATABASE_URL` — conexão MySQL
+* `JWT_SECRET` — chave de assinatura do JWT (em produção, uma sequência longa e aleatória)
+* `JWT_EXPIRES_IN` — validade do token (padrão `8h`)
+* `METRICS_TOKEN` — token exigido pelo `/api/metrics` (o mesmo do `docker/prometheus/prometheus.yml`)
+* `TRUST_PROXY` — `true` só atrás de um proxy reverso confiável (o IP passa a contar no limite de login)
 
 ## Seed
 
 Após `npm run db:seed`:
 
-* `gestor@slanko.local` / `Slanko@123`
-* `tecnico@slanko.local` / `Slanko@123`
+* `gestor@slanko.local` / `Slanko@123` (gestor)
+* `tecnico@slanko.local` / `Slanko@123` (técnico responsável no chamado de exemplo)
+* `tecnico2@slanko.local` / `Slanko@123` (técnico observador)
+
+A tela de login começa com os campos vazios; no ambiente local, uma dica abaixo do formulário lembra os emails.
