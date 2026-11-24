@@ -1,6 +1,6 @@
 # API
 
-Todas as rotas (exceto health e login) exigem header:
+Todas as rotas exigem o header abaixo, exceto `health` e `login` (públicas) e `metrics` (que usa o `METRICS_TOKEN` do Prometheus):
 
 ```http
 Authorization: Bearer <jwt>
@@ -17,11 +17,11 @@ Authorization: Bearer <jwt>
 | `POST /api/users` | JWT | gestor |
 | `GET /api/users/:id` | JWT | gestor ou técnico |
 | `PUT /api/users/:id` | JWT | gestor (dados, custo/hora, situação, nova senha) |
-| `GET /api/clients` | JWT | gestor |
+| `GET /api/clients` | JWT | gestor (`includeInactive=true` traz os inativos) |
 | `POST /api/clients` | JWT | gestor |
 | `GET /api/clients/:id` | JWT | gestor |
 | `PUT /api/clients/:id` | JWT | gestor |
-| `DELETE /api/clients/:id` | JWT | gestor (soft delete) |
+| `DELETE /api/clients/:id` | JWT | gestor (desativa o cliente) |
 | `GET /api/contracts` | JWT | gestor ou técnico |
 | `POST /api/contracts` | JWT | gestor |
 | `GET /api/contracts/:id` | JWT | gestor ou técnico |
@@ -48,7 +48,8 @@ Authorization: Bearer <jwt>
 
 ## Filtros
 
-* `GET /api/sla/summary` e rentabilidade: `clientId`, `contractId`, `startDate`, `endDate` (`YYYY-MM-DD`)
+* `GET /api/tickets`: `contractId`, `status`, `assignedToId`, `priority`
+* `GET /api/sla/summary` e `GET /api/profitability/summary`: `clientId`, `contractId`, `startDate`, `endDate` (`YYYY-MM-DD`)
 * Resumos de SLA e rentabilidade: `status=ACTIVE|SUSPENDED|FINISHED|ALL` (padrão `ACTIVE`; rascunhos nunca entram)
 * Relatórios por contrato: `startDate`, `endDate` (qualquer contrato, exceto rascunho)
 * Técnico não recebe `hourlyCost` de outros usuários nem `value` de contratos
@@ -57,9 +58,9 @@ Authorization: Bearer <jwt>
 ## Login (exemplo)
 
 ```bash
-curl -X POST http://localhost:3000/api/auth/login \
+curl -k -X POST https://localhost:3000/api/auth/login \
   -H "Content-Type: application/json" \
   -d "{\"email\":\"gestor@slanko.local\",\"password\":\"Slanko@123\"}"
 ```
 
-Resposta tipica inclui `token` e `user` (`id`, `name`, `email`, `role`).
+A resposta traz o `token` e o `user` (`id`, `name`, `email`, `role`, `hourlyCost`, `active`). Com `npm run dev:http`, use `http://localhost:3000` sem o `-k`.

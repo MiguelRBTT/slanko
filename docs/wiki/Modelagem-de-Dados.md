@@ -15,7 +15,7 @@ Persistência em **MySQL** via **Prisma**.
 
 ## Regras relevantes
 
-* Soft delete / desativação onde aplicável (ex.: cliente)
+* Desativação no lugar de exclusão para clientes e usuários. Cliente inativo não recebe contrato novo, mas os contratos dele continuam visíveis e editáveis (por exemplo, para finalizar)
 * SLA calcula cumprimento de resposta e resolução por chamado
 * Rentabilidade: custo = soma(horas × custo/hora do apontamento); receita = valor mensal proporcional aos dias de vigência no período; margem = receita − custo
 * SLA: chamado sem resposta/resolução com prazo vencido já conta como violação

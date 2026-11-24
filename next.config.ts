@@ -1,7 +1,7 @@
 ﻿import type { NextConfig } from "next";
 import { STATIC_SECURITY_HEADERS } from "./src/lib/http/security-headers";
 
-// Next.js configuration for the Slanko full-stack app.
+// Configuração do Next.js do Slanko (telas e API no mesmo projeto).
 // A CSP (com nonce) é aplicada no middleware; aqui ficam os headers fixos.
 const nextConfig: NextConfig = {
   reactStrictMode: true,

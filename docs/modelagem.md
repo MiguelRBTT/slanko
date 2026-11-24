@@ -220,6 +220,11 @@ Chave primária composta (`ticket_id`, `user_id`): a mesma pessoa não observa o
 * `TECNICO`: abertura/atualização de chamados, apontamento de horas e encerramento. Pode assumir para si um chamado sem responsável, mas não atribui a terceiros nem altera observadores (UC06). Não recebe custo/hora de colegas nem valor de contratos.
 * Chamados só podem ser abertos em contratos `ACTIVE` e vigentes na data de hoje.
 
+### Clientes e usuários inativos
+* Cliente e usuário são desativados, nunca excluídos: o histórico de chamados, horas e contratos continua valendo.
+* Cliente inativo não recebe contrato novo, mas os contratos que já existem continuam visíveis (com o nome do cliente) e editáveis, por exemplo para serem finalizados.
+* Usuário inativo perde o acesso na hora: o middleware confere o usuário no banco a cada requisição.
+
 ## Rastreabilidade
 
 | Entidade | Casos de uso | Requisitos |

@@ -39,7 +39,7 @@ Três fluxos de negócio:
 * [README do repositório](https://github.com/MiguelRBTT/slanko/blob/main/README.md)
 * [CI (GitHub Actions)](https://github.com/MiguelRBTT/slanko/actions)
 * [SonarCloud](https://sonarcloud.io/summary/new_code?id=MiguelRBTT_slanko)
-* App local: [http://localhost:3000](http://localhost:3000) (após `npm run dev`)
+* App local: [https://localhost:3000](https://localhost:3000) (após `npm run dev`; sem HTTPS, `npm run dev:http`)
 
 ## Status
 
