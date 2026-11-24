@@ -17,6 +17,7 @@ function getJwtExpiresIn(): string {
   return process.env.JWT_EXPIRES_IN ?? "8h";
 }
 
+/** Gera o JWT do login (HS256): id do usuário no "sub", email e perfil. Validade padrão: 8 h. */
 export async function signAccessToken(input: {
   userId: string;
   email: string;
@@ -30,6 +31,7 @@ export async function signAccessToken(input: {
     .sign(getJwtSecret());
 }
 
+/** Confere assinatura e validade do token; qualquer falha vira 401. */
 export async function verifyAccessToken(token: string): Promise<AuthContext> {
   try {
     const { payload } = await jwtVerify(token, getJwtSecret());
@@ -49,6 +51,7 @@ export async function verifyAccessToken(token: string): Promise<AuthContext> {
   }
 }
 
+/** Lê o token do header "Authorization: Bearer <token>". */
 export function extractBearerToken(authorizationHeader: string | null): string | null {
   if (!authorizationHeader) {
     return null;

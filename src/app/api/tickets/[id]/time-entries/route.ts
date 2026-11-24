@@ -8,8 +8,8 @@ type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
-// GET /api/tickets/:id/time-entries - list time entries for a ticket.
-// POST /api/tickets/:id/time-entries - log worked hours.
+// GET /api/tickets/:id/time-entries - lista os apontamentos do chamado.
+// POST /api/tickets/:id/time-entries - registra tempo trabalhado (RF06).
 
 export async function GET(request: Request, context: RouteContext) {
   try {

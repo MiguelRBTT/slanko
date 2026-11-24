@@ -3,9 +3,11 @@ import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { extensionForMime } from "@/lib/attachments/rules";
 
+// Pasta dos anexos no disco (no Docker, um volume); o banco guarda só o caminho relativo (storageKey).
 const UPLOADS_ROOT =
   process.env.SLANKO_UPLOADS_DIR?.trim() || path.join(process.cwd(), "uploads");
 
+/** Converte a chave do banco em caminho no disco e recusa "..", caminho absoluto ou fora de tickets/ (path traversal). */
 export function resolveStoragePath(storageKey: string): string {
   const normalized = storageKey.replace(/\\/g, "/");
   if (
@@ -25,6 +27,7 @@ export async function saveTicketAttachmentFile(input: {
   bytes: Buffer;
 }): Promise<string> {
   const ext = extensionForMime(input.mimeType);
+  // Nome aleatório (UUID) no disco: o nome original do arquivo nunca vira caminho.
   const storageKey = `tickets/${input.ticketId}/${randomUUID()}.${ext}`;
   const absolutePath = resolveStoragePath(storageKey);
 
@@ -42,6 +45,7 @@ export async function deleteTicketAttachmentFile(storageKey: string): Promise<vo
   try {
     await unlink(resolveStoragePath(storageKey));
   } catch (error) {
+    // Arquivo que já não existe não é erro: a exclusão pode ser repetida sem falhar.
     const code = (error as NodeJS.ErrnoException).code;
     if (code !== "ENOENT") {
       throw error;

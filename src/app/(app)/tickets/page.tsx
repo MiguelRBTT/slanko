@@ -63,6 +63,7 @@ const SORT_OPTIONS: Array<{ value: SortKey; label: string }> = [
   { value: "title", label: "Título" },
 ];
 
+// Aba "Abertos" junta Aberto, Em andamento e Aguardando.
 function matchesTab(ticket: PublicTicket, tab: StatusTab): boolean {
   if (tab === "open") return ticket.status === "OPEN" || ticket.status === "IN_PROGRESS" || ticket.status === "WAITING";
   if (tab === "resolved") return ticket.status === "RESOLVED";
@@ -84,6 +85,7 @@ const PRIORITIES = [
   { value: "CRITICAL", label: "Crítica" },
 ] as const;
 
+// Situações escolhidas na edição; Resolver e Encerrar têm botões próprios, com regras.
 const WORK_STATUSES = [
   { value: "OPEN", label: "Aberto" },
   { value: "IN_PROGRESS", label: "Em andamento" },
@@ -105,12 +107,14 @@ const SORT_DEFAULT_DIR: Record<SortKey, SortDir> = {
   title: "asc",
 };
 
+// Dia de hoje no fuso local (o campo de data trabalha com o dia do calendário da pessoa).
 function todayInputValue(): string {
   const now = new Date();
   const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000);
   return local.toISOString().slice(0, 10);
 }
 
+// Meio-dia local: a data não muda de dia ao converter para UTC.
 function dateInputToIso(value: string): string {
   return new Date(`${value}T12:00:00`).toISOString();
 }
@@ -145,6 +149,7 @@ function TicketDetail({
   onClose: () => void;
   onDelete: () => void;
 }) {
+  // Botões conforme a situação: encerrado fica só leitura; resolvido ainda pode ser encerrado.
   const closed = ticket.status === "CLOSED";
   const resolved = ticket.status === "RESOLVED" || closed;
   const deadline = getActiveSlaDeadline({
@@ -202,6 +207,7 @@ function TicketDetail({
         <button type="button" className={`btn btn-ghost ${styles.compact}`} onClick={() => onOpen("history")}>
           Histórico
         </button>
+        {/* Excluir só aparece em chamado não resolvido e sem tempo apontado (aberto por engano). */}
         {!resolved && minutes === 0 ? (
           <button
             type="button"
@@ -317,6 +323,7 @@ export default function TicketsPage() {
   // Total vem agregado na listagem; os apontamentos só são buscados para o chamado aberto.
   const selectedMinutes = selected ? hoursToMinutes(selected.loggedHours) : 0;
 
+  // Só contratos ativos recebem chamados novos.
   const activeContracts = useMemo(
     () => contracts.filter((contract) => contract.status === "ACTIVE"),
     [contracts],
@@ -335,6 +342,7 @@ export default function TicketsPage() {
     [tickets],
   );
 
+  // Minutos até estourar a meta ativa do SLA (resposta ou resolução); null quando não há prazo correndo.
   const slaRemainingMinutes = useMemo(() => {
     return (ticket: PublicTicket): number | null => {
       const deadline = getActiveSlaDeadline({
@@ -368,6 +376,7 @@ export default function TicketsPage() {
     return counts;
   }, [tickets]);
 
+  // Filtra pela aba e pela busca e ordena; o padrão "SLA" põe primeiro quem está mais perto de estourar.
   const listedTickets = useMemo(() => {
     const rows = tickets.filter((ticket) => {
       if (!matchesTab(ticket, statusTab)) return false;
@@ -398,6 +407,7 @@ export default function TicketsPage() {
         case "sla": {
           const remainingA = slaRemainingMinutes(a);
           const remainingB = slaRemainingMinutes(b);
+          // Sem prazo correndo (resolvido ou encerrado) vai para o fim da lista.
           const valueA = remainingA ?? Number.POSITIVE_INFINITY;
           const valueB = remainingB ?? Number.POSITIVE_INFINITY;
           cmp = valueA - valueB;
@@ -414,6 +424,7 @@ export default function TicketsPage() {
       }
 
       if (cmp !== 0) return cmp * direction;
+      // Empate: mais recente primeiro.
       return new Date(b.openedAt).getTime() - new Date(a.openedAt).getTime();
     });
 
@@ -429,6 +440,7 @@ export default function TicketsPage() {
     }
   }
 
+  // Chamados, contratos e equipe carregados em paralelo.
   async function load(initial = false) {
     if (initial) {
       setLoading(true);
@@ -445,6 +457,7 @@ export default function TicketsPage() {
       const active = contractsResult.contracts.filter((contract) => contract.status === "ACTIVE");
       setTickets(ticketsResult.tickets);
       setContracts(contractsResult.contracts);
+      // Possíveis responsáveis: técnicos ativos.
       setTechnicians(usersResult.users.filter((user) => user.role === "TECNICO" && user.active));
       setContractId((current) => current || active[0]?.id || "");
       if (selectedId) {
@@ -482,6 +495,7 @@ export default function TicketsPage() {
     return technicians.find((user) => user.id === userId)?.name ?? "Técnico";
   }
 
+  // Relógio atualizado a cada 30 s: os prazos de SLA andam na tela sem recarregar.
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 30_000);
     return () => window.clearInterval(timer);
@@ -508,6 +522,7 @@ export default function TicketsPage() {
     setEditDescription(ticket.description);
     setEditPriority(ticket.priority);
     setEditCategory(ticket.category);
+    // O campo só tem situações de trabalho; para chamado resolvido ele nem é enviado.
     setEditStatus(WORK_STATUSES.some((item) => item.value === ticket.status) ? ticket.status : "IN_PROGRESS");
     setEditAssignedToId(ticket.assignedToId ?? "");
     setEditObserverIds(ticket.observerIds ?? []);
@@ -535,6 +550,7 @@ export default function TicketsPage() {
     closePanel();
   }
 
+  /** Registra tempo: a tela trabalha em minutos e a API recebe horas (minutos ÷ 60). */
   async function logTime(ticketId: string, minutesRaw: string, workedOn: string, note: string) {
     const minutes = parseMinutesInput(minutesRaw);
 
@@ -604,10 +620,12 @@ export default function TicketsPage() {
           priority,
           category,
           assignedToId: assignedToId || null,
+          // Só o gestor define observadores; o responsável não entra como observador.
           observerIds: isGestor ? observerIds.filter((id) => id !== assignedToId) : [],
         },
       });
 
+      // Anexos escolhidos no formulário sobem depois que o chamado existe (precisam do id).
       if (pendingFiles.length > 0) {
         await uploadPendingFiles(created.ticket.id, pendingFiles);
       }
@@ -621,6 +639,7 @@ export default function TicketsPage() {
     }
   }
 
+  // Só quem apontou (ou o gestor) corrige ou exclui um apontamento.
   function canChangeEntry(entry: PublicTimeEntry): boolean {
     return Boolean(currentUser) && (isGestor || entry.userId === currentUser?.id);
   }
@@ -694,6 +713,7 @@ export default function TicketsPage() {
 
       await logTime(selected.id, logHours, logDate, logNote);
 
+      // O 1º apontamento já conta como resposta do SLA; a tela também passa o chamado para "Em andamento".
       if (selected.status === "OPEN") {
         await apiRequest(`/api/tickets/${selected.id}`, {
           method: "PUT",
@@ -715,6 +735,7 @@ export default function TicketsPage() {
     event.preventDefault();
     if (!selected) return;
 
+    // Resolver exige descrever a solução (a API confere de novo).
     if (!solution.trim()) {
       setError("Descreva o que foi feito para resolver o chamado.");
       return;
@@ -723,6 +744,7 @@ export default function TicketsPage() {
     const minutesRaw = resolveHours.trim();
     const alreadyLogged = selectedMinutes > 0;
 
+    // Resolver exige tempo apontado: se ainda não há, a pessoa informa os minutos aqui.
     if (!minutesRaw && !alreadyLogged) {
       setError("Informe quantos minutos você gastou neste chamado. O prazo do SLA não substitui o tempo de trabalho.");
       return;
@@ -768,10 +790,12 @@ export default function TicketsPage() {
         category: editCategory,
       };
 
+      // Chamado resolvido não muda de situação por aqui: o próximo passo é encerrar.
       if (selected.status !== "RESOLVED") {
         body.status = editStatus;
       }
 
+      // Gestor atribui e define observadores; técnico só assume chamado sem responsável.
       if (isGestor) {
         body.assignedToId = editAssignedToId || null;
         body.observerIds = editObserverIds.filter((id) => id !== editAssignedToId);
@@ -789,6 +813,7 @@ export default function TicketsPage() {
     }
   }
 
+  /** Encerrar exige solução registrada; sem ela, abre o formulário de resolver. */
   async function closeTicket(ticket: PublicTicket) {
     if (!ticket.solution?.trim()) {
       setError("Resolva o chamado e registre a solução antes de encerrar.");
@@ -819,6 +844,7 @@ export default function TicketsPage() {
     }
   }
 
+  /** A API só exclui chamado não resolvido e sem tempo apontado. */
   async function deleteTicket(ticket: PublicTicket) {
     const confirmed = window.confirm(
       `Excluir o chamado "${ticket.title}"? Use só para chamados abertos por engano: a exclusão não pode ser desfeita.`,
@@ -1011,6 +1037,7 @@ export default function TicketsPage() {
 
             <form onSubmit={onCreate}>
               <div className={styles.formGrid}>
+                {/* Gestor escolhe o responsável; técnico só pode assumir o chamado para si. */}
                 {isGestor ? (
                   <div className="field">
                     <label htmlFor="assignedToId">Responsável</label>
@@ -1319,6 +1346,7 @@ export default function TicketsPage() {
           {panel === "edit" ? (
             <form onSubmit={onEdit}>
               <div className={styles.formGrid}>
+                {/* Gestor escolhe o responsável; técnico vê quem é o responsável ou, se não houver, pode assumir. */}
                 {isGestor ? (
                   <div className="field">
                     <label htmlFor="editAssignedToId">Responsável</label>

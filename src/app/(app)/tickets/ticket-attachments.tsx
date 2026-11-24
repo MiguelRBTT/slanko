@@ -21,6 +21,7 @@ function formatBytes(size: number): string {
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+/** Mostra imagem ou vídeo de anexo: baixa com o token (o arquivo não é público) e exibe por URL local (blob:). */
 function AuthMedia({
   url,
   kind,
@@ -67,6 +68,7 @@ function AuthMedia({
     };
   }, [url, mimeType]);
 
+  // Libera da memória a URL local ao sair da tela.
   useEffect(() => {
     return () => {
       if (objectUrlRef.current) {
@@ -158,6 +160,7 @@ export function AttachmentFileInput({
     event.target.value = "";
     if (selected.length === 0) return;
 
+    // Validação prévia de quantidade, tipo e tamanho para avisar antes do envio; a API valida de novo.
     if (selected.length > remainingSlots) {
       onError(`Limite de ${MAX_ATTACHMENTS_PER_TICKET} anexos por chamado.`);
       return;
@@ -322,6 +325,7 @@ export function TicketAttachmentGallery({
   );
 }
 
+/** Envia os anexos um por um depois que o chamado foi criado. */
 export async function uploadPendingFiles(ticketId: string, files: File[]): Promise<void> {
   for (const file of files) {
     const formData = new FormData();

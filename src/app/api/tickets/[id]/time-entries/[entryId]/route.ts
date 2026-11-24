@@ -8,8 +8,8 @@ type RouteContext = {
   params: Promise<{ id: string; entryId: string }>;
 };
 
-// PUT /api/tickets/:id/time-entries/:entryId - correct a time entry (author or gestor).
-// DELETE /api/tickets/:id/time-entries/:entryId - remove a time entry (author or gestor).
+// PUT /api/tickets/:id/time-entries/:entryId - corrige um apontamento (autor ou gestor).
+// DELETE /api/tickets/:id/time-entries/:entryId - remove um apontamento (autor ou gestor).
 
 export async function PUT(request: Request, context: RouteContext) {
   try {

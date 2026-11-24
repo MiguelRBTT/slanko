@@ -5,8 +5,8 @@ import { getAuthContextFromHeaders } from "@/lib/auth/request-context";
 import { userService } from "@/services/user.service";
 import { toUserSummary, type CreateUserInput } from "@/types/user";
 
-// GET /api/users - list active users (JWT). Tecnico receives no hourly cost; includeInactive=true is gestor only.
-// POST /api/users - create a user (gestor only).
+// GET /api/users - lista usuários ativos (JWT). O técnico não recebe o custo/hora; includeInactive=true é só do gestor.
+// POST /api/users - cadastra usuário (só gestor).
 
 export async function GET(request: Request) {
   try {

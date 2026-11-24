@@ -1,6 +1,6 @@
 import type { Role } from "@prisma/client";
 
-// Public user shape returned by API routes (never expose passwordHash).
+// Formato público do usuário devolvido pela API (nunca expõe o passwordHash).
 
 export type PublicUser = {
   id: string;

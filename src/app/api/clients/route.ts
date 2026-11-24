@@ -4,8 +4,8 @@ import { assertGestor } from "@/lib/auth/require-gestor";
 import { clientService } from "@/services/client.service";
 import type { CreateClientInput } from "@/types/client";
 
-// GET /api/clients - list clients (requires JWT; gestor only).
-// POST /api/clients - create client.
+// GET /api/clients - lista clientes (JWT; só gestor).
+// POST /api/clients - cadastra cliente.
 
 export async function GET(request: Request) {
   try {

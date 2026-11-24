@@ -12,7 +12,7 @@ import { recordLoginAttempt } from "@/lib/observability/metrics";
 import { authService } from "@/services/auth.service";
 import type { LoginInput } from "@/types/auth";
 
-// POST /api/auth/login - authenticate with email and password, returns JWT.
+// POST /api/auth/login - autentica com email e senha e devolve o JWT.
 // Após 5 falhas para o mesmo email (e IP, atrás de proxy confiável) em 15 min, responde 429 com Retry-After.
 
 export async function POST(request: Request) {

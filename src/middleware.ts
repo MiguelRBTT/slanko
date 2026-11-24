@@ -25,6 +25,7 @@ function withPageSecurity(request: NextRequest) {
   return response;
 }
 
+/** Porta de entrada: páginas recebem a CSP; rotas /api protegidas exigem JWT válido e usuário ativo. */
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -36,6 +37,7 @@ export async function middleware(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   AUTH_CONTEXT_HEADERS.forEach((header) => requestHeaders.delete(header));
 
+  // Rotas públicas (login, health, metrics) passam sem JWT; o /api/metrics confere o próprio token.
   if (isPublicApiPath(pathname) || !isProtectedApiPath(pathname)) {
     return NextResponse.next({ request: { headers: requestHeaders } });
   }
@@ -43,6 +45,7 @@ export async function middleware(request: NextRequest) {
   try {
     const authContext = await authenticateRequest(request.headers.get(AUTH_HEADER), pathname);
 
+    // Repassa à rota quem é o usuário, em headers internos (lidos por getAuthContextFromHeaders).
     if (authContext) {
       requestHeaders.set(USER_ID_HEADER, authContext.userId);
       requestHeaders.set(USER_EMAIL_HEADER, authContext.email);

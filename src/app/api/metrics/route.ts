@@ -3,7 +3,7 @@ import { extractBearerToken } from "@/lib/auth/jwt";
 import { prometheusContentType, recordMetricsScrape, renderPrometheusMetrics } from "@/lib/observability/metrics";
 import { metricsService } from "@/services/metrics.service";
 
-// GET /api/metrics - Prometheus scrape endpoint.
+// GET /api/metrics - coleta do Prometheus.
 // Expõe indicadores de negócio (margem, contratos deficitários), então exige
 // "Authorization: Bearer <METRICS_TOKEN>" quando METRICS_TOKEN está definido.
 

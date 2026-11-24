@@ -4,7 +4,7 @@ import { parseContractStatusFilter } from "@/lib/reports/contract-status-filter"
 import { parseProfitabilityPeriodFilters } from "@/lib/profitability/period-filters";
 import { profitabilityService } from "@/services/profitability.service";
 
-// GET /api/profitability/summary - profitability overview (requires JWT; gestor only). status=ACTIVE|SUSPENDED|FINISHED|ALL.
+// GET /api/profitability/summary - visão geral de rentabilidade (JWT; só gestor). status=ACTIVE|SUSPENDED|FINISHED|ALL.
 
 export async function GET(request: Request) {
   try {

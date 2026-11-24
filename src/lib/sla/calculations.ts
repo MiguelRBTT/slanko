@@ -6,6 +6,7 @@ function minutesBetween(start: Date, end: Date): number {
   return Math.round((end.getTime() - start.getTime()) / MS_PER_MINUTE);
 }
 
+/** Conformidade (RF09) = cumpridos ÷ (cumpridos + violados) × 100; pendentes ficam fora da conta. */
 function complianceRate(met: number, breached: number): number | null {
   const evaluated = met + breached;
 

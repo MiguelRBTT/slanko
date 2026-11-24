@@ -7,7 +7,7 @@ type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
-// GET /api/profitability/contracts/:id - profitability report for one contract (gestor only).
+// GET /api/profitability/contracts/:id - rentabilidade de um contrato (só gestor).
 
 export async function GET(request: Request, context: RouteContext) {
   try {

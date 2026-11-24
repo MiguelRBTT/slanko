@@ -24,6 +24,7 @@ const EXTENSION_BY_MIME: Record<string, string> = {
   "video/webm": "webm",
 };
 
+/** Só imagem (JPEG, PNG, WebP, GIF) ou vídeo (MP4, WebM); qualquer outro tipo é recusado. */
 export function resolveAttachmentKind(mimeType: string): AttachmentKind {
   const normalized = mimeType.trim().toLowerCase();
 
@@ -66,6 +67,7 @@ export function assertAttachmentSize(kind: AttachmentKind, sizeBytes: number): v
   }
 }
 
+/** Nome exibido do arquivo: sem barras e com no máximo 180 caracteres. */
 export function sanitizeOriginalFileName(fileName: string): string {
   const base = fileName.trim().replace(/[/\\]/g, "_").slice(0, 180);
   if (!base) {

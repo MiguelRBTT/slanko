@@ -96,6 +96,8 @@ describe("LoginPage", () => {
     });
 
     render(<LoginPage />);
+    await user.type(screen.getByLabelText("Email"), "tecnico@slanko.local");
+    await user.type(screen.getByLabelText("Senha"), "Slanko@123");
     await user.click(screen.getByRole("button", { name: "Entrar" }));
 
     await waitFor(() => {
@@ -109,10 +111,21 @@ describe("LoginPage", () => {
     vi.spyOn(api, "apiRequest").mockRejectedValue(new api.ApiClientError("Credenciais inválidas", 401));
 
     render(<LoginPage />);
+    await user.type(screen.getByLabelText("Email"), "gestor@slanko.local");
+    await user.type(screen.getByLabelText("Senha"), "senha-errada");
     await user.click(screen.getByRole("button", { name: "Entrar" }));
 
     await waitFor(() => {
       expect(screen.getByText("Credenciais inválidas")).toBeTruthy();
     });
+  });
+
+  it("starts with empty fields", () => {
+    vi.spyOn(authSession, "getSession").mockReturnValue(null);
+
+    render(<LoginPage />);
+
+    expect((screen.getByLabelText("Email") as HTMLInputElement).value).toBe("");
+    expect((screen.getByLabelText("Senha") as HTMLInputElement).value).toBe("");
   });
 });

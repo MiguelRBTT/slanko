@@ -16,6 +16,7 @@ type RequestOptions = {
   auth?: boolean;
 };
 
+// Toda chamada à API leva o JWT salvo no navegador no header Authorization.
 function authHeaders(): Record<string, string> {
   const token = getToken();
 
@@ -35,6 +36,7 @@ async function parseError(response: Response): Promise<never> {
   throw new ApiClientError(payload.error ?? "Falha na requisição", response.status);
 }
 
+/** Cliente HTTP das telas: envia JSON e transforma erro da API em ApiClientError com a mensagem. */
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -55,6 +57,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   } & T;
 
   if (!response.ok) {
+    // 401 = sessão expirada ou usuário desativado: limpa a sessão para voltar ao login.
     if (response.status === 401) {
       clearSession();
     }
@@ -79,6 +82,7 @@ export async function apiUpload<T>(path: string, formData: FormData): Promise<T>
   return (await response.json()) as T;
 }
 
+/** Baixa um anexo com o token: imagens e vídeos não ficam públicos. */
 export async function apiBlob(path: string, fallbackType?: string): Promise<Blob> {
   const response = await fetch(path, {
     method: "GET",

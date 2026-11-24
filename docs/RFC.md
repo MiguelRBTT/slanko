@@ -204,11 +204,13 @@ Infraestrutura
 Docker, GitHub Actions, SonarCloud, monitoramento
 ```
 
-**Organização de código (prevista)**
+**Organização de código**
 
-* `components/` interface
-* `services/` regras de negócio
-* `repositories/` acesso a dados
+* `src/app/` telas (App Router) e rotas da API (`app/api/`)
+* `src/components/` estrutura comum da interface
+* `src/services/` regras de negócio
+* `src/repositories/` acesso a dados (Prisma)
+* `src/lib/` cálculos de SLA e rentabilidade, autenticação e validação
 * `tests/` testes automatizados
 
 **Modelos C4**
@@ -226,10 +228,10 @@ Documentação completa em [docs/arquitetura-c4.md](arquitetura-c4.md):
 * **Banco**: MySQL
 * **ORM**: Prisma
 * **Containerização**: Docker (`slanko-app`, `slanko-db`)
-* **Testes**: Jest e/ou Vitest (TDD)
+* **Testes**: Vitest e Testing Library (TDD)
 * **CI/CD**: GitHub Actions
 * **Qualidade**: SonarCloud
-* **Observabilidade**: Grafana e/ou Prometheus
+* **Observabilidade**: Prometheus e Grafana
 
 ### 3.4. Considerações de Segurança
 

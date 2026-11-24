@@ -1,6 +1,6 @@
 ﻿import { PrismaClient } from "@prisma/client";
 
-// Reuse a single Prisma client instance across hot reloads in development.
+// Uma única instância do Prisma Client, reaproveitada entre recarregamentos no desenvolvimento.
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };

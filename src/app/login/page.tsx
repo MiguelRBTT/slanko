@@ -9,11 +9,13 @@ import styles from "./login.module.css";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("gestor@slanko.local");
-  const [password, setPassword] = useState("Slanko@123");
+  // Campos começam vazios: nenhuma credencial fica no código da tela (os usuários de teste estão no README).
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Já logado: vai direto para a tela inicial do perfil (gestor: Painel; técnico: Chamados).
   useEffect(() => {
     const session = getSession();
 
@@ -34,6 +36,7 @@ export default function LoginPage() {
         body: { email, password },
       });
 
+      // Guarda token e usuário no navegador para as próximas requisições.
       saveSession({
         token: result.token,
         user: result.user as SessionUser,

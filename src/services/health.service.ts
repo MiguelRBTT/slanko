@@ -1,7 +1,7 @@
 ﻿import { HealthRepository, healthRepository } from "@/repositories/health.repository";
 import { recordHealthCheck } from "@/lib/observability/metrics";
 
-// Aggregates application and database status for monitoring and CI smoke checks.
+// Junta o status da aplicação e do banco para o monitoramento e o teste de fumaça do CI.
 
 export type HealthStatus = {
   status: "ok" | "degraded";

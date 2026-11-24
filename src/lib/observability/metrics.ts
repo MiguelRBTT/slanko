@@ -16,10 +16,12 @@ type MetricsState = {
   marginTotal: client.Gauge<string>;
 };
 
+// Registro guardado em globalThis para o hot reload do Next.js não duplicar as métricas.
 const globalForMetrics = globalThis as typeof globalThis & {
   __slankoMetrics?: MetricsState;
 };
 
+/** Métricas do Prometheus: técnicas (saúde, erros, login) e de negócio (chamados, SLA, margem). */
 function createMetrics(): MetricsState {
   const register = new client.Registry();
   register.setDefaultLabels({ app: "slanko" });

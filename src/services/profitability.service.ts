@@ -25,6 +25,7 @@ function toDateOnly(value: Date): string {
   return value.toISOString().slice(0, 10);
 }
 
+/** Rentabilidade de um contrato (RF11, RF12): custo dos apontamentos contra a receita proporcional do período. */
 function toContractProfitability(
   contract: ContractWithEntries,
   filters: ProfitabilityFilters,
@@ -44,6 +45,7 @@ function toContractProfitability(
   }
 
   const monthlyValue = toNumeric(contract.value);
+  // Período em que o contrato gerou receita: vigência ∩ filtro de datas, até hoje.
   const window = resolveRevenueWindow({
     contractStart: contract.startDate,
     contractEnd: contract.endDate,
@@ -71,6 +73,7 @@ function toContractProfitability(
   };
 }
 
+/** Detalhe de cada apontamento no relatório do contrato: horas, custo/hora e custo. */
 function toEntryDetails(contract: ContractWithEntries) {
   const entries: PublicContractProfitabilityReport["entries"] = [];
 
@@ -101,6 +104,7 @@ export class ProfitabilityService {
     private readonly clock: () => Date = () => new Date(),
   ) {}
 
+  /** Painel de rentabilidade (RF14): um resultado por contrato e os totais. */
   async getSummary(filters: ProfitabilityFilters = {}): Promise<PublicProfitabilitySummary> {
     const contracts = await this.profitability.findContracts(filters);
     const today = this.clock();
@@ -120,6 +124,7 @@ export class ProfitabilityService {
     const contracts = await this.profitability.findContracts({
       ...filters,
       contractId,
+      // O relatório individual aceita contrato ativo, suspenso ou finalizado (rascunho não).
       contractStatuses: REPORTABLE_CONTRACT_STATUSES,
     });
     const detailed = contracts[0];

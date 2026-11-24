@@ -35,6 +35,7 @@ const ALERT_REASON_LABEL: Record<SlaAlertReason, string> = {
   RECURRING_BREACHES: "3+ chamados fora do prazo",
 };
 
+/** Mesma query de filtros para os dois relatórios (SLA e rentabilidade). */
 function filtersToQuery(filters: Filters): string {
   const params = new URLSearchParams({ status: filters.scope });
   if (filters.clientId) params.set("clientId", filters.clientId);
@@ -141,6 +142,7 @@ export default function DashboardPage() {
     }));
   }
 
+  // Opções dos filtros (só gestor): clientes e contratos, sem rascunhos.
   useEffect(() => {
     if (getSession()?.user.role !== "GESTOR") return;
 
@@ -155,12 +157,14 @@ export default function DashboardPage() {
       .catch(() => undefined);
   }, []);
 
+  // Recarrega SLA e rentabilidade a cada mudança de filtro, as duas consultas em paralelo.
   useEffect(() => {
     const session = getSession();
     const gestor = session?.user.role === "GESTOR";
     setIsGestor(Boolean(gestor));
 
     async function load() {
+      // O técnico não tem painel: o AppShell o leva para Chamados.
       if (!gestor) {
         setLoading(false);
         return;
@@ -194,12 +198,14 @@ export default function DashboardPage() {
     return <div className={styles.loading}>Carregando indicadores…</div>;
   }
 
+  // Chamados com alguma meta (resposta ou resolução) violada (RF10).
   const breachedTickets =
     sla?.tickets.filter(
       (ticket) => ticket.response.status === "BREACHED" || ticket.resolution.status === "BREACHED",
     ) ?? [];
 
   const contracts = profit?.contracts ?? [];
+  // Contratos em alerta (RF13): conformidade abaixo de 80% ou 3 ou mais violações.
   const slaAlerts = (sla?.contracts ?? []).filter((contract) => contract.alert);
   const visibleContractOptions = contractOptions.filter(
     (contract) => !filters.clientId || contract.clientId === filters.clientId,
@@ -212,6 +218,7 @@ export default function DashboardPage() {
   const deficitaryCount = profit?.deficitaryContracts ?? 0;
   const marginValue = Number(profit?.totalMargin ?? 0);
 
+  // Conformidade abaixo da meta de 80% aparece em âmbar.
   function complianceTone(rate: number | null | undefined): string {
     return rate !== null && rate !== undefined && rate < 80 ? styles.toneWarn : "";
   }

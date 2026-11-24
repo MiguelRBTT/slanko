@@ -6,16 +6,17 @@ import {
   requireNonEmptyString,
 } from "@/lib/validation/fields";
 
-function optionalEmail(value: unknown): string | null | undefined {
-  const email = optionalNullableString(value);
-  return email ? requireEmail(email) : email;
-}
 import {
   toPublicClient,
   type CreateClientInput,
   type PublicClient,
   type UpdateClientInput,
 } from "@/types/client";
+
+function optionalEmail(value: unknown): string | null | undefined {
+  const email = optionalNullableString(value);
+  return email ? requireEmail(email) : email;
+}
 
 function parseActiveFlag(value: unknown): boolean {
   if (typeof value !== "boolean") {
@@ -25,6 +26,7 @@ function parseActiveFlag(value: unknown): boolean {
   return value;
 }
 
+/** Regras de cliente (RF02): nome obrigatório, email válido quando informado, desativação no lugar de exclusão. */
 export class ClientService {
   constructor(private readonly clients: ClientRepository = clientRepository) {}
 
@@ -78,6 +80,7 @@ export class ClientService {
     return toPublicClient(client);
   }
 
+  /** Exclusão lógica: o cliente fica inativo e some das listas, mas contratos e histórico continuam. */
   async deactivateClient(id: string): Promise<PublicClient> {
     return this.updateClient(id, { active: false });
   }

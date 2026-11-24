@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { clearSession, getSession, type SessionUser } from "@/lib/client/auth-session";
 import styles from "./app-shell.module.css";
 
+// Menu lateral; itens gestorOnly não aparecem para o técnico.
 const NAV = [
   { href: "/dashboard", label: "Painel", gestorOnly: true },
   { href: "/clients", label: "Clientes", gestorOnly: true },
@@ -14,6 +15,7 @@ const NAV = [
   { href: "/users", label: "Equipe", gestorOnly: true },
 ] as const;
 
+// Telas só do gestor: o técnico que tentar abrir uma delas vai para Chamados.
 const GESTOR_ONLY_PATHS = ["/dashboard", "/clients", "/contracts", "/users"] as const;
 
 function initials(name: string): string {
@@ -33,6 +35,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [ready, setReady] = useState(false);
 
+  // Sem sessão salva, volta para o login.
   useEffect(() => {
     const session = getSession();
 
@@ -45,6 +48,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setReady(true);
   }, [router]);
 
+  // Proteção só de interface: quem garante a regra é a API (403 para o técnico).
   useEffect(() => {
     if (!ready || !user) return;
 
@@ -56,6 +60,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    // Pré-carrega as telas do menu para a navegação ficar instantânea.
     for (const item of NAV) {
       if ("gestorOnly" in item && item.gestorOnly && user.role !== "GESTOR") continue;
       router.prefetch(item.href);

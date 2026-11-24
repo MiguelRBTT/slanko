@@ -9,8 +9,8 @@ type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
-// GET /api/contracts/:id - fetch contract by id (JWT).
-// PUT / DELETE - gestor only.
+// GET /api/contracts/:id - busca contrato pelo id (o técnico não recebe o valor).
+// PUT / DELETE - só gestor.
 
 export async function GET(request: Request, context: RouteContext) {
   try {

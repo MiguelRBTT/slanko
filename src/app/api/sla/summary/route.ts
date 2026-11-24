@@ -4,7 +4,7 @@ import { parseContractStatusFilter } from "@/lib/reports/contract-status-filter"
 import { parseSlaPeriodFilters } from "@/lib/sla/period-filters";
 import { slaService } from "@/services/sla.service";
 
-// GET /api/sla/summary - SLA overview (requires JWT; gestor only). status=ACTIVE|SUSPENDED|FINISHED|ALL.
+// GET /api/sla/summary - visão geral de SLA (JWT; só gestor). status=ACTIVE|SUSPENDED|FINISHED|ALL.
 
 export async function GET(request: Request) {
   try {

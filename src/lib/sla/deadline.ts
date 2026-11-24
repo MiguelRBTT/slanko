@@ -10,6 +10,7 @@ export type SlaDeadline = {
 };
 
 const MS_PER_MINUTE = 60_000;
+// Prazo fica "em alerta" (âmbar) quando restam 10% ou menos do tempo.
 const WARN_RATIO = 0.1;
 
 function minutesBetween(start: Date, end: Date): number {
@@ -57,6 +58,7 @@ export function getActiveSlaDeadline(input: {
     return null;
   }
 
+  // O relógio conta sempre a partir da abertura, tanto para a resposta quanto para a resolução.
   const elapsedMinutes = Math.max(0, minutesBetween(openedAt, now));
   const remainingMinutes = targetMinutes - elapsedMinutes;
 

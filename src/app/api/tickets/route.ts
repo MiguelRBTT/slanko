@@ -33,8 +33,8 @@ function parsePriorityFilter(value: string | null): TicketPriority | undefined {
   return value as TicketPriority;
 }
 
-// GET /api/tickets - list tickets (requires JWT; gestor or tecnico).
-// POST /api/tickets - open a ticket.
+// GET /api/tickets - lista chamados (JWT; gestor vê todos, técnico só os que pode acessar).
+// POST /api/tickets - abre um chamado.
 
 export async function GET(request: Request) {
   try {

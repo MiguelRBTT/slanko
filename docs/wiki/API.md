@@ -11,7 +11,7 @@ Authorization: Bearer <jwt>
 | Rota | Auth | Perfil |
 |---|---|---|
 | `GET /api/health` | Pública | — |
-| `GET /api/metrics` | Pública | — (Prometheus) |
+| `GET /api/metrics` | Token `METRICS_TOKEN` (Bearer), quando definido | — (Prometheus) |
 | `POST /api/auth/login` | Pública | — (429 após 5 falhas em 15 min) |
 | `GET /api/users` | JWT | gestor ou técnico (`includeInactive=true`: gestor) |
 | `POST /api/users` | JWT | gestor |
